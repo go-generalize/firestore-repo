@@ -228,6 +228,7 @@ func (repo *{{ .RepositoryStructName }}) Get(ctx context.Context, {{ .KeyValueNa
 	if err != nil {
 		return nil, xerrors.Errorf("error in Get method: %w", err)
 	}
+
 	subject := new({{ .StructName }})
 	if err := snapShot.DataTo(&subject); err != nil {
 		return nil, xerrors.Errorf("error in DataTo method: %w", err)
