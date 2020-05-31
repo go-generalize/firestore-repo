@@ -31,6 +31,9 @@ type Task struct {
 この要素の型は `string`である必要がある。
 
 この状態で`go generate` を実行すると`_gen.go`で終わるファイルにモデルが生成される。
+```commandline
+$ go generate
+```
 
 ## License
 - Under the MIT License
