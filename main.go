@@ -111,10 +111,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		typeName := getTypeName(field.Type)
 		if !cont.Contains(supportType, typeName) {
 			typeNameDetail := getTypeNameDetail(field.Type)
-			obj := typeNameDetail
-			if strings.HasPrefix(typeNameDetail, typeMap) {
-				obj = strings.TrimPrefix(typeNameDetail, typeMap)
-			}
+			obj := strings.TrimPrefix(typeNameDetail, typeMap)
 
 			if !cont.Contains(supportType, obj) {
 				log.Printf(
