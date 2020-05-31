@@ -13,11 +13,11 @@ jobs:
 
     env:
       GO111MODULE: on
-      DATASTORE_EMULATOR_HOST: 127.0.0.1:8000
+      FIRESTORE_EMULATOR_HOST: 127.0.0.1:8000
 
     steps:
       - name: Start firestore emulator
-        run: docker exec -d $(docker ps -f "ancestor=google/cloud-sdk" -q) gcloud beta emulators firestore start --host-port 0.0.0.0:8000
+        run: docker exec -d $(docker ps -f "ancestor=google/cloud-sdk" -q) gcloud beta emulators firestore start --project=pname --host-port 0.0.0.0:8000
 
       - name: Set up Go 1.12
         uses: actions/setup-go@v1
