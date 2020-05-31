@@ -75,10 +75,15 @@ func (g *generator) setting() {
 }
 
 func (g *generator) buildConditions() {
+	dedupe := make(map[string]bool)
 	for _, field := range g.FieldInfos {
-		switch field.FieldType {
+		ft := field.FieldType
+		switch ft {
 		case "time.Time":
-			g.ImportList = append(g.ImportList, ImportInfo{"time"})
+			if _, ok := dedupe[ft]; !ok {
+				dedupe[ft] = true
+				g.ImportList = append(g.ImportList, ImportInfo{strings.Split(ft, ".")[0]})
+			}
 		}
 	}
 }
