@@ -214,7 +214,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 	}
 
 	{
-		fp, err := os.Create("constant.go")
+		fp, err := os.Create("constant_gen.go")
 		if err != nil {
 			panic(err)
 		}
