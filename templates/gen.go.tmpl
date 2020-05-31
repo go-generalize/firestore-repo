@@ -1,0 +1,420 @@
+// THIS FILE IS A GENERATED CODE. DO NOT EDIT
+package {{ .PackageName }}
+
+import (
+	"context"
+{{- range .ImportList }}
+	"{{ .Name }}"
+{{- end }}
+
+	"cloud.google.com/go/firestore"
+{{- if and (eq .SliceExist true) (eq .EnableIndexes false) }}
+	"github.com/go-utils/dedupe"
+{{- end }}
+{{- if eq .EnableIndexes true }}
+	"github.com/knightso/xian"
+{{- end }}
+	"golang.org/x/xerrors"
+	"google.golang.org/api/iterator"
+)
+{{ $generate := "go:generate" }}
+//{{ $generate }} mockgen -source {{ .GeneratedFileName }}.go -destination mock/mock_{{ .GeneratedFileName }}/mock_{{ .GeneratedFileName }}.go
+
+type {{ .RepositoryInterfaceName }} interface {
+	// Single
+	Get(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}) (*{{ .StructName }}, error)
+	Insert(ctx context.Context, subject *{{ .StructName }}) ({{ .KeyFieldType }}, error)
+	Update(ctx context.Context, subject *{{ .StructName }}) error
+	Delete(ctx context.Context, subject *{{ .StructName }}) error
+	DeleteBy{{ .KeyFieldName }}(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}) error
+	// Multiple
+	GetMulti(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}) ([]*{{ .StructName }}, error)
+	InsertMulti(ctx context.Context, subjects []*{{ .StructName }}) ([]{{ .KeyFieldType }}, error)
+	UpdateMulti(ctx context.Context, subjects []*{{ .StructName }}) error
+	DeleteMulti(ctx context.Context, subjects []*{{ .StructName }}) error
+	DeleteMultiBy{{ PluralForm .KeyFieldName }}(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}) error
+	// List
+	List(ctx context.Context, req *{{ .StructName }}ListReq, q *firestore.Query) ([]*{{ .StructName }}, error)
+	// misc
+	GetCollectionName() string
+}
+
+type {{ .RepositoryStructName }} struct {
+	collection      string
+	firestoreClient *firestore.Client
+}
+
+// New{{ .RepositoryInterfaceName }} constructor
+func New{{ .RepositoryInterfaceName }}(firestoreClient *firestore.Client) {{ .RepositoryInterfaceName }} {
+	return &{{ .RepositoryStructName }}{
+		collection:      "{{ .StructName }}",
+		firestoreClient: firestoreClient,
+	}
+}
+
+// GetCollectionName CollectionName getter
+func (repo *{{ .RepositoryStructName }}) GetCollectionName() string {
+	return repo.collection
+}
+
+{{- if eq .EnableIndexes true }}
+// saveIndexes 拡張フィルタを保存する
+func (repo *{{ .RepositoryStructName }}) saveIndexes(subjects ...*{{ .StructName }}) error {
+	for _, subject := range subjects {
+		idx := xian.NewIndexes({{ .StructName }}IndexesConfig)
+{{- range $fi := .FieldInfos }}
+{{- $IsSlice := HasSlice $fi.FieldType}}
+{{- range $idx := $fi.Indexes }}
+{{- if or (eq $fi.FieldType "bool") (eq $fi.FieldType "int" ) (eq $fi.FieldType "int64" ) (eq $fi.FieldType "float64" ) }}
+		idx.{{ $idx.Method }}({{ $idx.ConstName }}, subject.{{ $fi.Field }})
+{{- else if eq $fi.FieldType "string" }}
+{{- if eq $idx.Method "AddPrefix" }}
+		idx.{{ $idx.Method }}es({{ $idx.ConstName }}, subject.{{ $fi.Field }})
+{{- else }}
+		idx.{{ $idx.Method }}({{ $idx.ConstName }}, subject.{{ $fi.Field }})
+{{- end }}
+{{- else if eq $fi.FieldType "time.Time" }}
+		idx.{{ $idx.Method }}({{ $idx.ConstName }}, subject.{{ $fi.Field }}.Unix())
+{{- else if eq $IsSlice true }}
+		idx.{{ $idx.Method }}({{ $idx.ConstName }}, subject.{{ $fi.Field }})
+{{- end }}
+{{- end }}
+{{- end }}
+		built, err := idx.Build()
+		if err != nil {
+			return err
+		}
+		subject.Indexes = built
+	}
+
+	return nil
+}
+
+// {{ .StructName }}IndexesConfig {{ .StructName }}用のIndexesConfigを設定する
+var {{ .StructName }}IndexesConfig = &xian.Config{
+	// IgnoreCase Case insensitive
+	//   └──大文字小文字を区別しない
+	IgnoreCase:         true,
+	// SaveNoFiltersIndex 検索時にフィルタを設定しない場合、この拡張フィルタなし検索用インデックスのEquality Filterが自動で適用される
+	//   ├── falseで、拡張フィルタのあり・なしの両パターンの検索がある場合、カスタムインデックスを両パターン分用意しておく必要がある
+	//   └── trueにしておくことでカスタムインデックスを半分に節約することができる
+	SaveNoFiltersIndex: true,
+}
+{{- end }}
+
+// {{ .StructName }}ListReq List取得時に渡すリクエスト
+// └─ bool/int(64)|float64 は stringの独自型で渡す(BoolCriteria | NumericCriteria)
+type {{ .StructName }}ListReq struct {
+{{- range .FieldInfos }}
+{{- if eq .FieldType "bool" }}
+	{{ .Field }}{{ .Space }} BoolCriteria
+{{- else if or (eq .FieldType "int") (eq .FieldType "int64") (eq .FieldType "float64" ) }}
+	{{ .Field }}{{ .Space }} NumericCriteria
+{{- else }}
+	{{ .Field }}{{ .Space }} {{ .FieldType }}
+{{- end }}
+{{- end }}
+}
+
+// List firestore.Queryを使用し条件抽出をする
+//  └─ 第3引数はNOT/OR/IN/RANGEなど、より複雑な条件を適用したいときにつける
+//      └─ 基本的にnilを渡せば良い
+// BUG(54m) 潜在的なバグがあるかもしれない
+func (repo *{{ .RepositoryStructName }}) List(ctx context.Context, req *{{ .StructName }}ListReq, q *firestore.Query) ([]*{{ .StructName }}, error) {
+	var query firestore.Query
+	if q == nil {
+		ref := repo.firestoreClient.Collection(repo.collection)
+{{ $Enable := .EnableIndexes }}
+{{- if eq $Enable true }}
+		filters := xian.NewFilters({{ .StructName }}IndexesConfig)
+{{- end }}
+{{- range $fi := .FieldInfos }}
+{{- $IsSlice := HasSlice $fi.FieldType}}
+{{- $IsMap := HasMap $fi.FieldType}}
+{{- if eq $fi.FieldType "bool" }}
+		if req.{{ $fi.Field }} != "" {
+{{- if eq $Enable true }}
+{{- range $idx := $fi.Indexes }}
+			filters.{{ $idx.Method }}({{ $idx.ConstName }}, req.{{ $fi.Field }})
+{{- end }}
+{{- else }}
+			ref.Query = ref.Query.Where("{{ $fi.FsTag }}", "==", req.{{ $fi.Field }}.Bool())
+{{- end }}
+		}
+{{- else if eq $fi.FieldType "string" }}
+		if req.{{ $fi.Field }} != "" {
+{{- if eq $Enable true }}
+{{- range $idx := $fi.Indexes }}
+			filters.{{ $idx.Method }}({{ $idx.ConstName }}, req.{{ $fi.Field }})
+{{- end }}
+{{- else }}
+			ref.Query = ref.Query.Where("{{ $fi.FsTag }}", "==", req.{{ $fi.Field }})
+{{- end }}
+		}
+{{- else if or (eq $fi.FieldType "int") (eq $fi.FieldType "int64") (eq $fi.FieldType "float64" ) }}
+		if req.{{ $fi.Field }} != NumericCriteriaEmpty {
+{{- if eq $Enable true }}
+{{- range $idx := $fi.Indexes }}
+			filters.{{ $idx.Method }}({{ $idx.ConstName }}, req.{{ $fi.Field }}.{{ Parse $fi.FieldType }}())
+{{- end }}
+{{- else }}
+			ref.Query = ref.Query.Where("{{ $fi.FsTag }}", "==", req.{{ $fi.Field }}.{{ Parse $fi.FieldType }}())
+{{- end }}
+		}
+{{- else if eq $fi.FieldType "time.Time" }}
+		if !req.{{ $fi.Field }}.IsZero() {
+{{- if eq $Enable true }}
+{{- range $idx := $fi.Indexes }}
+			filters.{{ $idx.Method }}({{ $idx.ConstName }}, req.{{ $fi.Field }}.Unix())
+{{- end }}
+{{- else }}
+			ref.Query = ref.Query.Where("{{ $fi.FsTag }}", "==", req.{{ $fi.Field }})
+{{- end }}
+		}
+{{- else if eq $IsMap true }}
+		if len(req.{{ $fi.Field }}) > 0 {
+			for key, value := range req.{{ $fi.Field }} {
+				ref.Query = ref.Query.Where("{{ $fi.FsTag }}."+key, "==", value)
+			}
+		}
+{{- else if eq $IsSlice true }}
+		if len(req.{{ $fi.Field }}) > 0 {
+{{- if eq $Enable true }}
+{{- range $idx := $fi.Indexes }}
+			filters.{{ $idx.Method }}({{ $idx.ConstName }}, req.{{ $fi.Field }})
+{{- end }}
+{{- else }}
+			dedupe.Do(&req.{{ $fi.Field }})
+			ref.Query = ref.Query.Where("{{ $fi.FsTag }}", "array-contains-any", req.{{ $fi.Field }})
+{{- end }}
+		}
+{{- end }}
+{{- end }}
+		query = ref.Query
+	} else {
+		query = *q
+	}
+{{ if eq $Enable true }}
+	built, err := filters.Build()
+	if err != nil {
+		return nil, xerrors.Errorf("error in Build method: %w", err)
+	}
+
+	query = query.Where("{{ .FieldInfoForIndexes.FsTag }}", "array-contains-any", built)
+{{- end }}
+	subjects := make([]*{{ .StructName }}, 0)
+	iter := query.Documents(ctx)
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, xerrors.Errorf("error in Next method: %w", err)
+		}
+		subject := new({{ .StructName }})
+		if err := doc.DataTo(&subject); err != nil {
+			return nil, xerrors.Errorf("error in DataTo method: %w", err)
+		}
+		subjects = append(subjects, subject)
+	}
+
+	return subjects, nil
+}
+
+// Get 処理中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
+func (repo *{{ .RepositoryStructName }}) Get(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}) (*{{ .StructName }}, error) {
+	snapShot, err := repo.firestoreClient.Collection(repo.collection).Doc({{ .KeyValueName }}).Get(ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("error in Get method: %w", err)
+	}
+	subject := new({{ .StructName }})
+	if err := snapShot.DataTo(&subject); err != nil {
+		return nil, xerrors.Errorf("error in DataTo method: %w", err)
+	}
+
+	subject.{{ .KeyFieldName }} = snapShot.Ref.ID
+
+	return subject, nil
+}
+
+// Insert 処理中の {{ .StructName }} の登録処理一切の責任を持ち、これを行う
+func (repo *{{ .RepositoryStructName }}) Insert(ctx context.Context, subject *{{ .StructName }}) ({{ .KeyFieldType }}, error) {
+{{- if .AutomaticGeneration }}
+	ref, _, err := repo.firestoreClient.Collection(repo.collection).Add(ctx, subject)
+	if err != nil {
+		return "", xerrors.Errorf("error in Add method: %w", err)
+	}
+
+	subject.{{ .KeyFieldName }} = ref.ID
+{{- else }}
+	ref := repo.firestoreClient.Collection(repo.collection).Doc(subject.{{ .KeyFieldName }})
+
+	if _, err := ref.Get(ctx); err == nil {
+		return "", xerrors.Errorf("already exist [%s]", ref.ID)
+	}
+
+	if _, err := ref.Set(ctx, subject); err != nil {
+		return "", xerrors.Errorf("error in Set method: %w", err)
+	}
+{{- end }}
+
+	return ref.ID, nil
+}
+
+// Update 処理中の {{ .StructName }} の更新処理一切の責任を持ち、これを行う
+func (repo *{{ .RepositoryStructName }}) Update(ctx context.Context, subject *{{ .StructName }}) error {
+	ref := repo.firestoreClient.Collection(repo.collection).Doc(subject.{{ .KeyFieldName }})
+
+	if _, err := ref.Get(ctx); err != nil {
+		return xerrors.Errorf("error in Get method: %w", err)
+	}
+
+	if _, err := ref.Set(ctx, subject); err != nil {
+		return xerrors.Errorf("error in Set method: %w", err)
+	}
+
+	return nil
+}
+
+// Delete 処理中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
+func (repo *{{ .RepositoryStructName }}) Delete(ctx context.Context, subject *{{ .StructName }}) error {
+	if _, err := repo.firestoreClient.Collection(repo.collection).Doc(subject.{{ .KeyFieldName }}).Delete(ctx); err != nil {
+		return xerrors.Errorf("error in Delete method: %w", err)
+	}
+	return nil
+}
+
+// DeleteBy{{ .KeyFieldName }} 処理中の {{ .StructName }} の{{ .KeyFieldName }}から削除処理一切の責任を持ち、これを行う
+func (repo *{{ .RepositoryStructName }}) DeleteBy{{ .KeyFieldName }}(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}) error {
+	if err := repo.Delete(ctx, &{{ .StructName }}{ {{- .KeyFieldName }}: {{ .KeyValueName }}}); err != nil {
+		return xerrors.Errorf("error in repo.Delete method: %w", err)
+	}
+	return nil
+}
+
+// GetMulti 処理中の {{ .StructName }} の一括取得処理一切の責任を持ち、これを行う
+func (repo *{{ .RepositoryStructName }}) GetMulti(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}) ([]*{{ .StructName }}, error) {
+	docRefs := make([]*firestore.DocumentRef, 0, len({{ PluralForm .KeyValueName }}))
+	for _, {{ .KeyValueName }} := range {{ PluralForm .KeyValueName }} {
+		ref := repo.firestoreClient.Collection(repo.collection).Doc({{ .KeyValueName }})
+		docRefs = append(docRefs, ref)
+	}
+
+	snapShots, err := repo.firestoreClient.GetAll(ctx, docRefs)
+	if err != nil {
+		return nil, xerrors.Errorf("error in GetAll method: %w", err)
+	}
+
+	subjects := make([]*{{ .StructName }}, 0, len({{ PluralForm .KeyValueName }}))
+	for _, snapShot := range snapShots {
+		subject := new({{ .StructName }})
+		if err := snapShot.DataTo(&subject); err != nil {
+			return nil, xerrors.Errorf("error in DataTo method: %w", err)
+		}
+		subject.{{ .KeyFieldName }} = snapShot.Ref.ID
+		subjects = append(subjects, subject)
+	}
+
+	return subjects, nil
+}
+
+// InsertMulti 処理中の {{ .StructName }} の一括挿入処理一切の責任を持ち、これを行う
+func (repo *{{ .RepositoryStructName }}) InsertMulti(ctx context.Context, subjects []*{{ .StructName }}) ([]{{ .KeyFieldType }}, error) {
+	{{ PluralForm .KeyValueName }} := make([]{{ .KeyFieldType }}, 0, len(subjects))
+	batches := make([]*firestore.WriteBatch, 0)
+	batch := repo.firestoreClient.Batch()
+
+	for i, subject := range subjects {
+		var ref *firestore.DocumentRef
+		if subject.{{ .KeyFieldName }} == "" {
+			ref = repo.firestoreClient.Collection(repo.collection).NewDoc()
+			subject.{{ .KeyFieldName }} = ref.ID
+		} else {
+			ref = repo.firestoreClient.Collection(repo.collection).Doc(subject.{{ .KeyFieldName }})
+			if _, err := ref.Get(ctx); err == nil {
+				return nil, xerrors.Errorf("error in Get method [%s]: %w", subject.{{ .KeyFieldName }}, err)
+			}
+		}
+		batch.Set(ref, subject)
+		{{ PluralForm .KeyValueName }} = append({{ PluralForm .KeyValueName }}, ref.ID)
+		i++
+		if (i%500) == 0 && len(subjects) != i {
+			batches = append(batches, batch)
+			batch = repo.firestoreClient.Batch()
+		}
+	}
+	batches = append(batches, batch)
+
+	for _, b := range batches {
+		if _, err := b.Commit(ctx); err != nil {
+			return nil, xerrors.Errorf("error in Commit method: %w", err)
+		}
+	}
+
+	return {{ PluralForm .KeyValueName }}, nil
+}
+
+// UpdateMulti 処理中の {{ .StructName }} の一括更新処理一切の責任を持ち、これを行う
+func (repo *{{ .RepositoryStructName }}) UpdateMulti(ctx context.Context, subjects []*{{ .StructName }}) error {
+	batches := make([]*firestore.WriteBatch, 0)
+	batch := repo.firestoreClient.Batch()
+
+	for i, subject := range subjects {
+		ref := repo.firestoreClient.Collection(repo.collection).Doc(subject.{{ .KeyFieldName }})
+		if _, err := ref.Get(ctx); err != nil {
+			return xerrors.Errorf("error in Get method [%s]: %w", subject.{{ .KeyFieldName }}, err)
+		}
+		batch.Set(ref, subject)
+		i++
+		if (i%500) == 0 && len(subjects) != i {
+			batches = append(batches, batch)
+			batch = repo.firestoreClient.Batch()
+		}
+	}
+	batches = append(batches, batch)
+
+	for _, b := range batches {
+		if _, err := b.Commit(ctx); err != nil {
+			return xerrors.Errorf("error in Commit method: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// DeleteMulti 処理中の {{ .StructName }} の一括削除処理一切の責任を持ち、これを行う
+func (repo *{{ .RepositoryStructName }}) DeleteMulti(ctx context.Context, subjects []*{{ .StructName }}) error {
+	batches := make([]*firestore.WriteBatch, 0)
+	batch := repo.firestoreClient.Batch()
+
+	for i, subject := range subjects {
+		ref := repo.firestoreClient.Collection(repo.collection).Doc(subject.{{ .KeyFieldName }})
+		batch.Delete(ref)
+		i++
+		if (i%500) == 0 && len(subjects) != i {
+			batches = append(batches, batch)
+			batch = repo.firestoreClient.Batch()
+		}
+	}
+	batches = append(batches, batch)
+
+	for _, b := range batches {
+		if _, err := b.Commit(ctx); err != nil {
+			return xerrors.Errorf("error in Commit method: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// DeleteMultiBy{{ PluralForm .KeyFieldName }} 処理中の {{ .StructName }} の{{ .KeyFieldName }}群を元に一括削除処理一切の責任を持ち、これを行う
+func (repo *{{ .RepositoryStructName }}) DeleteMultiBy{{ PluralForm .KeyFieldName }}(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}) error {
+	subjects := make([]*{{ .StructName }}, 0, len({{ PluralForm .KeyValueName }}))
+
+	for _, {{ .KeyValueName }} := range {{ PluralForm .KeyValueName }} {
+		subjects = append(subjects, &{{ .StructName }}{ {{- .KeyFieldName }}: {{ .KeyValueName }}})
+	}
+
+	return repo.DeleteMulti(ctx, subjects)
+}

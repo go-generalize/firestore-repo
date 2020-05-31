@@ -1,0 +1,11 @@
+// THIS FILE IS A GENERATED CODE. EDIT OK
+package {{ .PackageName }}
+
+const (
+{{- range $fi := .FieldInfos }}
+{{- range $idx := $fi.Indexes }}
+    // {{ $idx.Comment }}検索用ラベル
+    {{ $idx.ConstName }} = "{{ $idx.Label }}"
+{{- end }}
+{{- end }}
+)
