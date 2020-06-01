@@ -34,6 +34,7 @@ type FieldInfo struct {
 	FsTag     string
 	Field     string
 	FieldType string
+	Operator  Operator
 	Space     string
 	Indexes   []*IndexesInfo
 }
