@@ -242,6 +242,15 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		gen.generateMisc(fp)
 	}
 
+	{
+		fp, err := os.Create("query_gen.go")
+		if err != nil {
+			panic(err)
+		}
+		defer fp.Close()
+		gen.generateQuery(fp)
+	}
+
 	return nil
 }
 

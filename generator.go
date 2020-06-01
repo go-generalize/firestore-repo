@@ -144,6 +144,16 @@ func (g *generator) generateMisc(writer io.Writer) {
 	}
 }
 
+func (g *generator) generateQuery(writer io.Writer) {
+	contents := getFileContents("query")
+
+	t := template.Must(template.New("TemplateQuery").Parse(contents))
+
+	if err := t.Execute(writer, g); err != nil {
+		log.Printf("failed to execute template: %+v", err)
+	}
+}
+
 func setFuncMap() template.FuncMap {
 	return template.FuncMap{
 		"Parse": func(fieldType string) string {

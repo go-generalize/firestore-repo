@@ -36,6 +36,7 @@ type {{ .RepositoryInterfaceName }} interface {
 	// List
 	List(ctx context.Context, req *{{ .StructName }}ListReq, q *firestore.Query) ([]*{{ .StructName }}, error)
 	// misc
+	GetCollection() *firestore.CollectionRef
 	GetCollectionName() string
 }
 
@@ -50,6 +51,11 @@ func New{{ .RepositoryInterfaceName }}(firestoreClient *firestore.Client) {{ .Re
 		collection:      "{{ .StructName }}",
 		firestoreClient: firestoreClient,
 	}
+}
+
+// GetCollection *firestore.CollectionRef getter
+func (repo *taskRepository) GetCollection() *firestore.CollectionRef {
+	return repo.firestoreClient.Collection(repo.collection)
 }
 
 // GetCollectionName CollectionName getter
@@ -123,7 +129,7 @@ type {{ .StructName }}ListReq struct {
 func (repo *{{ .RepositoryStructName }}) List(ctx context.Context, req *{{ .StructName }}ListReq, q *firestore.Query) ([]*{{ .StructName }}, error) {
 	var query firestore.Query
 	if q == nil {
-		ref := repo.firestoreClient.Collection(repo.collection)
+		ref := repo.GetCollection()
 {{ $Enable := .EnableIndexes }}
 {{- if eq $Enable true }}
 		filters := xian.NewFilters({{ .StructName }}IndexesConfig)
@@ -224,7 +230,7 @@ func (repo *{{ .RepositoryStructName }}) List(ctx context.Context, req *{{ .Stru
 
 // Get 処理中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) Get(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}) (*{{ .StructName }}, error) {
-	snapShot, err := repo.firestoreClient.Collection(repo.collection).Doc({{ .KeyValueName }}).Get(ctx)
+	snapShot, err := repo.GetCollection().Doc({{ .KeyValueName }}).Get(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("error in Get method: %w", err)
 	}
@@ -242,14 +248,14 @@ func (repo *{{ .RepositoryStructName }}) Get(ctx context.Context, {{ .KeyValueNa
 // Insert 処理中の {{ .StructName }} の登録処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) Insert(ctx context.Context, subject *{{ .StructName }}) ({{ .KeyFieldType }}, error) {
 {{- if .AutomaticGeneration }}
-	ref, _, err := repo.firestoreClient.Collection(repo.collection).Add(ctx, subject)
+	ref, _, err := repo.GetCollection().Add(ctx, subject)
 	if err != nil {
 		return "", xerrors.Errorf("error in Add method: %w", err)
 	}
 
 	subject.{{ .KeyFieldName }} = ref.ID
 {{- else }}
-	ref := repo.firestoreClient.Collection(repo.collection).Doc(subject.{{ .KeyFieldName }})
+	ref := repo.GetCollection().Doc(subject.{{ .KeyFieldName }})
 
 	if _, err := ref.Get(ctx); err == nil {
 		return "", xerrors.Errorf("already exist [%s]", ref.ID)
@@ -265,7 +271,7 @@ func (repo *{{ .RepositoryStructName }}) Insert(ctx context.Context, subject *{{
 
 // Update 処理中の {{ .StructName }} の更新処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) Update(ctx context.Context, subject *{{ .StructName }}) error {
-	ref := repo.firestoreClient.Collection(repo.collection).Doc(subject.{{ .KeyFieldName }})
+	ref := repo.GetCollection().Doc(subject.{{ .KeyFieldName }})
 
 	if _, err := ref.Get(ctx); err != nil {
 		return xerrors.Errorf("error in Get method: %w", err)
@@ -280,7 +286,7 @@ func (repo *{{ .RepositoryStructName }}) Update(ctx context.Context, subject *{{
 
 // Delete 処理中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) Delete(ctx context.Context, subject *{{ .StructName }}) error {
-	if _, err := repo.firestoreClient.Collection(repo.collection).Doc(subject.{{ .KeyFieldName }}).Delete(ctx); err != nil {
+	if _, err := repo.GetCollection().Doc(subject.{{ .KeyFieldName }}).Delete(ctx); err != nil {
 		return xerrors.Errorf("error in Delete method: %w", err)
 	}
 	return nil
@@ -298,7 +304,7 @@ func (repo *{{ .RepositoryStructName }}) DeleteBy{{ .KeyFieldName }}(ctx context
 func (repo *{{ .RepositoryStructName }}) GetMulti(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}) ([]*{{ .StructName }}, error) {
 	docRefs := make([]*firestore.DocumentRef, 0, len({{ PluralForm .KeyValueName }}))
 	for _, {{ .KeyValueName }} := range {{ PluralForm .KeyValueName }} {
-		ref := repo.firestoreClient.Collection(repo.collection).Doc({{ .KeyValueName }})
+		ref := repo.GetCollection().Doc({{ .KeyValueName }})
 		docRefs = append(docRefs, ref)
 	}
 
@@ -329,10 +335,10 @@ func (repo *{{ .RepositoryStructName }}) InsertMulti(ctx context.Context, subjec
 	for i, subject := range subjects {
 		var ref *firestore.DocumentRef
 		if subject.{{ .KeyFieldName }} == "" {
-			ref = repo.firestoreClient.Collection(repo.collection).NewDoc()
+			ref = repo.GetCollection().NewDoc()
 			subject.{{ .KeyFieldName }} = ref.ID
 		} else {
-			ref = repo.firestoreClient.Collection(repo.collection).Doc(subject.{{ .KeyFieldName }})
+			ref = repo.GetCollection().Doc(subject.{{ .KeyFieldName }})
 			if s, err := ref.Get(ctx); err == nil {
 				return nil, xerrors.Errorf("error in Get method [%s]: %w", subject.{{ .KeyFieldName }}, s)
 			}
@@ -362,7 +368,7 @@ func (repo *{{ .RepositoryStructName }}) UpdateMulti(ctx context.Context, subjec
 	batch := repo.firestoreClient.Batch()
 
 	for i, subject := range subjects {
-		ref := repo.firestoreClient.Collection(repo.collection).Doc(subject.{{ .KeyFieldName }})
+		ref := repo.GetCollection().Doc(subject.{{ .KeyFieldName }})
 		if _, err := ref.Get(ctx); err != nil {
 			return xerrors.Errorf("error in Get method [%s]: %w", subject.{{ .KeyFieldName }}, err)
 		}
@@ -390,7 +396,7 @@ func (repo *{{ .RepositoryStructName }}) DeleteMulti(ctx context.Context, subjec
 	batch := repo.firestoreClient.Batch()
 
 	for i, subject := range subjects {
-		ref := repo.firestoreClient.Collection(repo.collection).Doc(subject.{{ .KeyFieldName }})
+		ref := repo.GetCollection().Doc(subject.{{ .KeyFieldName }})
 		batch.Delete(ref)
 		i++
 		if (i%500) == 0 && len(subjects) != i {
