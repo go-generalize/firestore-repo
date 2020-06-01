@@ -168,7 +168,8 @@ func (repo *{{ .RepositoryStructName }}) List(ctx context.Context, req *{{ .Stru
 			filters.{{ $idx.Method }}({{ $idx.ConstName }}, req.{{ $fi.Field }}.Unix())
 {{- end }}
 {{- else }}
-			ref.Query = ref.Query.Where("{{ $fi.FsTag }}", "==", req.{{ $fi.Field }})
+			date := time.Unix(req.{{ $fi.Field }}.Unix(), int64(req.{{ $fi.Field }}.Nanosecond()/1000*1000))
+			ref.Query = ref.Query.Where("{{ $fi.FsTag }}", "==", date)
 {{- end }}
 		}
 {{- else if eq $IsMap true }}
@@ -333,8 +334,8 @@ func (repo *{{ .RepositoryStructName }}) InsertMulti(ctx context.Context, subjec
 			subject.{{ .KeyFieldName }} = ref.ID
 		} else {
 			ref = repo.firestoreClient.Collection(repo.collection).Doc(subject.{{ .KeyFieldName }})
-			if _, err := ref.Get(ctx); err == nil {
-				return nil, xerrors.Errorf("error in Get method [%s]: %w", subject.{{ .KeyFieldName }}, err)
+			if s, err := ref.Get(ctx); err == nil {
+				return nil, xerrors.Errorf("error in Get method [%s]: %w", subject.{{ .KeyFieldName }}, s)
 			}
 		}
 		batch.Set(ref, subject)

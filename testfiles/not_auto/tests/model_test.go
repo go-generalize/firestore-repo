@@ -429,7 +429,7 @@ func TestFirestoreListNameWithIndexes(t *testing.T) {
 }
 */
 
-func TestFirestoreMock(t *testing.T) {
+func TestFirestore(t *testing.T) {
 	client := initFirestoreClient(t)
 
 	taskRepo := model.NewTaskRepository(client)
