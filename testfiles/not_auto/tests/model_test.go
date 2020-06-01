@@ -296,6 +296,23 @@ func TestFirestoreQueryTask(t *testing.T) {
 			t.Fatal("not match")
 		}
 	})
+
+	t.Run("UseQueryBuilder", func(tr *testing.T) {
+		b := model.NewQueryBuilder(taskRepo.GetCollection())
+		b.GreaterThan("count", 3)
+		b.LessThan("count", 8)
+
+		query := b.Query()
+
+		tasks, err := taskRepo.List(ctx, nil, &query)
+		if err != nil {
+			tr.Fatalf("%+v", err)
+		}
+
+		if len(tasks) != 4 {
+			tr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 4)
+		}
+	})
 }
 
 /* TODO Map版Indexes実装
