@@ -1,0 +1,8 @@
+// THIS FILE IS A GENERATED CODE. DO NOT EDIT
+package {{ .PackageName }}
+
+import "time"
+
+func SetLastThreeToZero(t time.Time) time.Time {
+	return time.Unix(t.Unix(), int64(t.Nanosecond()/1000*1000))
+}

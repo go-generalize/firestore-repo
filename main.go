@@ -219,6 +219,15 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		gen.generateConstant(fp)
 	}
 
+	{
+		fp, err := os.Create("misc_gen.go")
+		if err != nil {
+			panic(err)
+		}
+		defer fp.Close()
+		gen.generateMisc(fp)
+	}
+
 	return nil
 }
 

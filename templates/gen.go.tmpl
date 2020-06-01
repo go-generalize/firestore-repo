@@ -168,8 +168,7 @@ func (repo *{{ .RepositoryStructName }}) List(ctx context.Context, req *{{ .Stru
 			filters.{{ $idx.Method }}({{ $idx.ConstName }}, req.{{ $fi.Field }}.Unix())
 {{- end }}
 {{- else }}
-			date := time.Unix(req.{{ $fi.Field }}.Unix(), int64(req.{{ $fi.Field }}.Nanosecond()/1000*1000))
-			ref.Query = ref.Query.Where("{{ $fi.FsTag }}", "==", date)
+			ref.Query = ref.Query.Where("{{ $fi.FsTag }}", "==", SetLastThreeToZero(req.{{ $fi.Field }}))
 {{- end }}
 		}
 {{- else if eq $IsMap true }}

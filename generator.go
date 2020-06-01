@@ -133,6 +133,16 @@ func (g *generator) generateConstant(writer io.Writer) {
 	}
 }
 
+func (g *generator) generateMisc(writer io.Writer) {
+	contents := getFileContents("misc")
+
+	t := template.Must(template.New("TemplateMisc").Parse(contents))
+
+	if err := t.Execute(writer, g); err != nil {
+		log.Printf("failed to execute template: %+v", err)
+	}
+}
+
 func setFuncMap() template.FuncMap {
 	return template.FuncMap{
 		"Parse": func(fieldType string) string {
