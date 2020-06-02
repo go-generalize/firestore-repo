@@ -54,7 +54,7 @@ func New{{ .RepositoryInterfaceName }}(firestoreClient *firestore.Client) {{ .Re
 }
 
 // GetCollection *firestore.CollectionRef getter
-func (repo *taskRepository) GetCollection() *firestore.CollectionRef {
+func (repo *{{ .RepositoryStructName }}) GetCollection() *firestore.CollectionRef {
 	return repo.firestoreClient.Collection(repo.collection)
 }
 
