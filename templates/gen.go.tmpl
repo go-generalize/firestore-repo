@@ -302,9 +302,10 @@ func (repo *{{ .RepositoryStructName }}) DeleteBy{{ .KeyFieldName }}(ctx context
 
 // GetMulti 処理中の {{ .StructName }} の一括取得処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) GetMulti(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}) ([]*{{ .StructName }}, error) {
+	collect := repo.GetCollection()
 	docRefs := make([]*firestore.DocumentRef, 0, len({{ PluralForm .KeyValueName }}))
 	for _, {{ .KeyValueName }} := range {{ PluralForm .KeyValueName }} {
-		ref := repo.GetCollection().Doc({{ .KeyValueName }})
+		ref := collect.Doc({{ .KeyValueName }})
 		docRefs = append(docRefs, ref)
 	}
 
@@ -331,14 +332,15 @@ func (repo *{{ .RepositoryStructName }}) InsertMulti(ctx context.Context, subjec
 	{{ PluralForm .KeyValueName }} := make([]{{ .KeyFieldType }}, 0, len(subjects))
 	batches := make([]*firestore.WriteBatch, 0)
 	batch := repo.firestoreClient.Batch()
+	collect := repo.GetCollection()
 
 	for i, subject := range subjects {
 		var ref *firestore.DocumentRef
 		if subject.{{ .KeyFieldName }} == "" {
-			ref = repo.GetCollection().NewDoc()
+			ref = collect.NewDoc()
 			subject.{{ .KeyFieldName }} = ref.ID
 		} else {
-			ref = repo.GetCollection().Doc(subject.{{ .KeyFieldName }})
+			ref = collect.Doc(subject.{{ .KeyFieldName }})
 			if s, err := ref.Get(ctx); err == nil {
 				return nil, xerrors.Errorf("error in Get method [%s]: %w", subject.{{ .KeyFieldName }}, s)
 			}
@@ -366,9 +368,10 @@ func (repo *{{ .RepositoryStructName }}) InsertMulti(ctx context.Context, subjec
 func (repo *{{ .RepositoryStructName }}) UpdateMulti(ctx context.Context, subjects []*{{ .StructName }}) error {
 	batches := make([]*firestore.WriteBatch, 0)
 	batch := repo.firestoreClient.Batch()
+	collect := repo.GetCollection()
 
 	for i, subject := range subjects {
-		ref := repo.GetCollection().Doc(subject.{{ .KeyFieldName }})
+		ref := collect.Doc(subject.{{ .KeyFieldName }})
 		if _, err := ref.Get(ctx); err != nil {
 			return xerrors.Errorf("error in Get method [%s]: %w", subject.{{ .KeyFieldName }}, err)
 		}
@@ -394,9 +397,10 @@ func (repo *{{ .RepositoryStructName }}) UpdateMulti(ctx context.Context, subjec
 func (repo *{{ .RepositoryStructName }}) DeleteMulti(ctx context.Context, subjects []*{{ .StructName }}) error {
 	batches := make([]*firestore.WriteBatch, 0)
 	batch := repo.firestoreClient.Batch()
+	collect := repo.GetCollection()
 
 	for i, subject := range subjects {
-		ref := repo.GetCollection().Doc(subject.{{ .KeyFieldName }})
+		ref := collect.Doc(subject.{{ .KeyFieldName }})
 		batch.Delete(ref)
 		i++
 		if (i%500) == 0 && len(subjects) != i {
