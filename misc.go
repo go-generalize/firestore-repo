@@ -10,24 +10,6 @@ import (
 	"github.com/go-utils/cont"
 )
 
-const (
-	biunigrams     = "Biunigrams"
-	prefix         = "Prefix"
-	queryLabel     = "QueryLabel"
-	typeString     = "string"
-	typeInt        = "int"
-	typeInt64      = "int64"
-	typeFloat64    = "float64"
-	typeBool       = "bool"
-	typeTime       = "time.Time"
-	typeMap        = "map[string]"
-	typeStringMap  = "map[string]string"
-	typeIntMap     = "map[string]int"
-	typeInt64Map   = "map[string]int64"
-	typeFloat64Map = "map[string]float64"
-	NgType         = "NG"
-)
-
 var (
 	fieldLabel  string
 	valueCheck  = regexp.MustCompile("^[0-9a-zA-Z_]+$")
@@ -42,6 +24,16 @@ var (
 		typeIntMap,
 		typeInt64Map,
 		typeFloat64Map,
+	}
+	supportOperators = []Operator{
+		OperatorLessThan,
+		OperatorLessThanOrEqual,
+		OperatorGreaterThan,
+		OperatorGreaterThanOrEqual,
+		OperatorEqual,
+		OperatorIn,
+		OperatorArrayContains,
+		OperatorArrayContainsAny,
 	}
 )
 

@@ -169,7 +169,7 @@ func TestFirestoreTransactionTask(t *testing.T) {
 	})
 }
 
-func TestFirestoreListTask(t *testing.T) {
+func TestFirestoreQueryTask(t *testing.T) {
 	client := initFirestoreClient(t)
 
 	taskRepo := model.NewTaskRepository(client)
@@ -195,7 +195,7 @@ func TestFirestoreListTask(t *testing.T) {
 			Done:       true,
 			Done2:      false,
 			Count:      i,
-			Count64:    0,
+			Count64:    int64(i),
 			Proportion: 0.12345 + float64(i),
 			NameList:   []string{"a", "b", "c"},
 			Flag: map[string]float64{
@@ -225,6 +225,21 @@ func TestFirestoreListTask(t *testing.T) {
 
 		if len(tasks) != 1 {
 			tr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 10)
+		}
+	})
+
+	t.Run("int64(5件)", func(tr *testing.T) {
+		req := &model.TaskListReq{
+			Count64: model.NumericCriteriaBase.Parse(5),
+		}
+
+		tasks, err := taskRepo.List(ctx, req, nil)
+		if err != nil {
+			tr.Fatalf("%+v", err)
+		}
+
+		if len(tasks) != 5 {
+			tr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 5)
 		}
 	})
 
@@ -304,6 +319,23 @@ func TestFirestoreListTask(t *testing.T) {
 
 		if len(tasks) != 10 {
 			tr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 10)
+		}
+	})
+
+	t.Run("UseQueryBuilder", func(tr *testing.T) {
+		b := model.NewQueryBuilder(taskRepo.GetCollection())
+		b.GreaterThan("count", 3)
+		b.LessThan("count", 8)
+
+		query := b.Query()
+
+		tasks, err := taskRepo.List(ctx, nil, &query)
+		if err != nil {
+			tr.Fatalf("%+v", err)
+		}
+
+		if len(tasks) != 4 {
+			tr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 4)
 		}
 	})
 }

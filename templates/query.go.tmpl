@@ -1,0 +1,61 @@
+// THIS FILE IS A GENERATED CODE. DO NOT EDIT
+package {{ .PackageName }}
+
+import "cloud.google.com/go/firestore"
+
+// QueryBuilder query builder
+type QueryBuilder struct {
+	q firestore.Query
+}
+
+// NewQueryBuilder constructor
+func NewQueryBuilder(collection *firestore.CollectionRef) *QueryBuilder {
+	return &QueryBuilder{collection.Query}
+}
+
+// Query return firestore.Query
+func (qb *QueryBuilder) Query() firestore.Query {
+	return qb.q
+}
+
+// LessThan filter
+func (qb *QueryBuilder) LessThan(path string, value interface{}) *QueryBuilder {
+	qb.q = qb.q.Where(path, "<", value)
+	return qb
+}
+
+// LessThanOrEqual filter
+func (qb *QueryBuilder) LessThanOrEqual(path string, value interface{}) *QueryBuilder {
+	qb.q = qb.q.Where(path, "<=", value)
+	return qb
+}
+
+// GreaterThan filter
+func (qb *QueryBuilder) GreaterThan(path string, value interface{}) *QueryBuilder {
+	qb.q = qb.q.Where(path, ">", value)
+	return qb
+}
+
+// GreaterThanOrEqual filter
+func (qb *QueryBuilder) GreaterThanOrEqual(path string, value interface{}) *QueryBuilder {
+	qb.q = qb.q.Where(path, ">=", value)
+	return qb
+}
+
+// In filter
+func (qb *QueryBuilder) In(path string, value interface{}) *QueryBuilder {
+	qb.q = qb.q.Where(path, "in", value)
+	return qb
+}
+
+// ArrayContains filter
+func (qb *QueryBuilder) ArrayContains(path string, value interface{}) *QueryBuilder {
+	qb.q = qb.q.Where(path, "array-contains", value)
+	return qb
+}
+
+// ArrayContainsAny filter
+func (qb *QueryBuilder) ArrayContainsAny(path string, value interface{}) *QueryBuilder {
+	qb.q = qb.q.Where(path, "array-contains-any", value)
+	return qb
+}

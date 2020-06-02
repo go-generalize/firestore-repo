@@ -132,6 +132,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 				FsTag:     name,
 				Field:     name,
 				FieldType: typeName,
+				Operator:  OperatorEqual,
 				Indexes:   make([]*IndexesInfo, 0),
 			}
 			appendIndexesInfo(fieldInfo, dupMap)
@@ -152,6 +153,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 					FsTag:     name,
 					Field:     name,
 					FieldType: typeName,
+					Operator:  OperatorEqual,
 				}
 				if tag, err := dataStoreTagCheck(pos, tags); err != nil {
 					return xerrors.Errorf("error in tagCheck method: %w", err)
@@ -166,10 +168,22 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 					FsTag:     name,
 					Field:     name,
 					FieldType: typeName,
+					Operator:  OperatorEqual,
 					Indexes:   make([]*IndexesInfo, 0),
 				}
 				if fieldInfo, err = appendIndexer(pos, tags, fieldInfo, dupMap); err != nil {
 					return xerrors.Errorf("error in appendIndexer: %w", err)
+				}
+				if op, err := tags.Get("op"); err == nil {
+					operator := Operator(op.Value())
+					if cont.Contains(supportOperators, operator) {
+						fieldInfo.Operator = operator
+					} else {
+						log.Printf(
+							"%s: tag for %s in struct %s in %s",
+							pos, name, gen.StructName, gen.GeneratedFileName+".go",
+						)
+					}
 				}
 				gen.FieldInfos = append(gen.FieldInfos, fieldInfo)
 				continue
@@ -226,6 +240,15 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		}
 		defer fp.Close()
 		gen.generateMisc(fp)
+	}
+
+	{
+		fp, err := os.Create("query_gen.go")
+		if err != nil {
+			panic(err)
+		}
+		defer fp.Close()
+		gen.generateQuery(fp)
 	}
 
 	return nil
