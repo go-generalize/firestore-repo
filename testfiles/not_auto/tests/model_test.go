@@ -298,13 +298,11 @@ func TestFirestoreQueryTask(t *testing.T) {
 	})
 
 	t.Run("UseQueryBuilder", func(tr *testing.T) {
-		b := model.NewQueryBuilder(taskRepo.GetCollection())
-		b.GreaterThan("count", 3)
-		b.LessThan("count", 8)
+		qb := model.NewQueryBuilder(taskRepo.GetCollection())
+		qb.GreaterThan("count", 3)
+		qb.LessThan("count", 8)
 
-		query := b.Query()
-
-		tasks, err := taskRepo.List(ctx, nil, &query)
+		tasks, err := taskRepo.List(ctx, nil, qb.Query())
 		if err != nil {
 			tr.Fatalf("%+v", err)
 		}
