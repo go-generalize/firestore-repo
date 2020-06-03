@@ -222,6 +222,7 @@ func (repo *{{ .RepositoryStructName }}) List(ctx context.Context, req *{{ .Stru
 		if err := doc.DataTo(&subject); err != nil {
 			return nil, xerrors.Errorf("error in DataTo method: %w", err)
 		}
+		subject.{{ .KeyFieldName }} = doc.Ref.ID
 		subjects = append(subjects, subject)
 	}
 
