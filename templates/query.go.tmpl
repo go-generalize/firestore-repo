@@ -18,6 +18,12 @@ func (qb *QueryBuilder) Query() *firestore.Query {
 	return &qb.q
 }
 
+// Equal filter
+func (qb *QueryBuilder) Equal(path string, value interface{}) *QueryBuilder {
+	qb.q = qb.q.Where(path, "==", value)
+	return qb
+}
+
 // LessThan filter
 func (qb *QueryBuilder) LessThan(path string, value interface{}) *QueryBuilder {
 	qb.q = qb.q.Where(path, "<", value)
