@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -23,8 +24,19 @@ func init() {
 	}
 }
 
+var (
+	isShowVersion = flag.Bool("v", false, "print version")
+)
+
 func main() {
-	l := len(os.Args)
+	flag.Parse()
+
+	if *isShowVersion {
+		fmt.Printf("Firestore Model Generator: %s\n", AppVersion)
+		return
+	}
+
+	l := flag.NArg()
 	if l < 2 {
 		fmt.Println("You have to specify the struct name of target")
 		os.Exit(1)
@@ -331,7 +343,7 @@ func dataStoreTagCheck(pos string, tags *structtag.Tags) (string, error) {
 			return "", xerrors.Errorf("%s: key field for firestore should have other than blanks and symbols tag", pos)
 		}
 		if unicode.IsDigit(rune(tag[0])) {
-			return "", xerrors.Errorf("%s: key field for firestore should have prefix other than numbers required", pos)
+			return "", xerrors.Errorf("%s: key field for firestore should have indexerPrefix other than numbers required", pos)
 		}
 		return tag, nil
 	}
