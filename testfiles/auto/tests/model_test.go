@@ -1,5 +1,3 @@
-// +build internal
-
 package tests
 
 import (
@@ -484,7 +482,7 @@ func TestFirestoreListNameWithIndexes(t *testing.T) {
 }
 */
 
-func TestFirestore(t *testing.T) {
+func TestFirestoreOfTaskRepo(t *testing.T) {
 	client := initFirestoreClient(t)
 
 	taskRepo := model.NewTaskRepository(client)
@@ -549,4 +547,71 @@ func TestFirestore(t *testing.T) {
 	if _, err := taskRepo.Get(ctx, id); err == nil {
 		t.Fatalf("should get an error")
 	}
+}
+
+func TestFirestoreOfLockRepo(t *testing.T) {
+	client := initFirestoreClient(t)
+
+	lockRepo := model.NewLockRepository(client)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	text := "hello"
+
+	id, err := lockRepo.Insert(ctx, &model.Lock{
+		Text: text,
+		Flag: nil,
+		Meta: model.Meta{},
+	})
+
+	if err != nil {
+		t.Fatalf("failed to put item: %+v", err)
+	}
+
+	ret, err := lockRepo.Get(ctx, id)
+
+	if err != nil {
+		t.Fatalf("failed to get item: %+v", err)
+	}
+	fmt.Printf("lock res: %+v", ret)
+
+	//compareTask(t, &model.Task{
+	//	ID:      id,
+	//	Desc:    desc,
+	//	Created: now,
+	//	Done:    true,
+	//}, ret)
+	//
+	//returns, err := taskRepo.GetMulti(ctx, []string{id})
+	//
+	//if err != nil {
+	//	t.Fatalf("failed to get item: %+v", err)
+	//}
+	//
+	//if len(returns) != 1 {
+	//	t.Fatalf("GetMulti should return 1 item: %#v", returns)
+	//}
+	//
+	//compareTask(t, &model.Task{
+	//	ID:      id,
+	//	Desc:    desc,
+	//	Created: now,
+	//	Done:    true,
+	//}, returns[0])
+	//
+	//compareTask(t, &model.Task{
+	//	ID:      id,
+	//	Desc:    desc,
+	//	Created: now,
+	//	Done:    true,
+	//}, ret)
+	//
+	//if err := taskRepo.DeleteByID(ctx, id); err != nil {
+	//	t.Fatalf("delete failed: %+v", err)
+	//}
+	//
+	//if _, err := taskRepo.Get(ctx, id); err == nil {
+	//	t.Fatalf("should get an error")
+	//}
 }

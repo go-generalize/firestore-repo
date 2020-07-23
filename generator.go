@@ -66,6 +66,8 @@ type generator struct {
 	SliceExist          bool
 
 	AutomaticGeneration bool
+
+	MetaFields map[string]Field
 }
 
 func (g *generator) setting() {
