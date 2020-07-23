@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -559,59 +560,132 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 
 	text := "hello"
 
-	id, err := lockRepo.Insert(ctx, &model.Lock{
-		Text: text,
-		Flag: nil,
-		Meta: model.Meta{},
+	t.Run("insert_test", func(t *testing.T) {
+		l := &model.Lock{
+			Text: text,
+			Flag: nil,
+			Meta: model.Meta{},
+		}
+
+		id, err := lockRepo.Insert(ctx, l)
+		if err != nil {
+			t.Fatalf("failed to put item: %+v", err)
+		}
+
+		ret, err := lockRepo.Get(ctx, id)
+
+		if err != nil {
+			t.Fatalf("failed to get item: %+v", err)
+		}
+
+		if text != ret.Text {
+			t.Fatalf("unexpected text: %s (expected: %s)", text, ret.Text)
+		}
+		if ret.CreatedAt.IsZero() {
+			t.Fatalf("unexpected createdAt zero:")
+		}
+		if ret.UpdatedAt.IsZero() {
+			t.Fatalf("unexpected updatedAt zero:")
+		}
 	})
 
-	if err != nil {
-		t.Fatalf("failed to put item: %+v", err)
-	}
+	t.Run("update_test", func(t *testing.T) {
+		l := &model.Lock{
+			Text: text,
+			Flag: nil,
+			Meta: model.Meta{},
+		}
 
-	ret, err := lockRepo.Get(ctx, id)
+		id, err := lockRepo.Insert(ctx, l)
+		if err != nil {
+			t.Fatalf("failed to put item: %+v", err)
+		}
 
-	if err != nil {
-		t.Fatalf("failed to get item: %+v", err)
-	}
-	fmt.Printf("lock res: %+v", ret)
+		time.Sleep(1 * time.Second)
 
-	//compareTask(t, &model.Task{
-	//	ID:      id,
-	//	Desc:    desc,
-	//	Created: now,
-	//	Done:    true,
-	//}, ret)
-	//
-	//returns, err := taskRepo.GetMulti(ctx, []string{id})
-	//
-	//if err != nil {
-	//	t.Fatalf("failed to get item: %+v", err)
-	//}
-	//
-	//if len(returns) != 1 {
-	//	t.Fatalf("GetMulti should return 1 item: %#v", returns)
-	//}
-	//
-	//compareTask(t, &model.Task{
-	//	ID:      id,
-	//	Desc:    desc,
-	//	Created: now,
-	//	Done:    true,
-	//}, returns[0])
-	//
-	//compareTask(t, &model.Task{
-	//	ID:      id,
-	//	Desc:    desc,
-	//	Created: now,
-	//	Done:    true,
-	//}, ret)
-	//
-	//if err := taskRepo.DeleteByID(ctx, id); err != nil {
-	//	t.Fatalf("delete failed: %+v", err)
-	//}
-	//
-	//if _, err := taskRepo.Get(ctx, id); err == nil {
-	//	t.Fatalf("should get an error")
-	//}
+		text = "hello!!!"
+		l.Text = text
+		err = lockRepo.Update(ctx, l)
+		if err != nil {
+			t.Fatalf("failed to update item: %+v", err)
+		}
+
+		ret, err := lockRepo.Get(ctx, id)
+		if err != nil {
+			t.Fatalf("failed to get item: %+v", err)
+		}
+
+		if text != ret.Text {
+			t.Fatalf("unexpected text: %s (expected: %s)", text, ret.Text)
+		}
+		if ret.CreatedAt.Unix() == ret.UpdatedAt.Unix() {
+			t.Fatalf("unexpected createdAt == updatedAt: %d == %d",
+				ret.CreatedAt.Unix(), ret.UpdatedAt.Unix())
+		}
+	})
+
+	t.Run("soft_delete_test", func(t *testing.T) {
+		l := &model.Lock{
+			Text: text,
+			Flag: nil,
+			Meta: model.Meta{},
+		}
+
+		id, err := lockRepo.Insert(ctx, l)
+		if err != nil {
+			t.Fatalf("failed to put item: %+v", err)
+		}
+
+		l.Text = text
+		err = lockRepo.Delete(ctx, l, model.DeleteOption{
+			Mode: model.DeleteModeSoft,
+		})
+		if err != nil {
+			t.Fatalf("failed to soft delete item: %+v", err)
+		}
+
+		ret, err := lockRepo.Get(ctx, id, model.GetOption{
+			IncludeSoftDeleted: true,
+		})
+		if err != nil {
+			t.Fatalf("failed to get item: %+v", err)
+		}
+
+		if text != ret.Text {
+			t.Fatalf("unexpected text: %s (expected: %s)", text, ret.Text)
+		}
+		if ret.DeletedAt == nil {
+			t.Fatalf("unexpected deletedAt == nil: %+v", ret.DeletedAt)
+		}
+	})
+
+	t.Run("hard_delete_test", func(t *testing.T) {
+		l := &model.Lock{
+			Text: text,
+			Flag: nil,
+			Meta: model.Meta{},
+		}
+
+		id, err := lockRepo.Insert(ctx, l)
+		if err != nil {
+			t.Fatalf("failed to put item: %+v", err)
+		}
+
+		l.Text = text
+		err = lockRepo.Delete(ctx, l)
+		if err != nil {
+			t.Fatalf("failed to hard delete item: %+v", err)
+		}
+
+		ret, err := lockRepo.Get(ctx, id, model.GetOption{
+			IncludeSoftDeleted: true,
+		})
+		if err != nil && !strings.Contains(err.Error(), "not found") {
+			t.Fatalf("failed to get item: %+v", err)
+		}
+
+		if ret != nil {
+			t.Fatalf("failed to delete item (found!): %+v", ret)
+		}
+	})
 }

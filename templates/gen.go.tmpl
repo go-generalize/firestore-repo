@@ -425,6 +425,10 @@ func (repo *{{ .RepositoryStructName }}) Delete(ctx context.Context, subject *{{
 		if _, err = ref.Set(ctx, subject); err != nil {
 			return xerrors.Errorf("error in Set method: %w", err)
 		}
+	} else {
+		if _, err := ref.Delete(ctx); err != nil {
+			return xerrors.Errorf("error in Delete method: %w", err)
+		}
 	}
 {{- else }}
 
