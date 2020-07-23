@@ -43,12 +43,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := run(os.Args[l-1]); err != nil {
+	if err := run(os.Args[l-1], *disableMeta); err != nil {
 		log.Fatal(err.Error())
 	}
 }
 
-func run(structName string) error {
+func run(structName string, isDisableMeta bool) error {
+	disableMeta = &isDisableMeta
 	fs := token.NewFileSet()
 	pkgs, err := parser.ParseDir(fs, ".", nil, parser.AllErrors)
 

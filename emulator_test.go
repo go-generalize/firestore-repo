@@ -31,7 +31,19 @@ func TestGenerator(t *testing.T) {
 			tr.Fatalf("chdir failed: %+v", err)
 		}
 
-		if err := run("Task"); err != nil {
+		if err := run("Task", false); err != nil {
+			tr.Fatalf("failed to generate for testfiles/auto: %+v", err)
+		}
+
+		execTest(tr)
+	})
+
+	t.Run("AutomaticIDGenerationWithMeta", func(tr *testing.T) {
+		if err := os.Chdir(filepath.Join(root, "testfiles/auto")); err != nil {
+			tr.Fatalf("chdir failed: %+v", err)
+		}
+
+		if err := run("Lock", true); err != nil {
 			tr.Fatalf("failed to generate for testfiles/auto: %+v", err)
 		}
 
@@ -43,7 +55,7 @@ func TestGenerator(t *testing.T) {
 			tr.Fatalf("chdir failed: %+v", err)
 		}
 
-		if err := run("Task"); err != nil {
+		if err := run("Task", false); err != nil {
 			tr.Fatalf("failed to generate for testfiles/not_auto: %+v", err)
 		}
 
