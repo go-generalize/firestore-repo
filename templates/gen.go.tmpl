@@ -408,7 +408,7 @@ func (repo *{{ .RepositoryStructName }}) Delete(ctx context.Context, subject *{{
 	if err != nil {
 		return xerrors.Errorf("error in Get method: %w", err)
 	}
-	old := new(Lock)
+	old := new({{ .StructName }})
 	if err := snapShot.DataTo(old); err != nil{
 		return xerrors.Errorf("error in DataTo method: %w", err)
 	}
@@ -582,7 +582,7 @@ func (repo *{{ .RepositoryStructName }}) DeleteMulti(ctx context.Context, subjec
 		if err != nil {
 			return xerrors.Errorf("error in Get method: %w", err)
 		}
-		old := new(Lock)
+		old := new({{ .StructName }})
 		if err := snapShot.DataTo(old); err != nil{
 			return xerrors.Errorf("error in DataTo method: %w", err)
 		}
