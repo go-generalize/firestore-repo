@@ -102,6 +102,30 @@ func (repo *{{ .RepositoryStructName }}) beforeInsert(ctx context.Context, subje
 	return nil
 }
 
+func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, subject *{{ .StructName }}) error {
+{{- if .MetaFields }}
+	if old.Version > subject.Version {
+		return xerrors.Errorf("The data in the database is newer: (db version: %d, target version: %d) %+v",
+			old.Version, subject.Version, subject)
+	}
+	if subject.DeletedAt != nil {
+		return xerrors.Errorf("update data must be DeletedAt == nil: %+v", subject)
+	}
+	repo.setMeta(subject, false)
+
+{{- end }}
+	for _, m := range repo.middleware {
+		c, err := m.BeforeInsert(ctx, subject)
+		if err != nil {
+			return xerrors.Errorf("beforeInsert.middleware error: %w", err)
+		}
+		if !c {
+			continue
+		}
+	}
+	return nil
+}
+
 // GetCollection *firestore.CollectionRef getter
 func (repo *{{ .RepositoryStructName }}) GetCollection() *firestore.CollectionRef {
 	return repo.firestoreClient.Collection(repo.collection)
@@ -336,10 +360,22 @@ func (repo *{{ .RepositoryStructName }}) Insert(ctx context.Context, subject *{{
 func (repo *{{ .RepositoryStructName }}) Update(ctx context.Context, subject *{{ .StructName }}) error {
 	ref := repo.GetCollection().Doc(subject.{{ .KeyFieldName }})
 
-	if _, err := ref.Get(ctx); err != nil {
+	{{ if .MetaFields }}snapShot{{ else }}_{{ end }}, err := ref.Get(ctx)
+	if err != nil {
 		return xerrors.Errorf("error in Get method: %w", err)
 	}
+{{- if .MetaFields }}
+	old := new({{ .StructName }})
+	if err := snapShot.DataTo(&old); err != nil {
+		return xerrors.Errorf("error in DataTo method: %w", err)
+	}
 
+	err = repo.beforeUpdate(ctx, old, subject)
+	if err != nil{
+		return xerrors.Errorf("before update error: %w", err)
+	}
+
+{{- end }}
 	if _, err := ref.Set(ctx, subject); err != nil {
 		return xerrors.Errorf("error in Set method: %w", err)
 	}
@@ -449,9 +485,25 @@ func (repo *{{ .RepositoryStructName }}) UpdateMulti(ctx context.Context, subjec
 
 	for i, subject := range subjects {
 		ref := collect.Doc(subject.{{ .KeyFieldName }})
-		if _, err := ref.Get(ctx); err != nil {
+		{{ if .MetaFields }}snapShot{{ else }}_{{ end }}, err := ref.Get(ctx)
+		if err != nil {
 			return xerrors.Errorf("error in Get method [%s]: %w", subject.{{ .KeyFieldName }}, err)
 		}
+
+{{- if .MetaFields }}
+		old := new({{ .StructName }})
+		if err := snapShot.DataTo(&old); err != nil {
+			return xerrors.Errorf("error in DataTo method: %w", err)
+		}
+
+		err = repo.beforeUpdate(ctx, old, subject)
+		if err != nil{
+			return xerrors.Errorf("before update error: %w", err)
+		}
+
+{{- end }}
+
+
 		batch.Set(ref, subject)
 		i++
 		if (i%500) == 0 && len(subjects) != i {
