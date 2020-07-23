@@ -3,6 +3,9 @@ package {{ .PackageName }}
 
 import (
 	"context"
+{{- if .MetaFields }}
+	"time"
+{{ end }}
 {{- range .ImportList }}
 	"{{ .Name }}"
 {{- end }}
@@ -53,14 +56,50 @@ type {{ $middlewareName }} interface {
 type {{ .RepositoryStructName }} struct {
 	collection      string
 	firestoreClient *firestore.Client
+	middleware      []{{ $middlewareName }}
 }
 
 // New{{ .RepositoryInterfaceName }} constructor
-func New{{ .RepositoryInterfaceName }}(firestoreClient *firestore.Client) {{ .RepositoryInterfaceName }} {
+func New{{ .RepositoryInterfaceName }}(firestoreClient *firestore.Client, middleware... {{ $middlewareName }}) {{ .RepositoryInterfaceName }} {
 	return &{{ .RepositoryStructName }}{
 		collection:      "{{ .StructName }}",
 		firestoreClient: firestoreClient,
+		middleware:      middleware,
 	}
+}
+{{- if .MetaFields }}
+
+func (repo *{{ .RepositoryStructName }}) setMeta(subject *{{ .StructName }}, isInsert bool) {
+	now := time.Now()
+
+	if isInsert {
+		subject.CreatedAt = time.Now()
+	}
+	subject.UpdatedAt = now
+	subject.Version += 1
+}
+{{ end }}
+func (repo *{{ .RepositoryStructName }}) beforeInsert(ctx context.Context, subject *{{ .StructName }}) error {
+{{- if .MetaFields }}
+	if subject.Version != 0 {
+		return xerrors.Errorf("insert data must be Version == 0: %+v", subject)
+	}
+	if subject.DeletedAt != nil {
+		return xerrors.Errorf("insert data must be DeletedAt == nil: %+v", subject)
+	}
+	repo.setMeta(subject, true)
+
+{{- end }}
+	for _, m := range repo.middleware {
+		c, err := m.BeforeInsert(ctx, subject)
+		if err != nil {
+			return xerrors.Errorf("beforeInsert.middleware error: %w", err)
+		}
+		if !c {
+			continue
+		}
+	}
+	return nil
 }
 
 // GetCollection *firestore.CollectionRef getter
@@ -264,6 +303,13 @@ func (repo *{{ .RepositoryStructName }}) Get(ctx context.Context, {{ .KeyValueNa
 
 // Insert 処理中の {{ .StructName }} の登録処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) Insert(ctx context.Context, subject *{{ .StructName }}) ({{ .KeyFieldType }}, error) {
+{{- if .MetaFields }}
+	err := repo.beforeInsert(ctx, subject)
+	if err != nil{
+		return "", xerrors.Errorf("before insert error: %w", err)
+	}
+
+{{- end }}
 {{- if .AutomaticGeneration }}
 	ref, _, err := repo.GetCollection().Add(ctx, subject)
 	if err != nil {
@@ -359,6 +405,13 @@ func (repo *{{ .RepositoryStructName }}) InsertMulti(ctx context.Context, subjec
 	collect := repo.GetCollection()
 
 	for i, subject := range subjects {
+{{- if .MetaFields }}
+		err := repo.beforeInsert(ctx, subject)
+		if err != nil{
+			return nil, xerrors.Errorf("before insert error: %w", err)
+		}
+
+{{- end }}
 		var ref *firestore.DocumentRef
 		if subject.{{ .KeyFieldName }} == "" {
 			ref = collect.NewDoc()
