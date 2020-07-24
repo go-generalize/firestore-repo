@@ -44,13 +44,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := run(flag.Arg(0), *disableMeta); err != nil {
+	if err := run(flag.Arg(0), *disableMeta, *isSubCollection); err != nil {
 		log.Fatal(err.Error())
 	}
 }
 
-func run(structName string, isDisableMeta bool) error {
+func run(structName string, isDisableMeta, subCollection bool) error {
 	disableMeta = &isDisableMeta
+	isSubCollection = &subCollection
 	fs := token.NewFileSet()
 	pkgs, err := parser.ParseDir(fs, ".", nil, parser.AllErrors)
 
