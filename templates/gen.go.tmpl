@@ -48,7 +48,7 @@ type {{ .RepositoryInterfaceName }} interface {
 // {{ $middlewareName }} middleware of {{ .RepositoryInterfaceName }}
 type {{ $middlewareName }} interface {
 	BeforeInsert(ctx context.Context, subject *{{ .StructName }}) (bool, error)
-	BeforeUpdate(ctx context.Context, subject *{{ .StructName }}) (bool, error)
+	BeforeUpdate(ctx context.Context, old, subject *{{ .StructName }}) (bool, error)
 	BeforeDelete(ctx context.Context, subject *{{ .StructName }}, options ...DeleteOption) (bool, error)
 	BeforeDeleteBy{{ .KeyFieldName }}(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, options ...DeleteOption) (bool, error)
 }
@@ -114,7 +114,7 @@ func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, 
 
 {{- end }}
 	for _, m := range repo.middleware {
-		c, err := m.BeforeUpdate(ctx, subject)
+		c, err := m.BeforeUpdate(ctx, old, subject)
 		if err != nil {
 			return xerrors.Errorf("beforeUpdate.middleware error: %w", err)
 		}
