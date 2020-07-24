@@ -67,8 +67,7 @@ func New{{ .RepositoryInterfaceName }}(firestoreClient *firestore.Client, middle
 		middleware:      middleware,
 	}
 }
-{{- if .MetaFields }}
-
+{{ if .MetaFields }}
 func (repo *{{ .RepositoryStructName }}) setMeta(subject *{{ .StructName }}, isInsert bool) {
 	now := time.Now()
 
@@ -125,7 +124,6 @@ func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, 
 	}
 	return nil
 }
-
 
 func (repo *{{ .RepositoryStructName }}) beforeDelete(ctx context.Context, subject *{{ .StructName }}, options ...DeleteOption) error {
 {{- if .MetaFields }}
