@@ -439,7 +439,7 @@ func (repo *{{ .RepositoryStructName }}) Delete(ctx context.Context, subject *{{
 
 // DeleteBy{{ .KeyFieldName }} 処理中の {{ .StructName }} の{{ .KeyFieldName }}から削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) DeleteBy{{ .KeyFieldName }}(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}, options ...DeleteOption) error {
-	if err := repo.Delete(ctx, &{{ .StructName }}{ {{- .KeyFieldName }}: {{ .KeyValueName }}}); err != nil {
+	if err := repo.Delete(ctx, &{{ .StructName }}{ {{- .KeyFieldName }}: {{ .KeyValueName }}}, options...); err != nil {
 		return xerrors.Errorf("error in repo.Delete method: %w", err)
 	}
 	return nil
