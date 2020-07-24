@@ -26,7 +26,7 @@ func init() {
 
 var (
 	isShowVersion   = flag.Bool("v", false, "print version")
-	isSubCollection = flag.Bool("s", false, "is SubCollection")
+	isSubCollection = flag.Bool("sub-collection", false, "is SubCollection")
 	disableMeta     = flag.Bool("disable-meta", false, "Disable meta embed for Lock")
 )
 
