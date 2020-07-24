@@ -26,6 +26,7 @@ func init() {
 
 var (
 	isShowVersion = flag.Bool("v", false, "print version")
+	disableMeta   = flag.Bool("disable-meta", false, "Disable meta embed for Lock")
 )
 
 func main() {
@@ -37,17 +38,18 @@ func main() {
 	}
 
 	l := flag.NArg()
-	if l < 2 {
+	if l < 1 {
 		fmt.Println("You have to specify the struct name of target")
 		os.Exit(1)
 	}
 
-	if err := run(os.Args[1]); err != nil {
+	if err := run(flag.Arg(0), *disableMeta); err != nil {
 		log.Fatal(err.Error())
 	}
 }
 
-func run(structName string) error {
+func run(structName string, isDisableMeta bool) error {
+	disableMeta = &isDisableMeta
 	fs := token.NewFileSet()
 	pkgs, err := parser.ParseDir(fs, ".", nil, parser.AllErrors)
 
@@ -111,17 +113,51 @@ func traverse(pkg *ast.Package, fs *token.FileSet, structName string) error {
 func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) error {
 	dupMap := make(map[string]int)
 	fieldLabel = gen.StructName + queryLabel
+
+	var metaList map[string]Field
+	metaFieldName := ""
+	if !*disableMeta {
+		var err error
+		fList := listAllField(structType.Fields, "", false)
+		metas, err := searchMetaProperties(fList)
+		if err != nil {
+			return err
+		}
+		metaList = make(map[string]Field)
+		for _, m := range metas {
+			metaFiledPath := strings.Split(m.ParentPath, ".")
+			metaFieldName = metaFiledPath[len(metaFiledPath)-1]
+			metaList[m.Name] = m
+		}
+	}
+	gen.MetaFields = metaList
+
 	for _, field := range structType.Fields.List {
 		// structの各fieldを調査
-		if len(field.Names) != 1 {
+		if len(field.Names) > 1 {
 			return xerrors.New("`field.Names` must have only one element")
 		}
-		name := field.Names[0].Name
+		isMetaFiled := false
+		name := ""
+		if field.Names == nil || len(field.Names) == 0 {
+			switch field.Type.(type) {
+			case *ast.Ident:
+				name = field.Type.(*ast.Ident).Name
+			case *ast.SelectorExpr:
+				name = field.Type.(*ast.SelectorExpr).Sel.Name
+			}
+
+			if !*disableMeta && name == metaFieldName {
+				isMetaFiled = true
+			}
+		} else {
+			name = field.Names[0].Name
+		}
 
 		pos := fs.Position(field.Pos()).String()
 
 		typeName := getTypeName(field.Type)
-		if !cont.Contains(supportType, typeName) {
+		if !isMetaFiled && !cont.Contains(supportType, typeName) {
 			typeNameDetail := getTypeNameDetail(field.Type)
 			obj := strings.TrimPrefix(typeNameDetail, typeMap)
 

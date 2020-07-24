@@ -3,6 +3,9 @@ package {{ .PackageName }}
 
 import (
 	"context"
+{{- if .MetaFields }}
+	"time"
+{{- end }}
 {{- range .ImportList }}
 	"{{ .Name }}"
 {{- end }}
@@ -20,37 +23,122 @@ import (
 {{ $generate := "go:generate" }}
 //{{ $generate }} mockgen -source {{ .GeneratedFileName }}.go -destination mock/mock_{{ .GeneratedFileName }}/mock_{{ .GeneratedFileName }}.go
 
+// {{ .RepositoryInterfaceName }} Repository of {{ .StructName }}
 type {{ .RepositoryInterfaceName }} interface {
 	// Single
-	Get(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}) (*{{ .StructName }}, error)
+	Get(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}, {{ if .MetaFields }}options{{ else }}_{{ end }} ...GetOption) (*{{ .StructName }}, error)
 	Insert(ctx context.Context, subject *{{ .StructName }}) ({{ .KeyFieldType }}, error)
 	Update(ctx context.Context, subject *{{ .StructName }}) error
-	Delete(ctx context.Context, subject *{{ .StructName }}) error
-	DeleteBy{{ .KeyFieldName }}(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}) error
+	Delete(ctx context.Context, subject *{{ .StructName }}, options ...DeleteOption) error
+	DeleteBy{{ .KeyFieldName }}(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}, options ...DeleteOption) error
 	// Multiple
-	GetMulti(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}) ([]*{{ .StructName }}, error)
+	GetMulti(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, {{ if .MetaFields }}options{{ else }}_{{ end }} ...GetOption) ([]*{{ .StructName }}, error)
 	InsertMulti(ctx context.Context, subjects []*{{ .StructName }}) ([]{{ .KeyFieldType }}, error)
 	UpdateMulti(ctx context.Context, subjects []*{{ .StructName }}) error
-	DeleteMulti(ctx context.Context, subjects []*{{ .StructName }}) error
-	DeleteMultiBy{{ PluralForm .KeyFieldName }}(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}) error
+	DeleteMulti(ctx context.Context, subjects []*{{ .StructName }}, options ...DeleteOption) error
+	DeleteMultiBy{{ PluralForm .KeyFieldName }}(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, options ...DeleteOption) error
 	// List
 	List(ctx context.Context, req *{{ .StructName }}ListReq, q *firestore.Query) ([]*{{ .StructName }}, error)
 	// misc
 	GetCollection() *firestore.CollectionRef
 	GetCollectionName() string
 }
+{{ $middlewareName := printf "%sMiddleware" .RepositoryInterfaceName }}
+// {{ $middlewareName }} middleware of {{ .RepositoryInterfaceName }}
+type {{ $middlewareName }} interface {
+	BeforeInsert(ctx context.Context, subject *{{ .StructName }}) (bool, error)
+	BeforeUpdate(ctx context.Context, old, subject *{{ .StructName }}) (bool, error)
+	BeforeDelete(ctx context.Context, subject *{{ .StructName }}, options ...DeleteOption) (bool, error)
+	BeforeDeleteBy{{ .KeyFieldName }}(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, options ...DeleteOption) (bool, error)
+}
 
 type {{ .RepositoryStructName }} struct {
 	collection      string
 	firestoreClient *firestore.Client
+	middleware      []{{ $middlewareName }}
 }
 
 // New{{ .RepositoryInterfaceName }} constructor
-func New{{ .RepositoryInterfaceName }}(firestoreClient *firestore.Client) {{ .RepositoryInterfaceName }} {
+func New{{ .RepositoryInterfaceName }}(firestoreClient *firestore.Client, middleware ...{{ $middlewareName }}) {{ .RepositoryInterfaceName }} {
 	return &{{ .RepositoryStructName }}{
 		collection:      "{{ .StructName }}",
 		firestoreClient: firestoreClient,
+		middleware:      middleware,
 	}
+}
+{{ if .MetaFields }}
+func (repo *{{ .RepositoryStructName }}) setMeta(subject *{{ .StructName }}, isInsert bool) {
+	now := time.Now()
+
+	if isInsert {
+		subject.CreatedAt = time.Now()
+	}
+	subject.UpdatedAt = now
+	subject.Version += 1
+}
+{{ end }}
+func (repo *{{ .RepositoryStructName }}) beforeInsert(ctx context.Context, subject *{{ .StructName }}) error {
+{{- if .MetaFields }}
+	if subject.Version != 0 {
+		return xerrors.Errorf("insert data must be Version == 0: %+v", subject)
+	}
+	if subject.DeletedAt != nil {
+		return xerrors.Errorf("insert data must be DeletedAt == nil: %+v", subject)
+	}
+	repo.setMeta(subject, true)
+
+{{- end }}
+	for _, m := range repo.middleware {
+		c, err := m.BeforeInsert(ctx, subject)
+		if err != nil {
+			return xerrors.Errorf("beforeInsert.middleware error: %w", err)
+		}
+		if !c {
+			continue
+		}
+	}
+	return nil
+}
+
+func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, subject *{{ .StructName }}) error {
+{{- if .MetaFields }}
+	if old.Version > subject.Version {
+		return xerrors.Errorf("The data in the database is newer: (db version: %d, target version: %d) %+v",
+			old.Version, subject.Version, subject)
+	}
+	if subject.DeletedAt != nil {
+		return xerrors.Errorf("update data must be DeletedAt == nil: %+v", subject)
+	}
+	repo.setMeta(subject, false)
+
+{{- end }}
+	for _, m := range repo.middleware {
+		c, err := m.BeforeUpdate(ctx, old, subject)
+		if err != nil {
+			return xerrors.Errorf("beforeUpdate.middleware error: %w", err)
+		}
+		if !c {
+			continue
+		}
+	}
+	return nil
+}
+
+func (repo *{{ .RepositoryStructName }}) beforeDelete(ctx context.Context, subject *{{ .StructName }}, options ...DeleteOption) error {
+{{- if .MetaFields }}
+	repo.setMeta(subject, false)
+
+{{- end }}
+	for _, m := range repo.middleware {
+		c, err := m.BeforeDelete(ctx, subject, options...)
+		if err != nil {
+			return xerrors.Errorf("beforeDelete.middleware error: %w", err)
+		}
+		if !c {
+			continue
+		}
+	}
+	return nil
 }
 
 // GetCollection *firestore.CollectionRef getter
@@ -120,6 +208,9 @@ type {{ .StructName }}ListReq struct {
 	{{ .Field }}{{ .Space }} {{ .FieldType }}
 {{- end }}
 {{- end }}
+{{- if .MetaFields }}
+	IncludeSoftDeleted bool
+{{- end  }}
 }
 
 // List firestore.Queryを使用し条件抽出をする
@@ -200,6 +291,12 @@ func (repo *{{ .RepositoryStructName }}) List(ctx context.Context, req *{{ .Stru
 	} else {
 		query = *q
 	}
+{{- if .MetaFields }}
+{{- $metaPath := (index .MetaFields "DeletedAt").ParentPath }}
+	if !req.IncludeSoftDeleted {
+		query = query.Where("{{ if eq $metaPath "" }}DeletedAt{{ else }}{{ $metaPath }}.DeletedAt{{ end }}", "==", nil)
+	}
+{{- end }}
 {{ if eq $Enable true }}
 	built, err := filters.Build()
 	if err != nil {
@@ -230,7 +327,7 @@ func (repo *{{ .RepositoryStructName }}) List(ctx context.Context, req *{{ .Stru
 }
 
 // Get 処理中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
-func (repo *{{ .RepositoryStructName }}) Get(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}) (*{{ .StructName }}, error) {
+func (repo *{{ .RepositoryStructName }}) Get(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}, {{ if .MetaFields }}options{{ else }}_{{ end }} ...GetOption) (*{{ .StructName }}, error) {
 	snapShot, err := repo.GetCollection().Doc({{ .KeyValueName }}).Get(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("error in Get method: %w", err)
@@ -240,7 +337,13 @@ func (repo *{{ .RepositoryStructName }}) Get(ctx context.Context, {{ .KeyValueNa
 	if err := snapShot.DataTo(&subject); err != nil {
 		return nil, xerrors.Errorf("error in DataTo method: %w", err)
 	}
-
+{{ if .MetaFields }}
+	if len(options) == 0 || !options[0].IncludeSoftDeleted {
+		if subject.DeletedAt != nil {
+			return nil, xerrors.New(DeletedError)
+		}
+	}
+{{- end }}
 	subject.{{ .KeyFieldName }} = snapShot.Ref.ID
 
 	return subject, nil
@@ -248,6 +351,13 @@ func (repo *{{ .RepositoryStructName }}) Get(ctx context.Context, {{ .KeyValueNa
 
 // Insert 処理中の {{ .StructName }} の登録処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) Insert(ctx context.Context, subject *{{ .StructName }}) ({{ .KeyFieldType }}, error) {
+{{- if .MetaFields }}
+	err := repo.beforeInsert(ctx, subject)
+	if err != nil {
+		return "", xerrors.Errorf("before insert error: %w", err)
+	}
+
+{{- end }}
 {{- if .AutomaticGeneration }}
 	ref, _, err := repo.GetCollection().Add(ctx, subject)
 	if err != nil {
@@ -274,10 +384,22 @@ func (repo *{{ .RepositoryStructName }}) Insert(ctx context.Context, subject *{{
 func (repo *{{ .RepositoryStructName }}) Update(ctx context.Context, subject *{{ .StructName }}) error {
 	ref := repo.GetCollection().Doc(subject.{{ .KeyFieldName }})
 
-	if _, err := ref.Get(ctx); err != nil {
+	{{ if .MetaFields }}snapShot{{ else }}_{{ end }}, err := ref.Get(ctx)
+	if err != nil {
 		return xerrors.Errorf("error in Get method: %w", err)
 	}
+{{- if .MetaFields }}
+	old := new({{ .StructName }})
+	if err := snapShot.DataTo(&old); err != nil {
+		return xerrors.Errorf("error in DataTo method: %w", err)
+	}
 
+	err = repo.beforeUpdate(ctx, old, subject)
+	if err != nil {
+		return xerrors.Errorf("before update error: %w", err)
+	}
+
+{{- end }}
 	if _, err := ref.Set(ctx, subject); err != nil {
 		return xerrors.Errorf("error in Set method: %w", err)
 	}
@@ -286,23 +408,53 @@ func (repo *{{ .RepositoryStructName }}) Update(ctx context.Context, subject *{{
 }
 
 // Delete 処理中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
-func (repo *{{ .RepositoryStructName }}) Delete(ctx context.Context, subject *{{ .StructName }}) error {
-	if _, err := repo.GetCollection().Doc(subject.{{ .KeyFieldName }}).Delete(ctx); err != nil {
+func (repo *{{ .RepositoryStructName }}) Delete(ctx context.Context, subject *{{ .StructName }}, options ...DeleteOption) error {
+	ref := repo.GetCollection().Doc(subject.{{ .KeyFieldName }})
+	snapShot, err := ref.Get(ctx)
+	if err != nil {
+		return xerrors.Errorf("error in Get method: %w", err)
+	}
+	old := new({{ .StructName }})
+	if err := snapShot.DataTo(old); err != nil {
+		return xerrors.Errorf("error in DataTo method: %w", err)
+	}
+
+	err = repo.beforeDelete(ctx, subject, options...)
+	if err != nil {
+		return xerrors.Errorf("before delete error: %w", err)
+	}
+{{- if .MetaFields }}
+
+	if len(options) > 0 && options[0].Mode == DeleteModeSoft {
+		t := time.Now()
+		subject.DeletedAt = &t
+		if _, err = ref.Set(ctx, subject); err != nil {
+			return xerrors.Errorf("error in Set method: %w", err)
+		}
+	} else {
+		if _, err := ref.Delete(ctx); err != nil {
+			return xerrors.Errorf("error in Delete method: %w", err)
+		}
+	}
+{{- else }}
+
+	if _, err := ref.Delete(ctx); err != nil {
 		return xerrors.Errorf("error in Delete method: %w", err)
 	}
+{{ end }}
 	return nil
 }
 
 // DeleteBy{{ .KeyFieldName }} 処理中の {{ .StructName }} の{{ .KeyFieldName }}から削除処理一切の責任を持ち、これを行う
-func (repo *{{ .RepositoryStructName }}) DeleteBy{{ .KeyFieldName }}(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}) error {
-	if err := repo.Delete(ctx, &{{ .StructName }}{ {{- .KeyFieldName }}: {{ .KeyValueName }}}); err != nil {
+func (repo *{{ .RepositoryStructName }}) DeleteBy{{ .KeyFieldName }}(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}, options ...DeleteOption) error {
+	if err := repo.Delete(ctx, &{{ .StructName }}{ {{- .KeyFieldName }}: {{ .KeyValueName }}}, options...); err != nil {
 		return xerrors.Errorf("error in repo.Delete method: %w", err)
 	}
 	return nil
 }
 
 // GetMulti 処理中の {{ .StructName }} の一括取得処理一切の責任を持ち、これを行う
-func (repo *{{ .RepositoryStructName }}) GetMulti(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}) ([]*{{ .StructName }}, error) {
+func (repo *{{ .RepositoryStructName }}) GetMulti(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, {{ if .MetaFields }}options{{ else }}_{{ end }} ...GetOption) ([]*{{ .StructName }}, error) {
 	collect := repo.GetCollection()
 	docRefs := make([]*firestore.DocumentRef, 0, len({{ PluralForm .KeyValueName }}))
 	for _, {{ .KeyValueName }} := range {{ PluralForm .KeyValueName }} {
@@ -321,6 +473,13 @@ func (repo *{{ .RepositoryStructName }}) GetMulti(ctx context.Context, {{ Plural
 		if err := snapShot.DataTo(&subject); err != nil {
 			return nil, xerrors.Errorf("error in DataTo method: %w", err)
 		}
+{{ if .MetaFields }}
+		if len(options) == 0 || !options[0].IncludeSoftDeleted {
+			if subject.DeletedAt != nil {
+				continue
+			}
+		}
+{{- end }}
 		subject.{{ .KeyFieldName }} = snapShot.Ref.ID
 		subjects = append(subjects, subject)
 	}
@@ -336,6 +495,13 @@ func (repo *{{ .RepositoryStructName }}) InsertMulti(ctx context.Context, subjec
 	collect := repo.GetCollection()
 
 	for i, subject := range subjects {
+{{- if .MetaFields }}
+		err := repo.beforeInsert(ctx, subject)
+		if err != nil {
+			return nil, xerrors.Errorf("before insert error: %w", err)
+		}
+
+{{- end }}
 		var ref *firestore.DocumentRef
 		if subject.{{ .KeyFieldName }} == "" {
 			ref = collect.NewDoc()
@@ -373,9 +539,24 @@ func (repo *{{ .RepositoryStructName }}) UpdateMulti(ctx context.Context, subjec
 
 	for i, subject := range subjects {
 		ref := collect.Doc(subject.{{ .KeyFieldName }})
-		if _, err := ref.Get(ctx); err != nil {
+		{{ if .MetaFields }}snapShot{{ else }}_{{ end }}, err := ref.Get(ctx)
+		if err != nil {
 			return xerrors.Errorf("error in Get method [%s]: %w", subject.{{ .KeyFieldName }}, err)
 		}
+
+{{- if .MetaFields }}
+		old := new({{ .StructName }})
+		if err := snapShot.DataTo(&old); err != nil {
+			return xerrors.Errorf("error in DataTo method: %w", err)
+		}
+
+		err = repo.beforeUpdate(ctx, old, subject)
+		if err != nil {
+			return xerrors.Errorf("before update error: %w", err)
+		}
+
+{{- end }}
+
 		batch.Set(ref, subject)
 		i++
 		if (i%500) == 0 && len(subjects) != i {
@@ -395,14 +576,38 @@ func (repo *{{ .RepositoryStructName }}) UpdateMulti(ctx context.Context, subjec
 }
 
 // DeleteMulti 処理中の {{ .StructName }} の一括削除処理一切の責任を持ち、これを行う
-func (repo *{{ .RepositoryStructName }}) DeleteMulti(ctx context.Context, subjects []*{{ .StructName }}) error {
+func (repo *{{ .RepositoryStructName }}) DeleteMulti(ctx context.Context, subjects []*{{ .StructName }}, options ...DeleteOption) error {
 	batches := make([]*firestore.WriteBatch, 0)
 	batch := repo.firestoreClient.Batch()
 	collect := repo.GetCollection()
 
 	for i, subject := range subjects {
 		ref := collect.Doc(subject.{{ .KeyFieldName }})
+		snapShot, err := ref.Get(ctx)
+		if err != nil {
+			return xerrors.Errorf("error in Get method: %w", err)
+		}
+		old := new({{ .StructName }})
+		if err := snapShot.DataTo(old); err != nil {
+			return xerrors.Errorf("error in DataTo method: %w", err)
+		}
+
+		err = repo.beforeDelete(ctx, subject, options...)
+		if err != nil {
+			return xerrors.Errorf("before delete error: %w", err)
+		}
+{{- if .MetaFields }}
+
+		if len(options) > 0 && options[0].Mode == DeleteModeSoft {
+			t := time.Now()
+			subject.DeletedAt = &t
+			batch.Set(ref, subject)
+		} else {
+			batch.Delete(ref)
+		}
+{{- else }}
 		batch.Delete(ref)
+{{ end }}
 		i++
 		if (i%500) == 0 && len(subjects) != i {
 			batches = append(batches, batch)
@@ -421,12 +626,12 @@ func (repo *{{ .RepositoryStructName }}) DeleteMulti(ctx context.Context, subjec
 }
 
 // DeleteMultiBy{{ PluralForm .KeyFieldName }} 処理中の {{ .StructName }} の{{ .KeyFieldName }}群を元に一括削除処理一切の責任を持ち、これを行う
-func (repo *{{ .RepositoryStructName }}) DeleteMultiBy{{ PluralForm .KeyFieldName }}(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}) error {
+func (repo *{{ .RepositoryStructName }}) DeleteMultiBy{{ PluralForm .KeyFieldName }}(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, options ...DeleteOption) error {
 	subjects := make([]*{{ .StructName }}, 0, len({{ PluralForm .KeyValueName }}))
 
 	for _, {{ .KeyValueName }} := range {{ PluralForm .KeyValueName }} {
 		subjects = append(subjects, &{{ .StructName }}{ {{- .KeyFieldName }}: {{ .KeyValueName }}})
 	}
 
-	return repo.DeleteMulti(ctx, subjects)
+	return repo.DeleteMulti(ctx, subjects, options...)
 }

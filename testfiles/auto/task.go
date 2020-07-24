@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-//go:generate firestore-repo Task
+//go:generate firestore-repo -disable-meta Task
 
 // Task ID自動生成あり
 type Task struct {

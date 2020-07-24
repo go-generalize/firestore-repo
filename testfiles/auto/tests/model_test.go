@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -484,7 +485,7 @@ func TestFirestoreListNameWithIndexes(t *testing.T) {
 }
 */
 
-func TestFirestore(t *testing.T) {
+func TestFirestoreOfTaskRepo(t *testing.T) {
 	client := initFirestoreClient(t)
 
 	taskRepo := model.NewTaskRepository(client)
@@ -549,4 +550,144 @@ func TestFirestore(t *testing.T) {
 	if _, err := taskRepo.Get(ctx, id); err == nil {
 		t.Fatalf("should get an error")
 	}
+}
+
+func TestFirestoreOfLockRepo(t *testing.T) {
+	client := initFirestoreClient(t)
+
+	lockRepo := model.NewLockRepository(client)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	text := "hello"
+
+	t.Run("insert_test", func(t *testing.T) {
+		l := &model.Lock{
+			Text: text,
+			Flag: nil,
+			Meta: model.Meta{},
+		}
+
+		id, err := lockRepo.Insert(ctx, l)
+		if err != nil {
+			t.Fatalf("failed to put item: %+v", err)
+		}
+
+		ret, err := lockRepo.Get(ctx, id)
+
+		if err != nil {
+			t.Fatalf("failed to get item: %+v", err)
+		}
+
+		if text != ret.Text {
+			t.Fatalf("unexpected text: %s (expected: %s)", text, ret.Text)
+		}
+		if ret.CreatedAt.IsZero() {
+			t.Fatalf("unexpected createdAt zero:")
+		}
+		if ret.UpdatedAt.IsZero() {
+			t.Fatalf("unexpected updatedAt zero:")
+		}
+	})
+
+	t.Run("update_test", func(t *testing.T) {
+		l := &model.Lock{
+			Text: text,
+			Flag: nil,
+			Meta: model.Meta{},
+		}
+
+		id, err := lockRepo.Insert(ctx, l)
+		if err != nil {
+			t.Fatalf("failed to put item: %+v", err)
+		}
+
+		time.Sleep(1 * time.Second)
+
+		text = "hello!!!"
+		l.Text = text
+		err = lockRepo.Update(ctx, l)
+		if err != nil {
+			t.Fatalf("failed to update item: %+v", err)
+		}
+
+		ret, err := lockRepo.Get(ctx, id)
+		if err != nil {
+			t.Fatalf("failed to get item: %+v", err)
+		}
+
+		if text != ret.Text {
+			t.Fatalf("unexpected text: %s (expected: %s)", text, ret.Text)
+		}
+		if ret.CreatedAt.Unix() == ret.UpdatedAt.Unix() {
+			t.Fatalf("unexpected createdAt == updatedAt: %d == %d",
+				ret.CreatedAt.Unix(), ret.UpdatedAt.Unix())
+		}
+	})
+
+	t.Run("soft_delete_test", func(t *testing.T) {
+		l := &model.Lock{
+			Text: text,
+			Flag: nil,
+			Meta: model.Meta{},
+		}
+
+		id, err := lockRepo.Insert(ctx, l)
+		if err != nil {
+			t.Fatalf("failed to put item: %+v", err)
+		}
+
+		l.Text = text
+		err = lockRepo.Delete(ctx, l, model.DeleteOption{
+			Mode: model.DeleteModeSoft,
+		})
+		if err != nil {
+			t.Fatalf("failed to soft delete item: %+v", err)
+		}
+
+		ret, err := lockRepo.Get(ctx, id, model.GetOption{
+			IncludeSoftDeleted: true,
+		})
+		if err != nil {
+			t.Fatalf("failed to get item: %+v", err)
+		}
+
+		if text != ret.Text {
+			t.Fatalf("unexpected text: %s (expected: %s)", text, ret.Text)
+		}
+		if ret.DeletedAt == nil {
+			t.Fatalf("unexpected deletedAt == nil: %+v", ret.DeletedAt)
+		}
+	})
+
+	t.Run("hard_delete_test", func(t *testing.T) {
+		l := &model.Lock{
+			Text: text,
+			Flag: nil,
+			Meta: model.Meta{},
+		}
+
+		id, err := lockRepo.Insert(ctx, l)
+		if err != nil {
+			t.Fatalf("failed to put item: %+v", err)
+		}
+
+		l.Text = text
+		err = lockRepo.Delete(ctx, l)
+		if err != nil {
+			t.Fatalf("failed to hard delete item: %+v", err)
+		}
+
+		ret, err := lockRepo.Get(ctx, id, model.GetOption{
+			IncludeSoftDeleted: true,
+		})
+		if err != nil && !strings.Contains(err.Error(), "not found") {
+			t.Fatalf("failed to get item: %+v", err)
+		}
+
+		if ret != nil {
+			t.Fatalf("failed to delete item (found!): %+v", ret)
+		}
+	})
 }
