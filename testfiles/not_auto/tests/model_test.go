@@ -138,6 +138,38 @@ func TestFirestoreTransactionTask(t *testing.T) {
 		}
 		ids = append(ids, id)
 
+		tr.Run("SubCollection", func(tr *testing.T) {
+			ids2 := make([]string, 0, 3)
+			doc := taskRepo.GetCollection().Doc(id)
+			subRepo := model.NewSubTaskRepository(client, doc)
+			st := &model.SubTask{IsSubCollection: true}
+			id, err = subRepo.Insert(ctx, st)
+			if err != nil {
+				tr.Fatalf("%+v", err)
+			}
+			ids2 = append(ids2, id)
+
+			sts := []*model.SubTask{
+				{IsSubCollection: true},
+				{IsSubCollection: false},
+			}
+			stsIDs, err := subRepo.InsertMulti(ctx, sts)
+			if err != nil {
+				tr.Fatalf("%+v", err)
+			}
+			ids2 = append(ids2, stsIDs...)
+
+			listReq := &model.SubTaskListReq{IsSubCollection: model.BoolCriteriaTrue}
+			sts, err = subRepo.List(ctx, listReq, nil)
+			if err != nil {
+				tr.Fatalf("%+v", err)
+			}
+
+			if err = subRepo.DeleteMultiByIDs(ctx, ids2); err != nil {
+				tr.Fatalf("%+v", err)
+			}
+		})
+
 		tk.Count = 12
 		if err := taskRepo.Update(ctx, tk); err != nil {
 			tr.Fatalf("%+v", err)

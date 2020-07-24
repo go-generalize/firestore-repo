@@ -25,8 +25,9 @@ func init() {
 }
 
 var (
-	isShowVersion = flag.Bool("v", false, "print version")
-	disableMeta   = flag.Bool("disable-meta", false, "Disable meta embed for Lock")
+	isShowVersion   = flag.Bool("v", false, "print version")
+	isSubCollection = flag.Bool("sub-collection", false, "is SubCollection")
+	disableMeta     = flag.Bool("disable-meta", false, "Disable meta embed for Lock")
 )
 
 func main() {
@@ -43,13 +44,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := run(flag.Arg(0), *disableMeta); err != nil {
+	if err := run(flag.Arg(0), *disableMeta, *isSubCollection); err != nil {
 		log.Fatal(err.Error())
 	}
 }
 
-func run(structName string, isDisableMeta bool) error {
+func run(structName string, isDisableMeta, subCollection bool) error {
 	disableMeta = &isDisableMeta
+	isSubCollection = &subCollection
 	fs := token.NewFileSet()
 	pkgs, err := parser.ParseDir(fs, ".", nil, parser.AllErrors)
 
@@ -70,6 +72,9 @@ func run(structName string, isDisableMeta bool) error {
 
 func traverse(pkg *ast.Package, fs *token.FileSet, structName string) error {
 	gen := &generator{PackageName: pkg.Name}
+	if *isSubCollection {
+		gen.IsSubCollection = true
+	}
 	for name, file := range pkg.Files {
 		gen.FileName = strings.TrimSuffix(filepath.Base(name), ".go")
 		gen.GeneratedFileName = gen.FileName + "_gen"
