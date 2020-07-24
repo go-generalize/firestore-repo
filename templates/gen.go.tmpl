@@ -44,7 +44,7 @@ type {{ .RepositoryInterfaceName }} interface {
 	GetCollectionName() string
 }
 
-{{- $middlewareName := printf "%sMiddleware" .RepositoryInterfaceName }}
+{{ $middlewareName := printf "%sMiddleware" .RepositoryInterfaceName }}
 // {{ $middlewareName }} middleware of {{ .RepositoryInterfaceName }}
 type {{ $middlewareName }} interface {
 	BeforeInsert(ctx context.Context, subject *{{ .StructName }}) (bool, error)
