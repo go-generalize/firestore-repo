@@ -66,6 +66,7 @@ type generator struct {
 	SliceExist          bool
 
 	AutomaticGeneration bool
+	IsSubCollection     bool
 
 	MetaFields map[string]Field
 }

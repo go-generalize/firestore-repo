@@ -25,8 +25,9 @@ func init() {
 }
 
 var (
-	isShowVersion = flag.Bool("v", false, "print version")
-	disableMeta   = flag.Bool("disable-meta", false, "Disable meta embed for Lock")
+	isShowVersion   = flag.Bool("v", false, "print version")
+	isSubCollection = flag.Bool("s", false, "is SubCollection")
+	disableMeta     = flag.Bool("disable-meta", false, "Disable meta embed for Lock")
 )
 
 func main() {
@@ -70,6 +71,9 @@ func run(structName string, isDisableMeta bool) error {
 
 func traverse(pkg *ast.Package, fs *token.FileSet, structName string) error {
 	gen := &generator{PackageName: pkg.Name}
+	if *isSubCollection {
+		gen.IsSubCollection = true
+	}
 	for name, file := range pkg.Files {
 		gen.FileName = strings.TrimSuffix(filepath.Base(name), ".go")
 		gen.GeneratedFileName = gen.FileName + "_gen"

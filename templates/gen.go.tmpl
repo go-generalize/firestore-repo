@@ -53,16 +53,18 @@ type {{ $middlewareName }} interface {
 }
 
 type {{ .RepositoryStructName }} struct {
-	collection      string
-	firestoreClient *firestore.Client
+	collectionName  string
+	firestoreClient *firestore.Client{{ if eq .IsSubCollection true }}
+	parentDocument  *firestore.DocumentRef{{ end }}
 	middleware      []{{ $middlewareName }}
 }
 
 // New{{ .RepositoryInterfaceName }} constructor
-func New{{ .RepositoryInterfaceName }}(firestoreClient *firestore.Client, middleware ...{{ $middlewareName }}) {{ .RepositoryInterfaceName }} {
+func New{{ .RepositoryInterfaceName }}(firestoreClient *firestore.Client{{ if eq .IsSubCollection true }}, parentDocument *firestore.DocumentRef{{ end }}, middleware ...{{ $middlewareName }}) {{ .RepositoryInterfaceName }} {
 	return &{{ .RepositoryStructName }}{
-		collection:      "{{ .StructName }}",
-		firestoreClient: firestoreClient,
+        collectionName:  "{{ .StructName }}",
+		firestoreClient: firestoreClient,{{ if eq .IsSubCollection true }}
+        parentDocument:  parentDocument,{{ end }}
 		middleware:      middleware,
 	}
 }
@@ -143,12 +145,12 @@ func (repo *{{ .RepositoryStructName }}) beforeDelete(ctx context.Context, subje
 
 // GetCollection *firestore.CollectionRef getter
 func (repo *{{ .RepositoryStructName }}) GetCollection() *firestore.CollectionRef {
-	return repo.firestoreClient.Collection(repo.collection)
+	return repo.{{ if eq .IsSubCollection true }}parentDocument{{ else }}firestoreClient{{ end }}.Collection(repo.collectionName)
 }
 
 // GetCollectionName CollectionName getter
 func (repo *{{ .RepositoryStructName }}) GetCollectionName() string {
-	return repo.collection
+	return repo.collectionName
 }
 
 {{- if eq .EnableIndexes true }}
