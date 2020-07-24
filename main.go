@@ -37,13 +37,13 @@ func main() {
 		return
 	}
 
-	l := len(os.Args)
-	if l < 2 {
+	l := flag.NArg()
+	if l < 1 {
 		fmt.Println("You have to specify the struct name of target")
 		os.Exit(1)
 	}
 
-	if err := run(os.Args[l-1], *disableMeta); err != nil {
+	if err := run(flag.Arg(0), *disableMeta); err != nil {
 		log.Fatal(err.Error())
 	}
 }

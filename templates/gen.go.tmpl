@@ -23,7 +23,7 @@ import (
 {{ $generate := "go:generate" }}
 //{{ $generate }} mockgen -source {{ .GeneratedFileName }}.go -destination mock/mock_{{ .GeneratedFileName }}/mock_{{ .GeneratedFileName }}.go
 
-// {{ .RepositoryInterfaceName }} {{ .RepositoryInterfaceName }} Repository of {{ .StructName }}
+// {{ .RepositoryInterfaceName }} Repository of {{ .StructName }}
 type {{ .RepositoryInterfaceName }} interface {
 	// Single
 	Get(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}, {{ if .MetaFields }}options{{ else }}_{{ end }} ...GetOption) (*{{ .StructName }}, error)
@@ -209,6 +209,9 @@ type {{ .StructName }}ListReq struct {
 	{{ .Field }}{{ .Space }} {{ .FieldType }}
 {{- end }}
 {{- end }}
+{{- if .MetaFields }}
+	IncludeSoftDeleted bool
+{{- end  }}
 }
 
 // List firestore.Queryを使用し条件抽出をする
@@ -289,6 +292,12 @@ func (repo *{{ .RepositoryStructName }}) List(ctx context.Context, req *{{ .Stru
 	} else {
 		query = *q
 	}
+{{ if .MetaFields }}
+{{- $metaPath := (index .MetaFields "DeletedAt").ParentPath }}
+	if !req.IncludeSoftDeleted {
+		query = query.Where("{{ if eq $metaPath "" }}DeletedAt{{ else }}{{ $metaPath }}.DeletedAt{{ end }}", "==", nil)
+	}
+{{ end }}
 {{ if eq $Enable true }}
 	built, err := filters.Build()
 	if err != nil {

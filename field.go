@@ -139,7 +139,7 @@ func searchMetaProperties(fields []Field) ([]Field, error) {
 		},
 	}
 
-	res := make([]Field, 0, 5)
+	res := make([]Field, 0, len(targetsMap))
 
 	for _, f := range fields {
 		if m, ok := targetsMap[f.Name]; ok {
