@@ -26,17 +26,17 @@ import (
 // {{ .RepositoryInterfaceName }} {{ .RepositoryInterfaceName }} Repository of {{ .StructName }}
 type {{ .RepositoryInterfaceName }} interface {
 	// Single
-	Get(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}, options... GetOption) (*{{ .StructName }}, error)
+	Get(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}, options ...GetOption) (*{{ .StructName }}, error)
 	Insert(ctx context.Context, subject *{{ .StructName }}) ({{ .KeyFieldType }}, error)
 	Update(ctx context.Context, subject *{{ .StructName }}) error
-	Delete(ctx context.Context, subject *{{ .StructName }}, options... DeleteOption) error
-	DeleteBy{{ .KeyFieldName }}(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}, options... DeleteOption) error
+	Delete(ctx context.Context, subject *{{ .StructName }}, options ...DeleteOption) error
+	DeleteBy{{ .KeyFieldName }}(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}, options ...DeleteOption) error
 	// Multiple
-	GetMulti(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, options... GetOption) ([]*{{ .StructName }}, error)
+	GetMulti(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, options ...GetOption) ([]*{{ .StructName }}, error)
 	InsertMulti(ctx context.Context, subjects []*{{ .StructName }}) ([]{{ .KeyFieldType }}, error)
 	UpdateMulti(ctx context.Context, subjects []*{{ .StructName }}) error
-	DeleteMulti(ctx context.Context, subjects []*{{ .StructName }}, options... DeleteOption) error
-	DeleteMultiBy{{ PluralForm .KeyFieldName }}(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, options... DeleteOption) error
+	DeleteMulti(ctx context.Context, subjects []*{{ .StructName }}, options ...DeleteOption) error
+	DeleteMultiBy{{ PluralForm .KeyFieldName }}(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, options ...DeleteOption) error
 	// List
 	List(ctx context.Context, req *{{ .StructName }}ListReq, q *firestore.Query) ([]*{{ .StructName }}, error)
 	// misc
@@ -49,8 +49,8 @@ type {{ .RepositoryInterfaceName }} interface {
 type {{ $middlewareName }} interface {
 	BeforeInsert(ctx context.Context, subject *{{ .StructName }}) (bool, error)
 	BeforeUpdate(ctx context.Context, subject *{{ .StructName }}) (bool, error)
-	BeforeDelete(ctx context.Context, subject *{{ .StructName }}, options... DeleteOption) (bool, error)
-	BeforeDeleteBy{{ .KeyFieldName }}(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, options... DeleteOption) (bool, error)
+	BeforeDelete(ctx context.Context, subject *{{ .StructName }}, options ...DeleteOption) (bool, error)
+	BeforeDeleteBy{{ .KeyFieldName }}(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, options ...DeleteOption) (bool, error)
 }
 
 type {{ .RepositoryStructName }} struct {
@@ -60,7 +60,7 @@ type {{ .RepositoryStructName }} struct {
 }
 
 // New{{ .RepositoryInterfaceName }} constructor
-func New{{ .RepositoryInterfaceName }}(firestoreClient *firestore.Client, middleware... {{ $middlewareName }}) {{ .RepositoryInterfaceName }} {
+func New{{ .RepositoryInterfaceName }}(firestoreClient *firestore.Client, middleware ...{{ $middlewareName }}) {{ .RepositoryInterfaceName }} {
 	return &{{ .RepositoryStructName }}{
 		collection:      "{{ .StructName }}",
 		firestoreClient: firestoreClient,
@@ -127,7 +127,7 @@ func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, 
 }
 
 
-func (repo *{{ .RepositoryStructName }}) beforeDelete(ctx context.Context, subject *{{ .StructName }}, options... DeleteOption) error {
+func (repo *{{ .RepositoryStructName }}) beforeDelete(ctx context.Context, subject *{{ .StructName }}, options ...DeleteOption) error {
 {{- if .MetaFields }}
 	repo.setMeta(subject, false)
 
@@ -321,7 +321,7 @@ func (repo *{{ .RepositoryStructName }}) List(ctx context.Context, req *{{ .Stru
 }
 
 // Get 処理中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
-func (repo *{{ .RepositoryStructName }}) Get(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}, options... GetOption) (*{{ .StructName }}, error) {
+func (repo *{{ .RepositoryStructName }}) Get(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}, options ...GetOption) (*{{ .StructName }}, error) {
 	snapShot, err := repo.GetCollection().Doc({{ .KeyValueName }}).Get(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("error in Get method: %w", err)
@@ -402,7 +402,7 @@ func (repo *{{ .RepositoryStructName }}) Update(ctx context.Context, subject *{{
 }
 
 // Delete 処理中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
-func (repo *{{ .RepositoryStructName }}) Delete(ctx context.Context, subject *{{ .StructName }}, options... DeleteOption) error {
+func (repo *{{ .RepositoryStructName }}) Delete(ctx context.Context, subject *{{ .StructName }}, options ...DeleteOption) error {
 	ref := repo.GetCollection().Doc(subject.{{ .KeyFieldName }})
 	snapShot, err := ref.Get(ctx)
 	if err != nil {
@@ -440,7 +440,7 @@ func (repo *{{ .RepositoryStructName }}) Delete(ctx context.Context, subject *{{
 }
 
 // DeleteBy{{ .KeyFieldName }} 処理中の {{ .StructName }} の{{ .KeyFieldName }}から削除処理一切の責任を持ち、これを行う
-func (repo *{{ .RepositoryStructName }}) DeleteBy{{ .KeyFieldName }}(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}, options... DeleteOption) error {
+func (repo *{{ .RepositoryStructName }}) DeleteBy{{ .KeyFieldName }}(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}, options ...DeleteOption) error {
 	if err := repo.Delete(ctx, &{{ .StructName }}{ {{- .KeyFieldName }}: {{ .KeyValueName }}}); err != nil {
 		return xerrors.Errorf("error in repo.Delete method: %w", err)
 	}
@@ -448,7 +448,7 @@ func (repo *{{ .RepositoryStructName }}) DeleteBy{{ .KeyFieldName }}(ctx context
 }
 
 // GetMulti 処理中の {{ .StructName }} の一括取得処理一切の責任を持ち、これを行う
-func (repo *{{ .RepositoryStructName }}) GetMulti(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, options... GetOption) ([]*{{ .StructName }}, error) {
+func (repo *{{ .RepositoryStructName }}) GetMulti(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, options ...GetOption) ([]*{{ .StructName }}, error) {
 	collect := repo.GetCollection()
 	docRefs := make([]*firestore.DocumentRef, 0, len({{ PluralForm .KeyValueName }}))
 	for _, {{ .KeyValueName }} := range {{ PluralForm .KeyValueName }} {
@@ -571,7 +571,7 @@ func (repo *{{ .RepositoryStructName }}) UpdateMulti(ctx context.Context, subjec
 }
 
 // DeleteMulti 処理中の {{ .StructName }} の一括削除処理一切の責任を持ち、これを行う
-func (repo *{{ .RepositoryStructName }}) DeleteMulti(ctx context.Context, subjects []*{{ .StructName }}, options... DeleteOption) error {
+func (repo *{{ .RepositoryStructName }}) DeleteMulti(ctx context.Context, subjects []*{{ .StructName }}, options ...DeleteOption) error {
 	batches := make([]*firestore.WriteBatch, 0)
 	batch := repo.firestoreClient.Batch()
 	collect := repo.GetCollection()
@@ -621,7 +621,7 @@ func (repo *{{ .RepositoryStructName }}) DeleteMulti(ctx context.Context, subjec
 }
 
 // DeleteMultiBy{{ PluralForm .KeyFieldName }} 処理中の {{ .StructName }} の{{ .KeyFieldName }}群を元に一括削除処理一切の責任を持ち、これを行う
-func (repo *{{ .RepositoryStructName }}) DeleteMultiBy{{ PluralForm .KeyFieldName }}(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, options... DeleteOption) error {
+func (repo *{{ .RepositoryStructName }}) DeleteMultiBy{{ PluralForm .KeyFieldName }}(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, options ...DeleteOption) error {
 	subjects := make([]*{{ .StructName }}, 0, len({{ PluralForm .KeyValueName }}))
 
 	for _, {{ .KeyValueName }} := range {{ PluralForm .KeyValueName }} {
