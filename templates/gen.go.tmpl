@@ -26,13 +26,13 @@ import (
 // {{ .RepositoryInterfaceName }} {{ .RepositoryInterfaceName }} Repository of {{ .StructName }}
 type {{ .RepositoryInterfaceName }} interface {
 	// Single
-	Get(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}, options ...GetOption) (*{{ .StructName }}, error)
+	Get(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}, {{ if .MetaFields }}options{{ else }}_{{ end }} ...GetOption) (*{{ .StructName }}, error)
 	Insert(ctx context.Context, subject *{{ .StructName }}) ({{ .KeyFieldType }}, error)
 	Update(ctx context.Context, subject *{{ .StructName }}) error
 	Delete(ctx context.Context, subject *{{ .StructName }}, options ...DeleteOption) error
 	DeleteBy{{ .KeyFieldName }}(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}, options ...DeleteOption) error
 	// Multiple
-	GetMulti(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, options ...GetOption) ([]*{{ .StructName }}, error)
+	GetMulti(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, {{ if .MetaFields }}options{{ else }}_{{ end }} ...GetOption) ([]*{{ .StructName }}, error)
 	InsertMulti(ctx context.Context, subjects []*{{ .StructName }}) ([]{{ .KeyFieldType }}, error)
 	UpdateMulti(ctx context.Context, subjects []*{{ .StructName }}) error
 	DeleteMulti(ctx context.Context, subjects []*{{ .StructName }}, options ...DeleteOption) error
@@ -319,7 +319,7 @@ func (repo *{{ .RepositoryStructName }}) List(ctx context.Context, req *{{ .Stru
 }
 
 // Get 処理中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
-func (repo *{{ .RepositoryStructName }}) Get(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}, options ...GetOption) (*{{ .StructName }}, error) {
+func (repo *{{ .RepositoryStructName }}) Get(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}, {{ if .MetaFields }}options{{ else }}_{{ end }} ...GetOption) (*{{ .StructName }}, error) {
 	snapShot, err := repo.GetCollection().Doc({{ .KeyValueName }}).Get(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("error in Get method: %w", err)
@@ -446,7 +446,7 @@ func (repo *{{ .RepositoryStructName }}) DeleteBy{{ .KeyFieldName }}(ctx context
 }
 
 // GetMulti 処理中の {{ .StructName }} の一括取得処理一切の責任を持ち、これを行う
-func (repo *{{ .RepositoryStructName }}) GetMulti(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, options ...GetOption) ([]*{{ .StructName }}, error) {
+func (repo *{{ .RepositoryStructName }}) GetMulti(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, {{ if .MetaFields }}options{{ else }}_{{ end }} ...GetOption) ([]*{{ .StructName }}, error) {
 	collect := repo.GetCollection()
 	docRefs := make([]*firestore.DocumentRef, 0, len({{ PluralForm .KeyValueName }}))
 	for _, {{ .KeyValueName }} := range {{ PluralForm .KeyValueName }} {
