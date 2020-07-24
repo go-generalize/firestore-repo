@@ -549,7 +549,6 @@ func (repo *{{ .RepositoryStructName }}) UpdateMulti(ctx context.Context, subjec
 
 {{- end }}
 
-
 		batch.Set(ref, subject)
 		i++
 		if (i%500) == 0 && len(subjects) != i {
