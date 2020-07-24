@@ -5,7 +5,7 @@ import (
 	"context"
 {{- if .MetaFields }}
 	"time"
-{{ end }}
+{{- end }}
 {{- range .ImportList }}
 	"{{ .Name }}"
 {{- end }}
@@ -43,7 +43,6 @@ type {{ .RepositoryInterfaceName }} interface {
 	GetCollection() *firestore.CollectionRef
 	GetCollectionName() string
 }
-
 {{ $middlewareName := printf "%sMiddleware" .RepositoryInterfaceName }}
 // {{ $middlewareName }} middleware of {{ .RepositoryInterfaceName }}
 type {{ $middlewareName }} interface {
@@ -292,12 +291,12 @@ func (repo *{{ .RepositoryStructName }}) List(ctx context.Context, req *{{ .Stru
 	} else {
 		query = *q
 	}
-{{ if .MetaFields }}
+{{- if .MetaFields }}
 {{- $metaPath := (index .MetaFields "DeletedAt").ParentPath }}
 	if !req.IncludeSoftDeleted {
 		query = query.Where("{{ if eq $metaPath "" }}DeletedAt{{ else }}{{ $metaPath }}.DeletedAt{{ end }}", "==", nil)
 	}
-{{ end }}
+{{- end }}
 {{ if eq $Enable true }}
 	built, err := filters.Build()
 	if err != nil {
@@ -354,7 +353,7 @@ func (repo *{{ .RepositoryStructName }}) Get(ctx context.Context, {{ .KeyValueNa
 func (repo *{{ .RepositoryStructName }}) Insert(ctx context.Context, subject *{{ .StructName }}) ({{ .KeyFieldType }}, error) {
 {{- if .MetaFields }}
 	err := repo.beforeInsert(ctx, subject)
-	if err != nil{
+	if err != nil {
 		return "", xerrors.Errorf("before insert error: %w", err)
 	}
 
@@ -396,7 +395,7 @@ func (repo *{{ .RepositoryStructName }}) Update(ctx context.Context, subject *{{
 	}
 
 	err = repo.beforeUpdate(ctx, old, subject)
-	if err != nil{
+	if err != nil {
 		return xerrors.Errorf("before update error: %w", err)
 	}
 
@@ -416,7 +415,7 @@ func (repo *{{ .RepositoryStructName }}) Delete(ctx context.Context, subject *{{
 		return xerrors.Errorf("error in Get method: %w", err)
 	}
 	old := new({{ .StructName }})
-	if err := snapShot.DataTo(old); err != nil{
+	if err := snapShot.DataTo(old); err != nil {
 		return xerrors.Errorf("error in DataTo method: %w", err)
 	}
 
@@ -498,7 +497,7 @@ func (repo *{{ .RepositoryStructName }}) InsertMulti(ctx context.Context, subjec
 	for i, subject := range subjects {
 {{- if .MetaFields }}
 		err := repo.beforeInsert(ctx, subject)
-		if err != nil{
+		if err != nil {
 			return nil, xerrors.Errorf("before insert error: %w", err)
 		}
 
@@ -552,7 +551,7 @@ func (repo *{{ .RepositoryStructName }}) UpdateMulti(ctx context.Context, subjec
 		}
 
 		err = repo.beforeUpdate(ctx, old, subject)
-		if err != nil{
+		if err != nil {
 			return xerrors.Errorf("before update error: %w", err)
 		}
 
@@ -589,7 +588,7 @@ func (repo *{{ .RepositoryStructName }}) DeleteMulti(ctx context.Context, subjec
 			return xerrors.Errorf("error in Get method: %w", err)
 		}
 		old := new({{ .StructName }})
-		if err := snapShot.DataTo(old); err != nil{
+		if err := snapShot.DataTo(old); err != nil {
 			return xerrors.Errorf("error in DataTo method: %w", err)
 		}
 
