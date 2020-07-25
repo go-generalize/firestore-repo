@@ -62,9 +62,9 @@ type {{ .RepositoryStructName }} struct {
 // New{{ .RepositoryInterfaceName }} constructor
 func New{{ .RepositoryInterfaceName }}(firestoreClient *firestore.Client{{ if eq .IsSubCollection true }}, parentDocument *firestore.DocumentRef{{ end }}, middleware ...{{ $middlewareName }}) {{ .RepositoryInterfaceName }} {
 	return &{{ .RepositoryStructName }}{
-        collectionName:  "{{ .StructName }}",
+		collectionName:  "{{ .StructName }}",
 		firestoreClient: firestoreClient,{{ if eq .IsSubCollection true }}
-        parentDocument:  parentDocument,{{ end }}
+		parentDocument:  parentDocument,{{ end }}
 		middleware:      middleware,
 	}
 }
