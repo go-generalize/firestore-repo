@@ -11,6 +11,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	model "github.com/go-generalize/firestore-repo/testfiles/not_auto"
+	"google.golang.org/genproto/googleapis/type/latlng"
 )
 
 func initFirestoreClient(t *testing.T) *firestore.Client {
@@ -204,6 +205,10 @@ func TestFirestoreQueryTask(t *testing.T) {
 	desc := "Hello, World!"
 
 	tks := make([]*model.Task, 0)
+	latLng := &latlng.LatLng{
+		Latitude:  35.678803,
+		Longitude: 139.756263,
+	}
 	for i := 1; i <= 10; i++ {
 		tk := &model.Task{
 			Identity:   fmt.Sprintf("%d", i),
@@ -213,8 +218,9 @@ func TestFirestoreQueryTask(t *testing.T) {
 			Done2:      false,
 			Count:      i,
 			Count64:    int64(i),
-			Proportion: 0.12345 + float64(i),
 			NameList:   []string{"a", "b", "c"},
+			Proportion: 0.12345 + float64(i),
+			Geo:        latLng,
 			Flag:       model.Flag(true),
 		}
 		tks = append(tks, tk)
@@ -317,6 +323,21 @@ func TestFirestoreQueryTask(t *testing.T) {
 	t.Run("Flag(10件)", func(t *testing.T) {
 		req := &model.TaskListReq{
 			Flag: model.BoolCriteriaTrue,
+		}
+
+		tasks, err := taskRepo.List(ctx, req, nil)
+		if err != nil {
+			t.Fatalf("%+v", err)
+		}
+
+		if len(tasks) != 10 {
+			t.Fatal("not match")
+		}
+	})
+
+	t.Run("Geo(10件)", func(t *testing.T) {
+		req := &model.TaskListReq{
+			Geo: latLng,
 		}
 
 		tasks, err := taskRepo.List(ctx, req, nil)
