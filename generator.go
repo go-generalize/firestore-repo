@@ -60,6 +60,7 @@ type generator struct {
 
 	FieldInfos []*FieldInfo
 
+	ExistLatLng         bool
 	EnableIndexes       bool
 	FieldInfoForIndexes *FieldInfo
 	BoolCriteriaCnt     int
@@ -87,6 +88,11 @@ func (g *generator) buildConditions() {
 			if _, ok := dedupe[ft]; !ok {
 				dedupe[ft] = true
 				g.ImportList = append(g.ImportList, ImportInfo{strings.Split(ft, ".")[0]})
+			}
+		case "*latlng.LatLng":
+			if _, ok := dedupe[ft]; !ok {
+				dedupe[ft] = true
+				g.ExistLatLng = true
 			}
 		}
 	}

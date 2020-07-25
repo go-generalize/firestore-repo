@@ -19,6 +19,9 @@ import (
 {{- end }}
 	"golang.org/x/xerrors"
 	"google.golang.org/api/iterator"
+{{- if eq .ExistLatLng true }}
+	"google.golang.org/genproto/googleapis/type/latlng"
+{{- end }}
 )
 {{ $generate := "go:generate" }}
 //{{ $generate }} mockgen -source {{ .GeneratedFileName }}.go -destination mock/mock_{{ .GeneratedFileName }}/mock_{{ .GeneratedFileName }}.go
@@ -286,6 +289,10 @@ func (repo *{{ .RepositoryStructName }}) List(ctx context.Context, req *{{ .Stru
 			dedupe.Do(&req.{{ $fi.Field }})
 			ref.Query = ref.Query.Where("{{ $fi.FsTag }}", "array-contains-any", req.{{ $fi.Field }})
 {{- end }}
+		}
+{{- else if eq $fi.FieldType "*latlng.LatLng" }}
+		if req.{{ $fi.Field }} != nil {
+			ref.Query = ref.Query.Where("{{ $fi.FsTag }}", "==", req.{{ $fi.Field }})
 		}
 {{- end }}
 {{- end }}
