@@ -166,6 +166,10 @@ func TestFirestoreTransactionTask(t *testing.T) {
 				tr.Fatalf("%+v", err)
 			}
 
+			if len(sts) != 2 {
+				tr.Fatal("not match")
+			}
+
 			tr.Run("Reference", func(tr2 *testing.T) {
 				tk.Sub = subRepo.GetDoc(sts[1].ID)
 				if err := taskRepo.Update(ctx, tk); err != nil {
