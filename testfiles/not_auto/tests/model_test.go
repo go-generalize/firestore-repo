@@ -171,7 +171,7 @@ func TestFirestoreTransactionTask(t *testing.T) {
 			}
 
 			tr.Run("Reference", func(tr2 *testing.T) {
-				tk.Sub = subRepo.GetDoc(sts[1].ID)
+				tk.Sub = subRepo.GetDocRef(sts[1].ID)
 				if err := taskRepo.Update(ctx, tk); err != nil {
 					tr2.Fatalf("%+v", err)
 				}

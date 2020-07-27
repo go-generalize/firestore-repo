@@ -46,7 +46,7 @@ type {{ .RepositoryInterfaceName }} interface {
 	// misc
 	GetCollection() *firestore.CollectionRef
 	GetCollectionName() string
-	GetDoc(id string) *firestore.DocumentRef
+	GetDocRef(id string) *firestore.DocumentRef
 }
 {{ $middlewareName := printf "%sMiddleware" .RepositoryInterfaceName }}
 // {{ $middlewareName }} middleware of {{ .RepositoryInterfaceName }}
@@ -158,8 +158,8 @@ func (repo *{{ .RepositoryStructName }}) GetCollectionName() string {
 	return repo.collectionName
 }
 
-// GetDoc *firestore.DocumentRef getter
-func (repo *{{ .RepositoryStructName }}) GetDoc(id string) *firestore.DocumentRef {
+// GetDocRef *firestore.DocumentRef getter
+func (repo *{{ .RepositoryStructName }}) GetDocRef(id string) *firestore.DocumentRef {
 	return repo.GetCollection().Doc(id)
 }
 
