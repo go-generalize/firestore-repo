@@ -166,6 +166,37 @@ func TestFirestoreTransactionTask(t *testing.T) {
 				tr.Fatalf("%+v", err)
 			}
 
+			tr.Run("Reference", func(tr2 *testing.T) {
+				tk.Sub = subRepo.GetDoc(sts[1].ID)
+				if err := taskRepo.Update(ctx, tk); err != nil {
+					tr2.Fatalf("%+v", err)
+				}
+
+				tkr, err := taskRepo.Get(ctx, doc.ID)
+				if err != nil {
+					tr2.Fatalf("%+v", err)
+				}
+
+				sub, err := subRepo.GetWithDoc(ctx, tkr.Sub)
+				if err != nil {
+					tr2.Fatalf("%+v", err)
+				}
+
+				if sub.ID != sts[1].ID {
+					tr2.Log(sub.ID, sts[1].ID)
+					tr2.Fatal("not match")
+				}
+
+				taskListReq := &model.TaskListReq{Sub: tk.Sub}
+				tks, err := taskRepo.List(ctx, taskListReq, nil)
+				if err != nil {
+					tr2.Fatalf("%+v", err)
+				}
+				if len(tks) != 1 {
+					tr2.Fatal("not match")
+				}
+			})
+
 			if err = subRepo.DeleteMultiByIDs(ctx, ids2); err != nil {
 				tr.Fatalf("%+v", err)
 			}
