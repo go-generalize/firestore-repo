@@ -29,7 +29,8 @@ import (
 // {{ .RepositoryInterfaceName }} Repository of {{ .StructName }}
 type {{ .RepositoryInterfaceName }} interface {
 	// Single
-	Get(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}, {{ if .MetaFields }}options{{ else }}_{{ end }} ...GetOption) (*{{ .StructName }}, error)
+	Get(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}, {{ if .MetaFields }}options{{ else }}options{{ end }} ...GetOption) (*{{ .StructName }}, error)
+	GetWithDoc(ctx context.Context, doc *firestore.DocumentRef, {{ if .MetaFields }}options{{ else }}_{{ end }} ...GetOption) (*{{ .StructName }}, error)
 	Insert(ctx context.Context, subject *{{ .StructName }}) ({{ .KeyFieldType }}, error)
 	Update(ctx context.Context, subject *{{ .StructName }}) error
 	Delete(ctx context.Context, subject *{{ .StructName }}, options ...DeleteOption) error
@@ -45,6 +46,7 @@ type {{ .RepositoryInterfaceName }} interface {
 	// misc
 	GetCollection() *firestore.CollectionRef
 	GetCollectionName() string
+	GetDoc(id string) *firestore.DocumentRef
 }
 {{ $middlewareName := printf "%sMiddleware" .RepositoryInterfaceName }}
 // {{ $middlewareName }} middleware of {{ .RepositoryInterfaceName }}
@@ -154,6 +156,11 @@ func (repo *{{ .RepositoryStructName }}) GetCollection() *firestore.CollectionRe
 // GetCollectionName CollectionName getter
 func (repo *{{ .RepositoryStructName }}) GetCollectionName() string {
 	return repo.collectionName
+}
+
+// GetDoc *firestore.DocumentRef getter
+func (repo *{{ .RepositoryStructName }}) GetDoc(id string) *firestore.DocumentRef {
+	return repo.GetCollection().Doc(id)
 }
 
 {{- if eq .EnableIndexes true }}
@@ -290,7 +297,7 @@ func (repo *{{ .RepositoryStructName }}) List(ctx context.Context, req *{{ .Stru
 			ref.Query = ref.Query.Where("{{ $fi.FsTag }}", "array-contains-any", req.{{ $fi.Field }})
 {{- end }}
 		}
-{{- else if eq $fi.FieldType "*latlng.LatLng" }}
+{{- else if or (eq $fi.FieldType "*latlng.LatLng") (eq $fi.FieldType "*firestore.DocumentRef") }}
 		if req.{{ $fi.Field }} != nil {
 			ref.Query = ref.Query.Where("{{ $fi.FsTag }}", "==", req.{{ $fi.Field }})
 		}
@@ -336,8 +343,14 @@ func (repo *{{ .RepositoryStructName }}) List(ctx context.Context, req *{{ .Stru
 }
 
 // Get 処理中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
-func (repo *{{ .RepositoryStructName }}) Get(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}, {{ if .MetaFields }}options{{ else }}_{{ end }} ...GetOption) (*{{ .StructName }}, error) {
-	snapShot, err := repo.GetCollection().Doc({{ .KeyValueName }}).Get(ctx)
+func (repo *{{ .RepositoryStructName }}) Get(ctx context.Context, {{ .KeyValueName }} {{ .KeyFieldType }}, {{ if .MetaFields }}options{{ else }}options{{ end }} ...GetOption) (*{{ .StructName }}, error) {
+	doc := repo.GetCollection().Doc({{ .KeyValueName }})
+	return repo.GetWithDoc(ctx, doc, options...)
+}
+
+// GetWithDoc 処理中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
+func (repo *{{ .RepositoryStructName }}) GetWithDoc(ctx context.Context, doc *firestore.DocumentRef, {{ if .MetaFields }}options{{ else }}_{{ end }} ...GetOption) (*{{ .StructName }}, error) {
+	snapShot, err := doc.Get(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("error in Get method: %w", err)
 	}
