@@ -20,6 +20,7 @@ var (
 		typeInt64,
 		typeFloat64,
 		typeTime,
+		typeLatLng,
 		typeStringMap,
 		typeIntMap,
 		typeInt64Map,

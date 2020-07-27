@@ -10,6 +10,7 @@ const (
 	typeFloat64    = "float64"
 	typeBool       = "bool"
 	typeTime       = "time.Time"
+	typeLatLng     = "*latlng.LatLng"
 	typeMap        = "map[string]"
 	typeStringMap  = "map[string]string"
 	typeIntMap     = "map[string]int"
