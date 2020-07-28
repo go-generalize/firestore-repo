@@ -44,6 +44,7 @@ type ImportInfo struct {
 }
 
 type generator struct {
+	AppVersion        string
 	PackageName       string
 	ImportName        string
 	ImportList        []ImportInfo
@@ -73,6 +74,7 @@ type generator struct {
 }
 
 func (g *generator) setting() {
+	g.AppVersion = AppVersion
 	g.RepositoryInterfaceName = g.StructName + "Repository"
 	g.RepositoryStructName = strcase.ToLowerCamel(g.RepositoryInterfaceName)
 	g.buildConditions()
