@@ -11,6 +11,7 @@ const (
 	typeBool       = "bool"
 	typeTime       = "time.Time"
 	typeLatLng     = "*latlng.LatLng"
+	typeReference  = "*firestore.DocumentRef"
 	typeMap        = "map[string]"
 	typeStringMap  = "map[string]string"
 	typeIntMap     = "map[string]int"
