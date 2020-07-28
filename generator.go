@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -115,7 +116,7 @@ func (g *generator) insertSpace() {
 
 func (g *generator) generate(writer io.Writer) {
 	g.setting()
-	funcMap := setFuncMap()
+	funcMap := g.setFuncMap()
 	contents := getFileContents("gen")
 
 	t := template.Must(template.New("Template").Funcs(funcMap).Parse(contents))
@@ -165,7 +166,7 @@ func (g *generator) generateQuery(writer io.Writer) {
 	}
 }
 
-func setFuncMap() template.FuncMap {
+func (g *generator) setFuncMap() template.FuncMap {
 	return template.FuncMap{
 		"Parse": func(fieldType string) string {
 			fieldType = strings.TrimPrefix(fieldType, "[]")
@@ -193,6 +194,72 @@ func setFuncMap() template.FuncMap {
 		},
 		"PluralForm": func(word string) string {
 			return plural.Convert(word)
+		},
+		"GetFunc": func() string {
+			raw := fmt.Sprintf(
+				"Get(ctx context.Context, %s %s, options ...GetOption) (*%s, error)",
+				g.KeyValueName, g.KeyFieldType, g.StructName,
+			)
+			return raw
+		},
+		"GetWithDocFunc": func() string {
+			options := "_"
+			if len(g.MetaFields) > 0 {
+				options = "options"
+			}
+			raw := fmt.Sprintf(
+				"GetWithDoc(ctx context.Context, doc *firestore.DocumentRef, %s ...GetOption) (*%s, error)",
+				options, g.StructName,
+			)
+			return raw
+		},
+		"InsertFunc": func() string {
+			return fmt.Sprintf("Insert(ctx context.Context, subject *%s) (%s, error)", g.StructName, g.KeyFieldType)
+		},
+		"UpdateFunc": func() string {
+			return fmt.Sprintf("Update(ctx context.Context, subject *%s) error", g.StructName)
+		},
+		"DeleteFunc": func() string {
+			return fmt.Sprintf("Delete(ctx context.Context, subject *%s, options ...DeleteOption) error", g.StructName)
+		},
+		"DeleteByFunc": func() string {
+			raw := fmt.Sprintf(
+				"DeleteBy%s(ctx context.Context, %s %s, options ...DeleteOption) error",
+				g.KeyFieldName, g.KeyValueName, g.KeyFieldType,
+			)
+			return raw
+		},
+		"GetMultiFunc": func() string {
+			options := "_"
+			if len(g.MetaFields) > 0 {
+				options = "options"
+			}
+			raw := fmt.Sprintf(
+				"GetMulti(ctx context.Context, %s []%s, %s ...GetOption) ([]*%s, error)",
+				plural.Convert(g.KeyValueName), g.KeyFieldType, options, g.StructName,
+			)
+			return raw
+		},
+		"InsertMultiFunc": func() string {
+			return fmt.Sprintf("InsertMulti(ctx context.Context, subjects []*%s) ([]%s, error)", g.StructName, g.KeyFieldType)
+		},
+		"UpdateMultiFunc": func() string {
+			return fmt.Sprintf("UpdateMulti(ctx context.Context, subjects []*%s) error", g.StructName)
+		},
+		"DeleteMultiFunc": func() string {
+			return fmt.Sprintf("DeleteMulti(ctx context.Context, subjects []*%s, options ...DeleteOption) error", g.StructName)
+		},
+		"DeleteMultiByFunc": func() string {
+			raw := fmt.Sprintf(
+				"DeleteMultiBy%s(ctx context.Context, %s []%s, options ...DeleteOption) error",
+				plural.Convert(g.KeyFieldName), plural.Convert(g.KeyValueName), g.KeyFieldType,
+			)
+			return raw
+		},
+		"ListFunc": func() string {
+			return fmt.Sprintf(
+				"List(ctx context.Context, req *%sListReq, q *firestore.Query) ([]*%s, error)",
+				g.StructName, g.StructName)
 		},
 	}
 }
