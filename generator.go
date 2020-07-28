@@ -166,6 +166,14 @@ func (g *generator) generateQuery(writer io.Writer) {
 	}
 }
 
+func (g *generator) metaJudgment() string {
+	options := "_"
+	if len(g.MetaFields) > 0 {
+		options = "options"
+	}
+	return options
+}
+
 func (g *generator) setFuncMap() template.FuncMap {
 	return template.FuncMap{
 		"Parse": func(fieldType string) string {
@@ -203,13 +211,9 @@ func (g *generator) setFuncMap() template.FuncMap {
 			return raw
 		},
 		"GetWithDocFunc": func() string {
-			options := "_"
-			if len(g.MetaFields) > 0 {
-				options = "options"
-			}
 			raw := fmt.Sprintf(
 				"GetWithDoc(ctx context.Context, doc *firestore.DocumentRef, %s ...GetOption) (*%s, error)",
-				options, g.StructName,
+				g.metaJudgment(), g.StructName,
 			)
 			return raw
 		},
@@ -230,13 +234,9 @@ func (g *generator) setFuncMap() template.FuncMap {
 			return raw
 		},
 		"GetMultiFunc": func() string {
-			options := "_"
-			if len(g.MetaFields) > 0 {
-				options = "options"
-			}
 			raw := fmt.Sprintf(
 				"GetMulti(ctx context.Context, %s []%s, %s ...GetOption) ([]*%s, error)",
-				plural.Convert(g.KeyValueName), g.KeyFieldType, options, g.StructName,
+				plural.Convert(g.KeyValueName), g.KeyFieldType, g.metaJudgment(), g.StructName,
 			)
 			return raw
 		},
