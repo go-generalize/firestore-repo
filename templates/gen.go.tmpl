@@ -157,15 +157,20 @@ func (repo *{{ .RepositoryStructName }}) GetCollectionName() string {
 func (repo *{{ .RepositoryStructName }}) GetDocRef(id string) *firestore.DocumentRef {
 	return repo.GetCollection().Doc(id)
 }
-
+{{ $MetaName := .OmitMetaName }}
 // {{ .StructName }}ListReq List取得時に渡すリクエスト
 // └─ bool/int(64)|float64 は stringの独自型で渡す(BoolCriteria | NumericCriteria)
 type {{ .StructName }}ListReq struct {
 {{- range .FieldInfos }}
+{{- if ne $MetaName .Field }}
 	{{ .Field }}{{ .Space }} *RequestField
 {{- end }}
+{{- end }}
 {{- if .MetaFields }}
-	IncludeSoftDeleted bool
+{{- range $key, $value := .MetaFields }}
+	{{ $key }}{{ $value.Space }} *RequestField
+{{- end }}
+	IncludeSoftDeleted{{ .IncludeSoftDeletedSpace }}bool
 {{- end  }}
 }
 
@@ -177,26 +182,34 @@ func (repo *{{ .RepositoryStructName }}) {{ ListFunc }} {
 	var query firestore.Query
 	if q == nil {
 		ref := repo.GetCollection()
-
+{{ $Meta := .MetaFields }}
 {{- range $fi := .FieldInfos }}
-{{- $IsSlice := HasSlice $fi.FieldType}}
-{{- $IsMap := HasMap $fi.FieldType}}
+{{- if eq $MetaName $fi.Field }}
+{{- 	range $key, $value := $Meta }}
+		if req.{{ $key }} != nil {
+			ref.Query = ref.Query.Where("{{ $key }}", req.{{ $key }}.Operator, req.{{ $key }}.Value)
+		}
+{{- 	end }}
+{{- else }}
+{{- 	$IsSlice := HasSlice $fi.FieldType }}
+{{- 	$IsMap := HasMap $fi.FieldType }}
 		if req.{{ $fi.Field }} != nil {
-{{- 	if eq $IsMap true }}
+{{- 		if eq $IsMap true }}
 			if items := req.{{ $fi.Field }}.Value.({{ $fi.FieldType }}); len(items) > 0 {
 				for key, value := range items {
 					ref.Query = ref.Query.Where("{{ $fi.FsTag }}."+key, req.{{ $fi.Field }}.Operator, value)
 				}
 			}
-{{- 	else if eq $IsSlice true }}
+{{- 		else if eq $IsSlice true }}
 			if value := req.{{ $fi.Field }}.Value.({{ $fi.FieldType }}); len(value) > 0 {
 				dedupe.Do(&value)
 				ref.Query = ref.Query.Where("{{ $fi.FsTag }}", req.{{ $fi.Field }}.Operator, value)
 			}
-{{- 	else }}
+{{- 		else }}
 			ref.Query = ref.Query.Where("{{ $fi.FsTag }}", req.{{ $fi.Field }}.Operator, req.{{ $fi.Field }}.Value)
-{{- 	end }}
+{{- 		end }}
 		}
+{{- 	end }}
 {{- end }}
 
 		query = ref.Query

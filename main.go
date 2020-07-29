@@ -119,7 +119,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 	dupMap := make(map[string]int)
 	fieldLabel = gen.StructName + queryLabel
 
-	var metaList map[string]Field
+	var metaList map[string]*Field
 	metaFieldName := ""
 	if !*disableMeta {
 		var err error
@@ -128,7 +128,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		if err != nil {
 			return err
 		}
-		metaList = make(map[string]Field)
+		metaList = make(map[string]*Field)
 		for _, m := range metas {
 			metaFiledPath := strings.Split(m.ParentPath, ".")
 			metaFieldName = metaFiledPath[len(metaFiledPath)-1]
@@ -154,6 +154,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 
 			if !*disableMeta && name == metaFieldName {
 				isMetaFiled = true
+				gen.OmitMetaName = name
 			}
 		} else {
 			name = field.Names[0].Name

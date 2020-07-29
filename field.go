@@ -13,6 +13,7 @@ type Field struct {
 	ParentPath string
 	IsEmbed    bool
 	IsPointer  bool
+	Space      string
 }
 
 type MetaField struct {
@@ -24,8 +25,8 @@ type MetaField struct {
 	FindIsPointer    bool
 }
 
-func listAllField(field *ast.FieldList, parentName string, isEmbed bool) []Field {
-	result := make([]Field, 0)
+func listAllField(field *ast.FieldList, parentName string, isEmbed bool) []*Field {
+	result := make([]*Field, 0)
 
 	for _, f := range field.List {
 		name := ""
@@ -68,7 +69,7 @@ func listAllField(field *ast.FieldList, parentName string, isEmbed bool) []Field
 			isCurrentEmbed = true
 		}
 
-		result = append(result, Field{
+		result = append(result, &Field{
 			Name:       name,
 			Type:       typeName,
 			ParentPath: parentName,
@@ -106,7 +107,7 @@ func listAllField(field *ast.FieldList, parentName string, isEmbed bool) []Field
 	return result
 }
 
-func searchMetaProperties(fields []Field) ([]Field, error) {
+func searchMetaProperties(fields []*Field) ([]*Field, error) {
 	targetsMap := map[string]*MetaField{
 		"CreatedAt": {
 			Require:     true,
@@ -139,7 +140,7 @@ func searchMetaProperties(fields []Field) ([]Field, error) {
 		},
 	}
 
-	res := make([]Field, 0, len(targetsMap))
+	res := make([]*Field, 0, len(targetsMap))
 
 	for _, f := range fields {
 		if m, ok := targetsMap[f.Name]; ok {
