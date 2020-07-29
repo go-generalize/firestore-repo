@@ -35,20 +35,14 @@ type FieldInfo struct {
 	FsTag     string
 	Field     string
 	FieldType string
-	Operator  Operator
 	Space     string
 	Indexes   []*IndexesInfo
-}
-
-type ImportInfo struct {
-	Name string
 }
 
 type generator struct {
 	AppVersion        string
 	PackageName       string
 	ImportName        string
-	ImportList        []ImportInfo
 	GeneratedFileName string
 	FileName          string
 	StructName        string
@@ -62,7 +56,6 @@ type generator struct {
 
 	FieldInfos []*FieldInfo
 
-	ExistLatLng         bool
 	EnableIndexes       bool
 	FieldInfoForIndexes *FieldInfo
 	BoolCriteriaCnt     int
@@ -78,27 +71,7 @@ func (g *generator) setting() {
 	g.AppVersion = AppVersion
 	g.RepositoryInterfaceName = g.StructName + "Repository"
 	g.RepositoryStructName = strcase.ToLowerCamel(g.RepositoryInterfaceName)
-	g.buildConditions()
 	g.insertSpace()
-}
-
-func (g *generator) buildConditions() {
-	dedupe := make(map[string]bool)
-	for _, field := range g.FieldInfos {
-		ft := field.FieldType
-		switch ft {
-		case "time.Time":
-			if _, ok := dedupe[ft]; !ok {
-				dedupe[ft] = true
-				g.ImportList = append(g.ImportList, ImportInfo{strings.Split(ft, ".")[0]})
-			}
-		case "*latlng.LatLng":
-			if _, ok := dedupe[ft]; !ok {
-				dedupe[ft] = true
-				g.ExistLatLng = true
-			}
-		}
-	}
 }
 
 func (g *generator) insertSpace() {
