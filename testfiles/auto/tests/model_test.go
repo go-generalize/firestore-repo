@@ -216,7 +216,7 @@ func TestFirestoreQueryTask(t *testing.T) {
 
 	t.Run("int(1件)", func(tr *testing.T) {
 		req := &model.TaskListReq{
-			Count: model.NumericCriteriaBase.Parse(1),
+			Count: model.NewRequestField(1),
 		}
 
 		tasks, err := taskRepo.List(ctx, req, nil)
@@ -231,7 +231,7 @@ func TestFirestoreQueryTask(t *testing.T) {
 
 	t.Run("int64(5件)", func(tr *testing.T) {
 		req := &model.TaskListReq{
-			Count64: model.NumericCriteriaBase.Parse(5),
+			Count64: model.NewRequestField(5).LessThanOrEqual(),
 		}
 
 		tasks, err := taskRepo.List(ctx, req, nil)
@@ -246,7 +246,7 @@ func TestFirestoreQueryTask(t *testing.T) {
 
 	t.Run("float(1件)", func(tr *testing.T) {
 		req := &model.TaskListReq{
-			Proportion: model.NumericCriteriaBase.Parse(1.12345),
+			Proportion: model.NewRequestField(1.12345),
 		}
 
 		tasks, err := taskRepo.List(ctx, req, nil)
@@ -261,7 +261,7 @@ func TestFirestoreQueryTask(t *testing.T) {
 
 	t.Run("bool(10件)", func(tr *testing.T) {
 		req := &model.TaskListReq{
-			Done: model.BoolCriteriaTrue,
+			Done: model.NewRequestField(true),
 		}
 
 		tasks, err := taskRepo.List(ctx, req, nil)
@@ -276,7 +276,7 @@ func TestFirestoreQueryTask(t *testing.T) {
 
 	t.Run("time.Time(10件)", func(tr *testing.T) {
 		req := &model.TaskListReq{
-			Created: now,
+			Created: model.NewRequestField(now),
 		}
 
 		tasks, err := taskRepo.List(ctx, req, nil)
@@ -291,7 +291,7 @@ func TestFirestoreQueryTask(t *testing.T) {
 
 	t.Run("[]string(10件)", func(tr *testing.T) {
 		req := &model.TaskListReq{
-			NameList: []string{"a", "b"},
+			NameList: model.NewRequestField([]string{"a", "b"}).ArrayContainsAny(),
 		}
 
 		tasks, err := taskRepo.List(ctx, req, nil)
@@ -306,11 +306,11 @@ func TestFirestoreQueryTask(t *testing.T) {
 
 	t.Run("Flag(10件)", func(tr *testing.T) {
 		req := &model.TaskListReq{
-			Flag: map[string]float64{
+			Flag: model.NewRequestField(map[string]float64{
 				"1": 1.1,
 				"2": 2.2,
 				"3": 3.3,
-			},
+			}),
 		}
 
 		tasks, err := taskRepo.List(ctx, req, nil)
