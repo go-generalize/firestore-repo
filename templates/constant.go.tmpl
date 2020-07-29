@@ -3,65 +3,114 @@
 package {{ .PackageName }}
 
 import (
-	"log"
-	"strconv"
+	"fmt"
+	"time"
+
+	"cloud.google.com/go/firestore"
+	"google.golang.org/genproto/googleapis/type/latlng"
 )
-
-type BoolCriteria string
-
-const (
-	BoolCriteriaEmpty BoolCriteria = ""
-	BoolCriteriaTrue  BoolCriteria = "true"
-	BoolCriteriaFalse BoolCriteria = "false"
-)
-
-func (src BoolCriteria) Bool() bool {
-	return src == BoolCriteriaTrue
-}
-
-type NumericCriteria string
-
-const (
-	NumericCriteriaEmpty NumericCriteria = ""
-	NumericCriteriaBase  NumericCriteria = "0"
-)
-
-func (str NumericCriteria) Parse(i interface{}) NumericCriteria {
-	switch x := i.(type) {
-	case int:
-		return NumericCriteria(strconv.Itoa(x))
-	case int64:
-		return NumericCriteria(strconv.FormatInt(x, 10))
-	case float64:
-		return NumericCriteria(strconv.FormatFloat(x, 'f', -1, 64))
-	default:
-		log.Println("invalid NumericCriteria value")
-	}
-	return NumericCriteriaEmpty
-}
-
-func (str NumericCriteria) Int() int {
-	i32, err := strconv.Atoi(string(str))
-	if err != nil {
-		return -1
-	}
-	return i32
-}
-
-func (str NumericCriteria) Int64() int64 {
-	i64, err := strconv.ParseInt(string(str), 10, 64)
-	if err != nil {
-		return -1
-	}
-	return i64
-}
-
-func (str NumericCriteria) Float64() float64 {
-	f64, err := strconv.ParseFloat(string(str), 64)
-	if err != nil {
-		return -1
-	}
-	return f64
-}
 
 const DeletedError = "already been deleted"
+
+// OpType - operator type
+type OpType = string
+
+const (
+	OpTypeEqual              OpType = "=="
+	OpTypeLessThan           OpType = "<"
+	OpTypeLessThanOrEqual    OpType = "<="
+	OpTypeGreaterThan        OpType = ">"
+	OpTypeGreaterThanOrEqual OpType = ">="
+	OpTypeIn                 OpType = "in"
+	OpTypeArrayContains      OpType = "array-contains"
+	OpTypeArrayContainsAny   OpType = "array-contains-any"
+)
+
+// RequestField - list request field
+type RequestField struct {
+	Type     string
+	Operator OpType
+	Value    interface{}
+}
+
+// NewRequestField - constructor
+func NewRequestField(v interface{}) *RequestField {
+	switch x := v.(type) {
+	case bool, []bool,
+		string, []string,
+		int, []int,
+		int64, []int64,
+		float64, []float64,
+		*latlng.LatLng, []*latlng.LatLng,
+		*firestore.DocumentRef, []*firestore.DocumentRef,
+		map[string]bool,
+		map[string]string,
+		map[string]int,
+		map[string]int64,
+		map[string]float64:
+		// ok
+	case time.Time:
+		v = SetLastThreeToZero(x)
+	case []time.Time:
+		after := make([]time.Time, len(x), len(x))
+		for n, t := range x {
+			after[n] = SetLastThreeToZero(t)
+		}
+		v = after
+	default:
+		panic(fmt.Sprintf("unsupported types: %#v", v))
+	}
+
+	return &RequestField{
+		Operator: "==",
+		Value:    v,
+	}
+}
+
+// Equal - change operator
+func (r *RequestField) Equal() *RequestField {
+	r.Operator = OpTypeEqual
+	return r
+}
+
+// LessThan - change operator
+func (r *RequestField) LessThan() *RequestField {
+	r.Operator = OpTypeLessThan
+	return r
+}
+
+// LessThanOrEqual - change operator
+func (r *RequestField) LessThanOrEqual() *RequestField {
+	r.Operator = OpTypeLessThanOrEqual
+	return r
+}
+
+// GreaterThan - change operator
+func (r *RequestField) GreaterThan() *RequestField {
+	r.Operator = OpTypeGreaterThan
+	return r
+}
+
+// GreaterThanOrEqual - change operator
+func (r *RequestField) GreaterThanOrEqual() *RequestField {
+	r.Operator = OpTypeGreaterThanOrEqual
+	return r
+}
+
+// In - change operator
+func (r *RequestField) In() *RequestField {
+	r.Operator = OpTypeIn
+	return r
+}
+
+// ArrayContains - change operator
+func (r *RequestField) ArrayContains() *RequestField {
+	r.Operator = OpTypeArrayContains
+	return r
+}
+
+// ArrayContainsAny - change operator
+func (r *RequestField) ArrayContainsAny() *RequestField {
+	r.Operator = OpTypeArrayContainsAny
+	return r
+}
