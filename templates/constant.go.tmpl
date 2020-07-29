@@ -5,6 +5,8 @@ package {{ .PackageName }}
 import (
 	"log"
 	"strconv"
+
+	"golang.org/x/xerrors"
 )
 
 type BoolCriteria string
@@ -64,4 +66,7 @@ func (str NumericCriteria) Float64() float64 {
 	return f64
 }
 
-const DeletedError = "already been deleted"
+var (
+	ErrAlreadyDeleted  = xerrors.New("already been deleted")
+	ErrNotFound        = xerrors.New("not found")
+)

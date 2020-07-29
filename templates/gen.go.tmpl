@@ -23,6 +23,8 @@ import (
 {{- if eq .ExistLatLng true }}
 	"google.golang.org/genproto/googleapis/type/latlng"
 {{- end }}
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 {{ $generate := "go:generate" }}
 //{{ $generate }} mockgen -source {{ .GeneratedFileName }}.go -destination mock/mock_{{ .GeneratedFileName }}/mock_{{ .GeneratedFileName }}.go
@@ -353,6 +355,9 @@ func (repo *{{ .RepositoryStructName }}) {{ GetFunc }} {
 func (repo *{{ .RepositoryStructName }}) {{ GetWithDocFunc }} {
 	snapShot, err := doc.Get(ctx)
 	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			return nil, ErrNotFound
+		}
 		return nil, xerrors.Errorf("error in Get method: %w", err)
 	}
 
@@ -363,7 +368,7 @@ func (repo *{{ .RepositoryStructName }}) {{ GetWithDocFunc }} {
 {{ if .MetaFields }}
 	if len(options) == 0 || !options[0].IncludeSoftDeleted {
 		if subject.DeletedAt != nil {
-			return nil, xerrors.New(DeletedError)
+			return nil, ErrAlreadyDeleted
 		}
 	}
 {{- end }}
@@ -392,6 +397,9 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertFunc }} {
 	ref := repo.GetCollection().Doc(subject.{{ .KeyFieldName }})
 
 	if _, err := ref.Get(ctx); err == nil {
+		if status.Code(err) == codes.NotFound {
+			return "", ErrNotFound
+		}
 		return "", xerrors.Errorf("already exist [%s]", ref.ID)
 	}
 
@@ -409,6 +417,9 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateFunc }} {
 
 	{{ if .MetaFields }}snapShot{{ else }}_{{ end }}, err := ref.Get(ctx)
 	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			return ErrNotFound
+		}
 		return xerrors.Errorf("error in Get method: %w", err)
 	}
 {{- if .MetaFields }}
@@ -435,6 +446,9 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteFunc }} {
 	ref := repo.GetCollection().Doc(subject.{{ .KeyFieldName }})
 	snapShot, err := ref.Get(ctx)
 	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			return ErrNotFound
+		}
 		return xerrors.Errorf("error in Get method: %w", err)
 	}
 	old := new({{ .StructName }})
@@ -532,6 +546,9 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiFunc }} {
 		} else {
 			ref = collect.Doc(subject.{{ .KeyFieldName }})
 			if s, err := ref.Get(ctx); err == nil {
+				if status.Code(err) == codes.NotFound {
+					return nil, ErrNotFound
+				}
 				return nil, xerrors.Errorf("error in Get method [%s]: %w", subject.{{ .KeyFieldName }}, s)
 			}
 		}
@@ -564,6 +581,9 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiFunc }} {
 		ref := collect.Doc(subject.{{ .KeyFieldName }})
 		{{ if .MetaFields }}snapShot{{ else }}_{{ end }}, err := ref.Get(ctx)
 		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				return ErrNotFound
+			}
 			return xerrors.Errorf("error in Get method [%s]: %w", subject.{{ .KeyFieldName }}, err)
 		}
 
@@ -608,6 +628,9 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiFunc }} {
 		ref := collect.Doc(subject.{{ .KeyFieldName }})
 		snapShot, err := ref.Get(ctx)
 		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				return ErrNotFound
+			}
 			return xerrors.Errorf("error in Get method: %w", err)
 		}
 		old := new({{ .StructName }})
