@@ -9,12 +9,7 @@ import (
 {{- end }}
 
 	"cloud.google.com/go/firestore"
-{{- if and (eq .SliceExist true) (eq .EnableIndexes false) }}
 	"github.com/go-utils/dedupe"
-{{- end }}
-{{- if eq .EnableIndexes true }}
-	"github.com/knightso/xian"
-{{- end }}
 	"golang.org/x/xerrors"
 	"google.golang.org/api/iterator"
 )
@@ -163,12 +158,12 @@ func (repo *{{ .RepositoryStructName }}) GetDocRef(id string) *firestore.Documen
 type {{ .StructName }}ListReq struct {
 {{- range .FieldInfos }}
 {{- if ne $MetaName .Field }}
-	{{ .Field }}{{ .Space }} *RequestField
+	{{ .Field }}{{ .Space }} *QueryChainer
 {{- end }}
 {{- end }}
 {{- if .MetaFields }}
 {{- range $key, $value := .MetaFields }}
-	{{ $key }}{{ $value.Space }} *RequestField
+	{{ $key }}{{ $value.Space }} *QueryChainer
 {{- end }}
 	IncludeSoftDeleted{{ .IncludeSoftDeletedSpace }}bool
 {{- end  }}
@@ -187,7 +182,14 @@ func (repo *{{ .RepositoryStructName }}) {{ ListFunc }} {
 {{- if eq $MetaName $fi.Field }}
 {{- 	range $key, $value := $Meta }}
 		if req.{{ $key }} != nil {
-			ref.Query = ref.Query.Where("{{ $key }}", req.{{ $key }}.Operator, req.{{ $key }}.Value)
+			for _, chain := range req.{{ $key }}.QueryGroup {
+				if chain.IsSlice() && chain.Operator == OpTypeIn {
+					dedupe.Do(&chain.Value)
+					ref.Query = ref.Query.Where("{{ $key }}", chain.Operator, chain.Value)
+					continue
+				}
+				ref.Query = ref.Query.Where("{{ $key }}", chain.Operator, chain.Value)
+			}
 		}
 {{- 	end }}
 {{- else }}
@@ -195,18 +197,35 @@ func (repo *{{ .RepositoryStructName }}) {{ ListFunc }} {
 {{- 	$IsMap := HasMap $fi.FieldType }}
 		if req.{{ $fi.Field }} != nil {
 {{- 		if eq $IsMap true }}
-			if items := req.{{ $fi.Field }}.Value.({{ $fi.FieldType }}); len(items) > 0 {
-				for key, value := range items {
-					ref.Query = ref.Query.Where("{{ $fi.FsTag }}."+key, req.{{ $fi.Field }}.Operator, value)
+			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
+				if items, ok := chain.Value.({{ $fi.FieldType }}); ok {
+					for key, value := range items {
+						if IsSlice(value) {
+							ref.Query = ref.Query.Where("{{ $fi.FsTag }}."+key, OpTypeArrayContains, value)
+							continue
+						}
+						ref.Query = ref.Query.Where("{{ $fi.FsTag }}."+key, chain.Operator, value)
+					}
 				}
 			}
 {{- 		else if eq $IsSlice true }}
-			if value := req.{{ $fi.Field }}.Value.({{ $fi.FieldType }}); len(value) > 0 {
-				dedupe.Do(&value)
-				ref.Query = ref.Query.Where("{{ $fi.FsTag }}", req.{{ $fi.Field }}.Operator, value)
+			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
+				dedupe.Do(&chain.Value)
+				if !chain.IsSlice() && chain.Operator == OpTypeArrayContains {
+					ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
+					continue
+				}
+				ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
 			}
 {{- 		else }}
-			ref.Query = ref.Query.Where("{{ $fi.FsTag }}", req.{{ $fi.Field }}.Operator, req.{{ $fi.Field }}.Value)
+			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
+				if chain.IsSlice() && chain.Operator == OpTypeIn {
+					dedupe.Do(&chain.Value)
+					ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
+					continue
+				}
+				ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
+			}
 {{- 		end }}
 		}
 {{- 	end }}
