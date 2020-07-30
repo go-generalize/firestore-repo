@@ -152,10 +152,20 @@ func (g *generator) generateMisc(writer io.Writer) {
 	}
 }
 
-func (g *generator) generateQuery(writer io.Writer) {
-	contents := getFileContents("query")
+func (g *generator) generateQueryBuilder(writer io.Writer) {
+	contents := getFileContents("query_builder")
 
-	t := template.Must(template.New("TemplateQuery").Parse(contents))
+	t := template.Must(template.New("TemplateQueryBuilder").Parse(contents))
+
+	if err := t.Execute(writer, g); err != nil {
+		log.Printf("failed to execute template: %+v", err)
+	}
+}
+
+func (g *generator) generateQueryChainer(writer io.Writer) {
+	contents := getFileContents("query_chainer")
+
+	t := template.Must(template.New("TemplateQueryChainer").Parse(contents))
 
 	if err := t.Execute(writer, g); err != nil {
 		log.Printf("failed to execute template: %+v", err)

@@ -283,12 +283,21 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 	}
 
 	{
-		fp, err := os.Create("query_gen.go")
+		fp, err := os.Create("query_builder_gen.go")
 		if err != nil {
 			panic(err)
 		}
 		defer fp.Close()
-		gen.generateQuery(fp)
+		gen.generateQueryBuilder(fp)
+	}
+
+	{
+		fp, err := os.Create("query_chain_gen.go")
+		if err != nil {
+			panic(err)
+		}
+		defer fp.Close()
+		gen.generateQueryChainer(fp)
 	}
 
 	return nil
