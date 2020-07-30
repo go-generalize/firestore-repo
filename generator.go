@@ -64,9 +64,8 @@ type generator struct {
 	AutomaticGeneration bool
 	IsSubCollection     bool
 
-	MetaFields              map[string]*Field
-	OmitMetaName            string
-	IncludeSoftDeletedSpace string
+	MetaFields   map[string]*Field
+	OmitMetaName string
 }
 
 func (g *generator) setting() {
@@ -77,13 +76,7 @@ func (g *generator) setting() {
 }
 
 func (g *generator) insertSpace() {
-	var base int
-
-	if len(g.MetaFields) > 0 {
-		base = len("IncludeSoftDeleted")
-	}
-
-	max := base
+	var max int
 	for _, x := range g.FieldInfos {
 		if size := len(x.Field); size > max {
 			max = size
@@ -95,10 +88,6 @@ func (g *generator) insertSpace() {
 			if size := len(k); size > max {
 				max = size
 			}
-		}
-		g.IncludeSoftDeletedSpace = " "
-		if max > base {
-			g.IncludeSoftDeletedSpace = strings.Repeat(" ", max-base)
 		}
 		for k, v := range g.MetaFields {
 			v.Space = strings.Repeat(" ", max-len(k))

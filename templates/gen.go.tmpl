@@ -165,7 +165,8 @@ type {{ .StructName }}ListReq struct {
 {{- range $key, $value := .MetaFields }}
 	{{ $key }}{{ $value.Space }} *QueryChainer
 {{- end }}
-	IncludeSoftDeleted{{ .IncludeSoftDeletedSpace }}bool
+
+	IncludeSoftDeleted bool
 {{- end  }}
 }
 
