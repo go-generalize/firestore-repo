@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"go/ast"
-	"strings"
 
 	"golang.org/x/xerrors"
 )
@@ -107,15 +106,7 @@ func listAllField(field *ast.FieldList, parentName string, isEmbed bool) []Field
 	return result
 }
 
-func searchMetaProperties(fields []Field) ([]Field, string, error) {
-	for _, f := range fields {
-		n := strings.ToLower(f.Name)
-		if f.Name == f.Type && strings.HasSuffix(n, "meta") {
-			metaFiledPath := strings.Split(f.Name, ".")
-			return fields, metaFiledPath[len(metaFiledPath)-1], nil
-		}
-	}
-
+func searchMetaProperties(fields []Field) ([]Field, error) {
 	targetsMap := map[string]*MetaField{
 		"CreatedAt": {
 			Require:     true,
@@ -149,7 +140,6 @@ func searchMetaProperties(fields []Field) ([]Field, string, error) {
 	}
 
 	res := make([]Field, 0, len(targetsMap))
-	metaFieldName := ""
 
 	for _, f := range fields {
 		if m, ok := targetsMap[f.Name]; ok {
@@ -158,26 +148,23 @@ func searchMetaProperties(fields []Field) ([]Field, string, error) {
 			m.FindType = f.Type
 			m.FindIsPointer = f.IsPointer
 		}
-
-		metaFiledPath := strings.Split(f.ParentPath, ".")
-		metaFieldName = metaFiledPath[len(metaFiledPath)-1]
 	}
 
 	for filedName, t := range targetsMap {
 		if !t.Find && t.Require {
-			return nil, "", xerrors.Errorf("%s is require", filedName)
+			return nil, xerrors.Errorf("%s is require", filedName)
 		}
 		if t.Find && t.RequireType != t.FindType {
-			return nil, "", xerrors.Errorf("%s must be type %s", filedName, t.RequireType)
+			return nil, xerrors.Errorf("%s must be type %s", filedName, t.RequireType)
 		}
 		if t.Find && t.RequireIsPointer != t.FindIsPointer {
 			p := "pointer"
 			if !t.RequireIsPointer {
 				p = "not pointer"
 			}
-			return nil, "", xerrors.Errorf("%s must be %s", filedName, p)
+			return nil, xerrors.Errorf("%s must be %s", filedName, p)
 		}
 	}
 
-	return res, metaFieldName, nil
+	return res, nil
 }
