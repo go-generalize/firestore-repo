@@ -124,14 +124,13 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 	if !*disableMeta {
 		var err error
 		fList := listAllField(structType.Fields, "", false)
-		metas, err := searchMetaProperties(fList)
+		metas, mfn, err := searchMetaProperties(fList)
 		if err != nil {
 			return err
 		}
+		metaFieldName = mfn
 		metaList = make(map[string]Field)
 		for _, m := range metas {
-			metaFiledPath := strings.Split(m.ParentPath, ".")
-			metaFieldName = metaFiledPath[len(metaFiledPath)-1]
 			metaList[m.Name] = m
 		}
 	}
