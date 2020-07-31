@@ -157,8 +157,8 @@ func (qb *QueryBuilder) In(path string, value interface{}) *QueryBuilder {
 	case reflect.Slice, reflect.Array:
 		if rv.Len() > 10 {
 			qb.errs = append(qb.errs, newErrs(OpTypeArrayContainsAny, path, notLessThan10, value))
-		return qb
-	}
+			return qb
+		}
 	default:
 		qb.errs = append(qb.errs, newErrs(OpTypeIn, path, allowArrayOrSlice, value))
 		return qb
@@ -188,8 +188,8 @@ func (qb *QueryBuilder) ArrayContainsAny(path string, value interface{}) *QueryB
 	case reflect.Slice, reflect.Array:
 		if rv.Len() > 10 {
 			qb.errs = append(qb.errs, newErrs(OpTypeArrayContainsAny, path, notLessThan10, value))
-		return qb
-	}
+			return qb
+		}
 	default:
 		qb.errs = append(qb.errs, newErrs(OpTypeArrayContainsAny, path, allowArrayOrSlice, value))
 		return qb
