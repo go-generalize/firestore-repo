@@ -453,7 +453,7 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiFunc }} {
 		} else {
 			ref = collect.Doc(subject.{{ .KeyFieldName }})
 			if s, err := ref.Get(ctx); err == nil {
-				return nil, xerrors.Errorf("error in Get method [%s]: %+v", subject.{{ .KeyFieldName }}, s)
+				return nil, xerrors.Errorf("already exists [%s]: %v", subject.{{ .KeyFieldName }}, s)
 			}
 		}
 		batch.Set(ref, subject)
