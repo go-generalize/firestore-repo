@@ -10,20 +10,7 @@ import (
 	"google.golang.org/genproto/googleapis/type/latlng"
 )
 
-// OpType - operator type
-type OpType = string
-
-const (
-	OpTypeEqual              OpType = "=="
-	OpTypeLessThan           OpType = "<"
-	OpTypeLessThanOrEqual    OpType = "<="
-	OpTypeGreaterThan        OpType = ">"
-	OpTypeGreaterThanOrEqual OpType = ">="
-	OpTypeIn                 OpType = "in"
-	OpTypeArrayContains      OpType = "array-contains"
-	OpTypeArrayContainsAny   OpType = "array-contains-any"
-)
-
+// QueryChainer ...
 type QueryChainer struct {
 	QueryGroup []*Query
 }
@@ -81,6 +68,7 @@ func (q *QueryChainer) ArrayContainsAny(v interface{}) *QueryChainer {
 	return q
 }
 
+// Query ...
 type Query struct {
 	Operator OpType
 	Value    interface{}

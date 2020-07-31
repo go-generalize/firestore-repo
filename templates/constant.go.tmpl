@@ -3,3 +3,17 @@
 package {{ .PackageName }}
 
 const DeletedError = "already been deleted"
+
+// OpType - operator type
+type OpType = string
+
+const (
+	OpTypeEqual              OpType = "=="
+	OpTypeLessThan           OpType = "<"
+	OpTypeLessThanOrEqual    OpType = "<="
+	OpTypeGreaterThan        OpType = ">"
+	OpTypeGreaterThanOrEqual OpType = ">="
+	OpTypeIn                 OpType = "in"
+	OpTypeArrayContains      OpType = "array-contains"
+	OpTypeArrayContainsAny   OpType = "array-contains-any"
+)
