@@ -175,6 +175,10 @@ type {{ .StructName }}ListReq struct {
 //      └─ 基本的にnilを渡せば良い
 // BUG(54m) 潜在的なバグがあるかもしれない
 func (repo *{{ .RepositoryStructName }}) {{ ListFunc }} {
+	if (req == nil && q == nil) || (req != nil && q != nil) {
+		return nil, xerrors.New("either one should be nil")
+	}
+
 	var query firestore.Query
 	if q == nil {
 		ref := repo.GetCollection()
