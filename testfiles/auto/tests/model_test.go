@@ -568,7 +568,7 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 
 	text := "hello"
 
-	t.Run("insert_test", func(t *testing.T) {
+	t.Run("insert_test", func(tr *testing.T) {
 		l := &model.Lock{
 			Text: text,
 			Flag: nil,
@@ -577,7 +577,7 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 
 		id, err := lockRepo.Insert(ctx, l)
 		if err != nil {
-			t.Fatalf("failed to put item: %+v", err)
+			tr.Fatalf("failed to put item: %+v", err)
 		}
 
 		ids = append(ids, id)
@@ -585,21 +585,21 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 		ret, err := lockRepo.Get(ctx, id)
 
 		if err != nil {
-			t.Fatalf("failed to get item: %+v", err)
+			tr.Fatalf("failed to get item: %+v", err)
 		}
 
 		if text != ret.Text {
-			t.Fatalf("unexpected text: %s (expected: %s)", text, ret.Text)
+			tr.Fatalf("unexpected text: %s (expected: %s)", text, ret.Text)
 		}
 		if ret.CreatedAt.IsZero() {
-			t.Fatalf("unexpected createdAt zero:")
+			tr.Fatalf("unexpected createdAt zero:")
 		}
 		if ret.UpdatedAt.IsZero() {
-			t.Fatalf("unexpected updatedAt zero:")
+			tr.Fatalf("unexpected updatedAt zero:")
 		}
 	})
 
-	t.Run("update_test", func(t *testing.T) {
+	t.Run("update_test", func(tr *testing.T) {
 		l := &model.Lock{
 			Text: text,
 			Flag: nil,
@@ -608,7 +608,7 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 
 		id, err := lockRepo.Insert(ctx, l)
 		if err != nil {
-			t.Fatalf("failed to put item: %+v", err)
+			tr.Fatalf("failed to put item: %+v", err)
 		}
 
 		ids = append(ids, id)
@@ -619,24 +619,24 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 		l.Text = text
 		err = lockRepo.Update(ctx, l)
 		if err != nil {
-			t.Fatalf("failed to update item: %+v", err)
+			tr.Fatalf("failed to update item: %+v", err)
 		}
 
 		ret, err := lockRepo.Get(ctx, id)
 		if err != nil {
-			t.Fatalf("failed to get item: %+v", err)
+			tr.Fatalf("failed to get item: %+v", err)
 		}
 
 		if text != ret.Text {
-			t.Fatalf("unexpected text: %s (expected: %s)", text, ret.Text)
+			tr.Fatalf("unexpected text: %s (expected: %s)", text, ret.Text)
 		}
 		if ret.CreatedAt.Unix() == ret.UpdatedAt.Unix() {
-			t.Fatalf("unexpected createdAt == updatedAt: %d == %d",
+			tr.Fatalf("unexpected createdAt == updatedAt: %d == %d",
 				ret.CreatedAt.Unix(), ret.UpdatedAt.Unix())
 		}
 	})
 
-	t.Run("soft_delete_test", func(t *testing.T) {
+	t.Run("soft_delete_test", func(tr *testing.T) {
 		l := &model.Lock{
 			Text: text,
 			Flag: nil,
@@ -645,7 +645,7 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 
 		id, err := lockRepo.Insert(ctx, l)
 		if err != nil {
-			t.Fatalf("failed to put item: %+v", err)
+			tr.Fatalf("failed to put item: %+v", err)
 		}
 
 		ids = append(ids, id)
@@ -655,25 +655,25 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 			Mode: model.DeleteModeSoft,
 		})
 		if err != nil {
-			t.Fatalf("failed to soft delete item: %+v", err)
+			tr.Fatalf("failed to soft delete item: %+v", err)
 		}
 
 		ret, err := lockRepo.Get(ctx, id, model.GetOption{
 			IncludeSoftDeleted: true,
 		})
 		if err != nil {
-			t.Fatalf("failed to get item: %+v", err)
+			tr.Fatalf("failed to get item: %+v", err)
 		}
 
 		if text != ret.Text {
-			t.Fatalf("unexpected text: %s (expected: %s)", text, ret.Text)
+			tr.Fatalf("unexpected text: %s (expected: %s)", text, ret.Text)
 		}
 		if ret.DeletedAt == nil {
-			t.Fatalf("unexpected deletedAt == nil: %+v", ret.DeletedAt)
+			tr.Fatalf("unexpected deletedAt == nil: %+v", ret.DeletedAt)
 		}
 	})
 
-	t.Run("hard_delete_test", func(t *testing.T) {
+	t.Run("hard_delete_test", func(tr *testing.T) {
 		l := &model.Lock{
 			Text: text,
 			Flag: nil,
@@ -682,24 +682,24 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 
 		id, err := lockRepo.Insert(ctx, l)
 		if err != nil {
-			t.Fatalf("failed to put item: %+v", err)
+			tr.Fatalf("failed to put item: %+v", err)
 		}
 
 		l.Text = text
 		err = lockRepo.Delete(ctx, l)
 		if err != nil {
-			t.Fatalf("failed to hard delete item: %+v", err)
+			tr.Fatalf("failed to hard delete item: %+v", err)
 		}
 
 		ret, err := lockRepo.Get(ctx, id, model.GetOption{
 			IncludeSoftDeleted: true,
 		})
 		if err != nil && !strings.Contains(err.Error(), "not found") {
-			t.Fatalf("failed to get item: %+v", err)
+			tr.Fatalf("failed to get item: %+v", err)
 		}
 
 		if ret != nil {
-			t.Fatalf("failed to delete item (found!): %+v", ret)
+			tr.Fatalf("failed to delete item (found!): %+v", ret)
 		}
 	})
 
