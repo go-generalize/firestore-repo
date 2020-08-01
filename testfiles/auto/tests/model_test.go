@@ -719,6 +719,9 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 		qb := model.NewQueryBuilder(lockRepo.GetCollection())
 		qb.GreaterThanOrEqual("CreatedAt", model.SetLastThreeToZero(l.CreatedAt).Add(-100))
 		qb.LessThanOrEqual("CreatedAt", model.SetLastThreeToZero(l.CreatedAt).Add(100))
+		if err = qb.Check(); err != nil {
+			tr.Fatal(err)
+		}
 
 		locks, err := lockRepo.List(ctx, nil, qb.Query())
 		if err != nil {
