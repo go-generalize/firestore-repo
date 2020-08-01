@@ -27,16 +27,6 @@ var (
 		typeInt64Map,
 		typeFloat64Map,
 	}
-	supportOperators = []Operator{
-		OperatorLessThan,
-		OperatorLessThanOrEqual,
-		OperatorGreaterThan,
-		OperatorGreaterThanOrEqual,
-		OperatorEqual,
-		OperatorIn,
-		OperatorArrayContains,
-		OperatorArrayContainsAny,
-	}
 )
 
 func getFileContents(name string) string {

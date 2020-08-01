@@ -119,7 +119,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 	dupMap := make(map[string]int)
 	fieldLabel = gen.StructName + queryLabel
 
-	var metaList map[string]Field
+	var metaList map[string]*Field
 	metaFieldName := ""
 	if !*disableMeta {
 		var err error
@@ -128,7 +128,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		if err != nil {
 			return err
 		}
-		metaList = make(map[string]Field)
+		metaList = make(map[string]*Field)
 		for _, m := range metas {
 			metaFiledPath := strings.Split(m.ParentPath, ".")
 			metaFieldName = metaFiledPath[len(metaFiledPath)-1]
@@ -154,6 +154,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 
 			if !*disableMeta && name == metaFieldName {
 				isMetaFiled = true
+				gen.OmitMetaName = name
 			}
 		} else {
 			name = field.Names[0].Name
@@ -185,7 +186,6 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 				FsTag:     name,
 				Field:     name,
 				FieldType: typeName,
-				Operator:  OperatorEqual,
 				Indexes:   make([]*IndexesInfo, 0),
 			}
 			appendIndexesInfo(fieldInfo, dupMap)
@@ -206,7 +206,6 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 					FsTag:     name,
 					Field:     name,
 					FieldType: typeName,
-					Operator:  OperatorEqual,
 				}
 				if tag, err := dataStoreTagCheck(pos, tags); err != nil {
 					return xerrors.Errorf("error in tagCheck method: %w", err)
@@ -221,22 +220,10 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 					FsTag:     name,
 					Field:     name,
 					FieldType: typeName,
-					Operator:  OperatorEqual,
 					Indexes:   make([]*IndexesInfo, 0),
 				}
 				if fieldInfo, err = appendIndexer(pos, tags, fieldInfo, dupMap); err != nil {
 					return xerrors.Errorf("error in appendIndexer: %w", err)
-				}
-				if op, err := tags.Get("op"); err == nil {
-					operator := Operator(op.Value())
-					if cont.Contains(supportOperators, operator) {
-						fieldInfo.Operator = operator
-					} else {
-						log.Printf(
-							"%s: tag for %s in struct %s in %s",
-							pos, name, gen.StructName, gen.GeneratedFileName+".go",
-						)
-					}
 				}
 				gen.FieldInfos = append(gen.FieldInfos, fieldInfo)
 				continue
@@ -296,12 +283,21 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 	}
 
 	{
-		fp, err := os.Create("query_gen.go")
+		fp, err := os.Create("query_builder_gen.go")
 		if err != nil {
 			panic(err)
 		}
 		defer fp.Close()
-		gen.generateQuery(fp)
+		gen.generateQueryBuilder(fp)
+	}
+
+	{
+		fp, err := os.Create("query_chain_gen.go")
+		if err != nil {
+			panic(err)
+		}
+		defer fp.Close()
+		gen.generateQueryChainer(fp)
 	}
 
 	return nil

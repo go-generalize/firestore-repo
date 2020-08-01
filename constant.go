@@ -19,16 +19,3 @@ const (
 	typeFloat64Map = "map[string]float64"
 	NgType         = "NG"
 )
-
-type Operator string
-
-const (
-	OperatorLessThan           Operator = "<"
-	OperatorLessThanOrEqual    Operator = "<="
-	OperatorGreaterThan        Operator = ">"
-	OperatorGreaterThanOrEqual Operator = ">="
-	OperatorEqual              Operator = "=="
-	OperatorIn                 Operator = "in"
-	OperatorArrayContains      Operator = "array-contains"
-	OperatorArrayContainsAny   Operator = "array-contains-any"
-)

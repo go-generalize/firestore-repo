@@ -7,22 +7,11 @@ import (
 {{- if .MetaFields }}
 	"time"
 {{- end }}
-{{- range .ImportList }}
-	"{{ .Name }}"
-{{- end }}
 
 	"cloud.google.com/go/firestore"
-{{- if and (eq .SliceExist true) (eq .EnableIndexes false) }}
 	"github.com/go-utils/dedupe"
-{{- end }}
-{{- if eq .EnableIndexes true }}
-	"github.com/knightso/xian"
-{{- end }}
 	"golang.org/x/xerrors"
 	"google.golang.org/api/iterator"
-{{- if eq .ExistLatLng true }}
-	"google.golang.org/genproto/googleapis/type/latlng"
-{{- end }}
 )
 {{ $generate := "go:generate" }}
 //{{ $generate }} mockgen -source {{ .GeneratedFileName }}.go -destination mock/mock_{{ .GeneratedFileName }}/mock_{{ .GeneratedFileName }}.go
@@ -163,65 +152,20 @@ func (repo *{{ .RepositoryStructName }}) GetCollectionName() string {
 func (repo *{{ .RepositoryStructName }}) GetDocRef(id string) *firestore.DocumentRef {
 	return repo.GetCollection().Doc(id)
 }
-
-{{- if eq .EnableIndexes true }}
-// saveIndexes 拡張フィルタを保存する
-func (repo *{{ .RepositoryStructName }}) saveIndexes(subjects ...*{{ .StructName }}) error {
-	for _, subject := range subjects {
-		idx := xian.NewIndexes({{ .StructName }}IndexesConfig)
-{{- range $fi := .FieldInfos }}
-{{- $IsSlice := HasSlice $fi.FieldType}}
-{{- range $idx := $fi.Indexes }}
-{{- if or (eq $fi.FieldType "bool") (eq $fi.FieldType "int" ) (eq $fi.FieldType "int64" ) (eq $fi.FieldType "float64" ) }}
-		idx.{{ $idx.Method }}({{ $idx.ConstName }}, subject.{{ $fi.Field }})
-{{- else if eq $fi.FieldType "string" }}
-{{- if eq $idx.Method "AddPrefix" }}
-		idx.{{ $idx.Method }}es({{ $idx.ConstName }}, subject.{{ $fi.Field }})
-{{- else }}
-		idx.{{ $idx.Method }}({{ $idx.ConstName }}, subject.{{ $fi.Field }})
-{{- end }}
-{{- else if eq $fi.FieldType "time.Time" }}
-		idx.{{ $idx.Method }}({{ $idx.ConstName }}, subject.{{ $fi.Field }}.Unix())
-{{- else if eq $IsSlice true }}
-		idx.{{ $idx.Method }}({{ $idx.ConstName }}, subject.{{ $fi.Field }})
-{{- end }}
-{{- end }}
-{{- end }}
-		built, err := idx.Build()
-		if err != nil {
-			return err
-		}
-		subject.Indexes = built
-	}
-
-	return nil
-}
-
-// {{ .StructName }}IndexesConfig {{ .StructName }}用のIndexesConfigを設定する
-var {{ .StructName }}IndexesConfig = &xian.Config{
-	// IgnoreCase Case insensitive
-	//   └──大文字小文字を区別しない
-	IgnoreCase:         true,
-	// SaveNoFiltersIndex 検索時にフィルタを設定しない場合、この拡張フィルタなし検索用インデックスのEquality Filterが自動で適用される
-	//   ├── falseで、拡張フィルタのあり・なしの両パターンの検索がある場合、カスタムインデックスを両パターン分用意しておく必要がある
-	//   └── trueにしておくことでカスタムインデックスを半分に節約することができる
-	SaveNoFiltersIndex: true,
-}
-{{- end }}
-
+{{ $MetaName := .OmitMetaName }}
 // {{ .StructName }}ListReq List取得時に渡すリクエスト
 // └─ bool/int(64)|float64 は stringの独自型で渡す(BoolCriteria | NumericCriteria)
 type {{ .StructName }}ListReq struct {
 {{- range .FieldInfos }}
-{{- if eq .FieldType "bool" }}
-	{{ .Field }}{{ .Space }} BoolCriteria
-{{- else if or (eq .FieldType "int") (eq .FieldType "int64") (eq .FieldType "float64" ) }}
-	{{ .Field }}{{ .Space }} NumericCriteria
-{{- else }}
-	{{ .Field }}{{ .Space }} {{ .FieldType }}
+{{- if ne $MetaName .Field }}
+	{{ .Field }}{{ .Space }} *QueryChainer
 {{- end }}
 {{- end }}
 {{- if .MetaFields }}
+{{- range $key, $value := .MetaFields }}
+	{{ $key }}{{ $value.Space }} *QueryChainer
+{{- end }}
+
 	IncludeSoftDeleted bool
 {{- end  }}
 }
@@ -231,97 +175,79 @@ type {{ .StructName }}ListReq struct {
 //      └─ 基本的にnilを渡せば良い
 // BUG(54m) 潜在的なバグがあるかもしれない
 func (repo *{{ .RepositoryStructName }}) {{ ListFunc }} {
+	if (req == nil && q == nil) || (req != nil && q != nil) {
+		return nil, xerrors.New("either one should be nil")
+	}
+
 	var query firestore.Query
 	if q == nil {
 		ref := repo.GetCollection()
-{{ $Enable := .EnableIndexes }}
-{{- if eq $Enable true }}
-		filters := xian.NewFilters({{ .StructName }}IndexesConfig)
-{{- end }}
+{{ $Meta := .MetaFields }}
 {{- range $fi := .FieldInfos }}
-{{- $IsSlice := HasSlice $fi.FieldType}}
-{{- $IsMap := HasMap $fi.FieldType}}
-{{- if eq $fi.FieldType "bool" }}
-		if req.{{ $fi.Field }} != "" {
-{{- if eq $Enable true }}
-{{- range $idx := $fi.Indexes }}
-			filters.{{ $idx.Method }}({{ $idx.ConstName }}, req.{{ $fi.Field }})
-{{- end }}
-{{- else }}
-			ref.Query = ref.Query.Where("{{ $fi.FsTag }}", "{{ $fi.Operator }}", req.{{ $fi.Field }}.Bool())
-{{- end }}
-		}
-{{- else if eq $fi.FieldType "string" }}
-		if req.{{ $fi.Field }} != "" {
-{{- if eq $Enable true }}
-{{- range $idx := $fi.Indexes }}
-			filters.{{ $idx.Method }}({{ $idx.ConstName }}, req.{{ $fi.Field }})
-{{- end }}
-{{- else }}
-			ref.Query = ref.Query.Where("{{ $fi.FsTag }}", "{{ $fi.Operator }}", req.{{ $fi.Field }})
-{{- end }}
-		}
-{{- else if or (eq $fi.FieldType "int") (eq $fi.FieldType "int64") (eq $fi.FieldType "float64" ) }}
-		if req.{{ $fi.Field }} != NumericCriteriaEmpty {
-{{- if eq $Enable true }}
-{{- range $idx := $fi.Indexes }}
-			filters.{{ $idx.Method }}({{ $idx.ConstName }}, req.{{ $fi.Field }}.{{ Parse $fi.FieldType }}())
-{{- end }}
-{{- else }}
-			ref.Query = ref.Query.Where("{{ $fi.FsTag }}", "{{ $fi.Operator }}", req.{{ $fi.Field }}.{{ Parse $fi.FieldType }}())
-{{- end }}
-		}
-{{- else if eq $fi.FieldType "time.Time" }}
-		if !req.{{ $fi.Field }}.IsZero() {
-{{- if eq $Enable true }}
-{{- range $idx := $fi.Indexes }}
-			filters.{{ $idx.Method }}({{ $idx.ConstName }}, req.{{ $fi.Field }}.Unix())
-{{- end }}
-{{- else }}
-			ref.Query = ref.Query.Where("{{ $fi.FsTag }}", "{{ $fi.Operator }}", SetLastThreeToZero(req.{{ $fi.Field }}))
-{{- end }}
-		}
-{{- else if eq $IsMap true }}
-		if len(req.{{ $fi.Field }}) > 0 {
-			for key, value := range req.{{ $fi.Field }} {
-				ref.Query = ref.Query.Where("{{ $fi.FsTag }}."+key, "{{ $fi.Operator }}", value)
+{{- if eq $MetaName $fi.Field }}
+{{- 	range $key, $value := $Meta }}
+		if req.{{ $key }} != nil {
+			for _, chain := range req.{{ $key }}.QueryGroup {
+				if chain.IsSlice() && chain.Operator == OpTypeIn {
+					dedupe.Do(&chain.Value)
+					ref.Query = ref.Query.Where("{{ $key }}", chain.Operator, chain.Value)
+					continue
+				}
+				ref.Query = ref.Query.Where("{{ $key }}", chain.Operator, chain.Value)
 			}
 		}
-{{- else if eq $IsSlice true }}
-		if len(req.{{ $fi.Field }}) > 0 {
-{{- if eq $Enable true }}
-{{- range $idx := $fi.Indexes }}
-			filters.{{ $idx.Method }}({{ $idx.ConstName }}, req.{{ $fi.Field }})
-{{- end }}
+{{- 	end }}
 {{- else }}
-			dedupe.Do(&req.{{ $fi.Field }})
-			ref.Query = ref.Query.Where("{{ $fi.FsTag }}", "array-contains-any", req.{{ $fi.Field }})
-{{- end }}
-		}
-{{- else if or (eq $fi.FieldType "*latlng.LatLng") (eq $fi.FieldType "*firestore.DocumentRef") }}
+{{- 	$IsSlice := HasSlice $fi.FieldType }}
+{{- 	$IsMap := HasMap $fi.FieldType }}
 		if req.{{ $fi.Field }} != nil {
-			ref.Query = ref.Query.Where("{{ $fi.FsTag }}", "==", req.{{ $fi.Field }})
+{{- 		if eq $IsMap true }}
+			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
+				if items, ok := chain.Value.({{ $fi.FieldType }}); ok {
+					for key, value := range items {
+						if IsSlice(value) {
+							ref.Query = ref.Query.Where("{{ $fi.FsTag }}."+key, OpTypeArrayContains, value)
+							continue
+						}
+						ref.Query = ref.Query.Where("{{ $fi.FsTag }}."+key, chain.Operator, value)
+					}
+				}
+			}
+{{- 		else if eq $IsSlice true }}
+			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
+				dedupe.Do(&chain.Value)
+				if !chain.IsSlice() && chain.Operator == OpTypeArrayContains {
+					ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
+					continue
+				}
+				ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
+			}
+{{- 		else }}
+			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
+				if chain.IsSlice() && chain.Operator == OpTypeIn {
+					dedupe.Do(&chain.Value)
+					ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
+					continue
+				}
+				ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
+			}
+{{- 		end }}
+		}
+{{- 	end }}
+{{- end }}
+
+{{- if .MetaFields }}
+{{- $metaPath := (index .MetaFields "DeletedAt").ParentPath }}
+		if !req.IncludeSoftDeleted {
+			ref.Query = ref.Query.Where("{{ if eq $metaPath "" }}DeletedAt{{ else }}{{ $metaPath }}.DeletedAt{{ end }}", "==", nil)
 		}
 {{- end }}
-{{- end }}
+
 		query = ref.Query
 	} else {
 		query = *q
 	}
-{{- if .MetaFields }}
-{{- $metaPath := (index .MetaFields "DeletedAt").ParentPath }}
-	if !req.IncludeSoftDeleted {
-		query = query.Where("{{ if eq $metaPath "" }}DeletedAt{{ else }}{{ $metaPath }}.DeletedAt{{ end }}", "==", nil)
-	}
-{{- end }}
-{{ if eq $Enable true }}
-	built, err := filters.Build()
-	if err != nil {
-		return nil, xerrors.Errorf("error in Build method: %w", err)
-	}
 
-	query = query.Where("{{ .FieldInfoForIndexes.FsTag }}", "array-contains-any", built)
-{{- end }}
 	subjects := make([]*{{ .StructName }}, 0)
 	iter := query.Documents(ctx)
 	for {
@@ -532,7 +458,7 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiFunc }} {
 		} else {
 			ref = collect.Doc(subject.{{ .KeyFieldName }})
 			if s, err := ref.Get(ctx); err == nil {
-				return nil, xerrors.Errorf("error in Get method [%s]: %w", subject.{{ .KeyFieldName }}, s)
+				return nil, xerrors.Errorf("already exists [%s]: %v", subject.{{ .KeyFieldName }}, s)
 			}
 		}
 		batch.Set(ref, subject)
