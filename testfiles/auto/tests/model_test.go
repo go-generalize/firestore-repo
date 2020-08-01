@@ -558,7 +558,13 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 	lockRepo := model.NewLockRepository(client)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+	ids := make([]string, 0)
+	defer func() {
+		defer cancel()
+		if err := lockRepo.DeleteMultiByIDs(ctx, ids); err != nil {
+			t.Fatal(err)
+		}
+	}()
 
 	text := "hello"
 
@@ -573,6 +579,8 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to put item: %+v", err)
 		}
+
+		ids = append(ids, id)
 
 		ret, err := lockRepo.Get(ctx, id)
 
@@ -602,6 +610,8 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to put item: %+v", err)
 		}
+
+		ids = append(ids, id)
 
 		time.Sleep(1 * time.Second)
 
@@ -637,6 +647,8 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to put item: %+v", err)
 		}
+
+		ids = append(ids, id)
 
 		l.Text = text
 		err = lockRepo.Delete(ctx, l, model.DeleteOption{
@@ -688,6 +700,84 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 
 		if ret != nil {
 			t.Fatalf("failed to delete item (found!): %+v", ret)
+		}
+	})
+
+	t.Run("UseQueryBuilder", func(tr *testing.T) {
+		l := &model.Lock{
+			Text: text,
+			Flag: nil,
+			Meta: model.Meta{},
+		}
+		id, err := lockRepo.Insert(ctx, l)
+		if err != nil {
+			tr.Fatalf("failed to put item: %+v", err)
+		}
+
+		ids = append(ids, id)
+
+		qb := model.NewQueryBuilder(lockRepo.GetCollection())
+		qb.GreaterThanOrEqual("CreatedAt", model.SetLastThreeToZero(l.CreatedAt).Add(-100))
+		qb.LessThanOrEqual("CreatedAt", model.SetLastThreeToZero(l.CreatedAt).Add(100))
+
+		locks, err := lockRepo.List(ctx, nil, qb.Query())
+		if err != nil {
+			tr.Fatalf("%+v", err)
+		}
+
+		if len(locks) != 1 {
+			tr.Fatalf("unexpected length: %d (expected: %d)", len(locks), 1)
+		}
+
+		if id != locks[0].ID {
+			tr.Fatalf("unexpected length: %s (expected: %s)", locks[0].ID, id)
+		}
+	})
+
+	t.Run("UseQueryChainer", func(tr *testing.T) {
+		l := &model.Lock{
+			Text: "Hello",
+			Flag: nil,
+			Meta: model.Meta{},
+		}
+		id, err := lockRepo.Insert(ctx, l)
+		if err != nil {
+			tr.Fatalf("failed to put item: %+v", err)
+		}
+		ids = append(ids, id)
+		l = &model.Lock{
+			Text: "World",
+			Flag: nil,
+			Meta: model.Meta{},
+		}
+		id, err = lockRepo.Insert(ctx, l)
+		if err != nil {
+			tr.Fatalf("failed to put item: %+v", err)
+		}
+		ids = append(ids, id)
+		req := &model.LockListReq{
+			Text:               model.NewQueryChainer().In([]string{"Hello", "World"}),
+			IncludeSoftDeleted: true,
+		}
+		locks, err := lockRepo.List(ctx, req, nil)
+		if err != nil {
+			tr.Fatalf("%+v", err)
+		}
+		if len(locks) != 2 {
+			tr.Fatalf("unexpected length: %d (expected: %d)", len(locks), 2)
+		}
+
+		now := time.Now()
+		req = &model.LockListReq{
+			CreatedAt:          model.NewQueryChainer().GreaterThanOrEqual(now.Add(time.Second * 5 * -1)).LessThanOrEqual(now.Add(time.Second * 5)),
+			IncludeSoftDeleted: true,
+		}
+		locks, err = lockRepo.List(ctx, req, nil)
+		if err != nil {
+			tr.Fatalf("%+v", err)
+		}
+		if len(locks) != 6 {
+			tr.Fatalf("unexpected length: %d (expected: %d)", len(locks), 6)
 		}
 	})
 }
