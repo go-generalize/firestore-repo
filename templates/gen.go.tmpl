@@ -323,7 +323,7 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertFunc }} {
 	ref := repo.GetCollection().Doc(subject.{{ .KeyFieldName }})
 
 	if _, err := ref.Get(ctx); err == nil {
-		return "", xerrors.Errorf("already exist [%s]", ref.ID)
+		return "", ErrAlreadyExists
 	}
 
 	if _, err := ref.Set(ctx, subject); err != nil {
@@ -367,20 +367,14 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateFunc }} {
 // Delete 処理中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteFunc }} {
 	ref := repo.GetCollection().Doc(subject.{{ .KeyFieldName }})
-	snapShot, err := ref.Get(ctx)
-	if err != nil {
+	if _, err := ref.Get(ctx); err != nil {
 		if status.Code(err) == codes.NotFound {
 			return ErrNotFound
 		}
 		return xerrors.Errorf("error in Get method: %w", err)
 	}
-	old := new({{ .StructName }})
-	if err := snapShot.DataTo(old); err != nil {
-		return xerrors.Errorf("error in DataTo method: %w", err)
-	}
 
-	err = repo.beforeDelete(ctx, subject, options...)
-	if err != nil {
+	if err := repo.beforeDelete(ctx, subject, options...); err != nil {
 		return xerrors.Errorf("before delete error: %w", err)
 	}
 {{- if .MetaFields }}
@@ -388,7 +382,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteFunc }} {
 	if len(options) > 0 && options[0].Mode == DeleteModeSoft {
 		t := time.Now()
 		subject.DeletedAt = &t
-		if _, err = ref.Set(ctx, subject); err != nil {
+		if _, err := ref.Set(ctx, subject); err != nil {
 			return xerrors.Errorf("error in Set method: %w", err)
 		}
 	} else {
@@ -469,10 +463,7 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiFunc }} {
 		} else {
 			ref = collect.Doc(subject.{{ .KeyFieldName }})
 			if s, err := ref.Get(ctx); err == nil {
-				if status.Code(err) == codes.NotFound {
-					return nil, ErrNotFound
-				}
-				return nil, xerrors.Errorf("already exists [%s]: %v", subject.{{ .KeyFieldName }}, s)
+				return nil, xerrors.Errorf("already exists [%v]: %#v", subject.{{ .KeyFieldName }}, s)
 			}
 		}
 		batch.Set(ref, subject)
@@ -505,7 +496,7 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiFunc }} {
 		{{ if .MetaFields }}snapShot{{ else }}_{{ end }}, err := ref.Get(ctx)
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
-				return ErrNotFound
+				return xerrors.Errorf("not found [%v]: %w", subject.{{ .KeyFieldName }}, err)
 			}
 			return xerrors.Errorf("error in Get method [%v]: %w", subject.{{ .KeyFieldName }}, err)
 		}
@@ -549,20 +540,14 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiFunc }} {
 
 	for i, subject := range subjects {
 		ref := collect.Doc(subject.{{ .KeyFieldName }})
-		snapShot, err := ref.Get(ctx)
-		if err != nil {
+		if _, err := ref.Get(ctx); err != nil {
 			if status.Code(err) == codes.NotFound {
-				return ErrNotFound
+				return xerrors.Errorf("not found [%v]: %w", subject.{{ .KeyFieldName }}, err)
 			}
-			return xerrors.Errorf("error in Get method: %w", err)
-		}
-		old := new({{ .StructName }})
-		if err := snapShot.DataTo(old); err != nil {
-			return xerrors.Errorf("error in DataTo method: %w", err)
+			return xerrors.Errorf("error in Get method [%v]: %w", subject.{{ .KeyFieldName }}, err)
 		}
 
-		err = repo.beforeDelete(ctx, subject, options...)
-		if err != nil {
+		if err := repo.beforeDelete(ctx, subject, options...); err != nil {
 			return xerrors.Errorf("before delete error: %w", err)
 		}
 {{- if .MetaFields }}
