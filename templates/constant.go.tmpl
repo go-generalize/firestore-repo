@@ -2,7 +2,7 @@
 // generated version: {{ .AppVersion }}
 package {{ .PackageName }}
 
-const DeletedError = "already been deleted"
+import "golang.org/x/xerrors"
 
 // OpType - operator type
 type OpType = string
@@ -16,4 +16,10 @@ const (
 	OpTypeIn                 OpType = "in"
 	OpTypeArrayContains      OpType = "array-contains"
 	OpTypeArrayContainsAny   OpType = "array-contains-any"
+)
+
+var (
+	ErrAlreadyExists  = xerrors.New("already exists")
+	ErrAlreadyDeleted = xerrors.New("already been deleted")
+	ErrNotFound       = xerrors.New("not found")
 )
