@@ -239,9 +239,9 @@ func (repo *{{ .RepositoryStructName }}) {{ ListFunc }} {
 {{- end }}
 
 {{- if .MetaFields }}
-{{- $metaPath := (index .MetaFields "DeletedAt").ParentPath }}
+{{ $metaPath := (index .MetaFields "DeletedAt").ParentPath }}
 		if !req.IncludeSoftDeleted {
-			ref.Query = ref.Query.Where("{{ if eq $metaPath "" }}DeletedAt{{ else }}{{ $metaPath }}.DeletedAt{{ end }}", "==", nil)
+			ref.Query = ref.Query.Where("DeletedAt", OpTypeEqual, nil)
 		}
 {{- end }}
 
