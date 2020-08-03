@@ -109,14 +109,6 @@ func listAllField(field *ast.FieldList, parentName string, isEmbed bool) []*Fiel
 }
 
 func searchMetaProperties(fields []*Field) ([]*Field, string, error) {
-	for _, f := range fields {
-		n := strings.ToLower(f.Name)
-		if f.Name == f.Type && strings.HasSuffix(n, "meta") {
-			metaFiledPath := strings.Split(f.Name, ".")
-			return fields, metaFiledPath[len(metaFiledPath)-1], nil
-		}
-	}
-
 	targetsMap := map[string]*MetaField{
 		"CreatedAt": {
 			Require:     true,
@@ -150,6 +142,25 @@ func searchMetaProperties(fields []*Field) ([]*Field, string, error) {
 	}
 
 	res := make([]*Field, 0, len(targetsMap))
+
+	for _, f := range fields {
+		n := strings.ToLower(f.Name)
+		if f.Name == f.Type && strings.HasSuffix(n, "meta") {
+			metaFiledPath := strings.Split(f.Name, ".")
+			p := metaFiledPath[len(metaFiledPath)-1]
+
+			for name, tm := range targetsMap {
+				res = append(res, &Field{
+					Name:       name,
+					Type:       tm.FindType,
+					ParentPath: p,
+				})
+			}
+
+			return res, p, nil
+		}
+	}
+
 	metaFieldName := ""
 
 	for _, f := range fields {
