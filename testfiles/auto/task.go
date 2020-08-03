@@ -14,7 +14,7 @@ type Task struct {
 	Done       bool               `firestore:"done"`
 	Done2      bool               `firestore:"done2"`
 	Count      int                `firestore:"count"`
-	Count64    int64              `firestore:"count64" op:"<="`
+	Count64    int64              `firestore:"count64"`
 	NameList   []string           `firestore:"nameList"`
 	Proportion float64            `firestore:"proportion"`
 	Flag       map[string]float64 `firestore:"flag"`

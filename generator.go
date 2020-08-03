@@ -35,20 +35,14 @@ type FieldInfo struct {
 	FsTag     string
 	Field     string
 	FieldType string
-	Operator  Operator
 	Space     string
 	Indexes   []*IndexesInfo
-}
-
-type ImportInfo struct {
-	Name string
 }
 
 type generator struct {
 	AppVersion        string
 	PackageName       string
 	ImportName        string
-	ImportList        []ImportInfo
 	GeneratedFileName string
 	FileName          string
 	StructName        string
@@ -62,7 +56,6 @@ type generator struct {
 
 	FieldInfos []*FieldInfo
 
-	ExistLatLng         bool
 	EnableIndexes       bool
 	FieldInfoForIndexes *FieldInfo
 	BoolCriteriaCnt     int
@@ -71,41 +64,33 @@ type generator struct {
 	AutomaticGeneration bool
 	IsSubCollection     bool
 
-	MetaFields map[string]Field
+	MetaFields   map[string]*Field
+	OmitMetaName string
 }
 
 func (g *generator) setting() {
 	g.AppVersion = AppVersion
 	g.RepositoryInterfaceName = g.StructName + "Repository"
 	g.RepositoryStructName = strcase.ToLowerCamel(g.RepositoryInterfaceName)
-	g.buildConditions()
 	g.insertSpace()
 }
 
-func (g *generator) buildConditions() {
-	dedupe := make(map[string]bool)
-	for _, field := range g.FieldInfos {
-		ft := field.FieldType
-		switch ft {
-		case "time.Time":
-			if _, ok := dedupe[ft]; !ok {
-				dedupe[ft] = true
-				g.ImportList = append(g.ImportList, ImportInfo{strings.Split(ft, ".")[0]})
-			}
-		case "*latlng.LatLng":
-			if _, ok := dedupe[ft]; !ok {
-				dedupe[ft] = true
-				g.ExistLatLng = true
-			}
+func (g *generator) insertSpace() {
+	var max int
+	for _, x := range g.FieldInfos {
+		if size := len(x.Field); size > max {
+			max = size
 		}
 	}
-}
 
-func (g *generator) insertSpace() {
-	max := 0
-	for _, x := range g.FieldInfos {
-		if len(x.Field) > max {
-			max = len(x.Field)
+	if len(g.MetaFields) > 0 {
+		for k := range g.MetaFields {
+			if size := len(k); size > max {
+				max = size
+			}
+		}
+		for k, v := range g.MetaFields {
+			v.Space = strings.Repeat(" ", max-len(k))
 		}
 	}
 
@@ -156,10 +141,20 @@ func (g *generator) generateMisc(writer io.Writer) {
 	}
 }
 
-func (g *generator) generateQuery(writer io.Writer) {
-	contents := getFileContents("query")
+func (g *generator) generateQueryBuilder(writer io.Writer) {
+	contents := getFileContents("query_builder")
 
-	t := template.Must(template.New("TemplateQuery").Parse(contents))
+	t := template.Must(template.New("TemplateQueryBuilder").Parse(contents))
+
+	if err := t.Execute(writer, g); err != nil {
+		log.Printf("failed to execute template: %+v", err)
+	}
+}
+
+func (g *generator) generateQueryChainer(writer io.Writer) {
+	contents := getFileContents("query_chainer")
+
+	t := template.Must(template.New("TemplateQueryChainer").Parse(contents))
 
 	if err := t.Execute(writer, g); err != nil {
 		log.Printf("failed to execute template: %+v", err)
