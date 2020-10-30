@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - name: Install firestore emulator
-        run: docker exec $(docker ps -f "ancestor=google/cloud-sdk" -q) apt-get install -y google-cloud-sdk-firestore-emulator
+        run: docker exec $(docker ps -f "ancestor=google/cloud-sdk" -q) apt install -y google-cloud-sdk-firestore-emulator
       - name: Start firestore emulator
         run: docker exec -d $(docker ps -f "ancestor=google/cloud-sdk" -q) gcloud beta emulators firestore start --project=pname --host-port 0.0.0.0:8000
 
@@ -28,6 +28,12 @@ jobs:
         id: go
 
       - uses: actions/checkout@v2
+
+      - name: Make statik
+        run: |
+          PATH="$PATH":"$HOME"/go/bin
+          go get github.com/rakyll/statik
+          make statik
 
       - name: Run tests
         run: |
