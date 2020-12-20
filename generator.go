@@ -162,11 +162,11 @@ func (g *generator) generateQueryChainer(writer io.Writer) {
 }
 
 func (g *generator) metaJudgment() string {
-	options := "_"
+	opts := "_"
 	if len(g.MetaFields) > 0 {
-		options = "options"
+		opts = "opts"
 	}
-	return options
+	return opts
 }
 
 func (g *generator) setFuncMap() template.FuncMap {
@@ -200,7 +200,7 @@ func (g *generator) setFuncMap() template.FuncMap {
 		},
 		"GetFunc": func() string {
 			raw := fmt.Sprintf(
-				"Get(ctx context.Context, %s %s, options ...GetOption) (*%s, error)",
+				"Get(ctx context.Context, %s %s, opts ...GetOption) (*%s, error)",
 				g.KeyValueName, g.KeyFieldType, g.StructName,
 			)
 			return raw
@@ -219,11 +219,11 @@ func (g *generator) setFuncMap() template.FuncMap {
 			return fmt.Sprintf("Update(ctx context.Context, subject *%s) error", g.StructName)
 		},
 		"DeleteFunc": func() string {
-			return fmt.Sprintf("Delete(ctx context.Context, subject *%s, options ...DeleteOption) error", g.StructName)
+			return fmt.Sprintf("Delete(ctx context.Context, subject *%s, opts ...DeleteOption) error", g.StructName)
 		},
 		"DeleteByFunc": func() string {
 			raw := fmt.Sprintf(
-				"DeleteBy%s(ctx context.Context, %s %s, options ...DeleteOption) error",
+				"DeleteBy%s(ctx context.Context, %s %s, opts ...DeleteOption) error",
 				g.KeyFieldName, g.KeyValueName, g.KeyFieldType,
 			)
 			return raw
@@ -242,11 +242,11 @@ func (g *generator) setFuncMap() template.FuncMap {
 			return fmt.Sprintf("UpdateMulti(ctx context.Context, subjects []*%s) error", g.StructName)
 		},
 		"DeleteMultiFunc": func() string {
-			return fmt.Sprintf("DeleteMulti(ctx context.Context, subjects []*%s, options ...DeleteOption) error", g.StructName)
+			return fmt.Sprintf("DeleteMulti(ctx context.Context, subjects []*%s, opts ...DeleteOption) error", g.StructName)
 		},
 		"DeleteMultiByFunc": func() string {
 			raw := fmt.Sprintf(
-				"DeleteMultiBy%s(ctx context.Context, %s []%s, options ...DeleteOption) error",
+				"DeleteMultiBy%s(ctx context.Context, %s []%s, opts ...DeleteOption) error",
 				plural.Convert(g.KeyFieldName), plural.Convert(g.KeyValueName), g.KeyFieldType,
 			)
 			return raw

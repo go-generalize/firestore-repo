@@ -45,8 +45,8 @@ type {{ .RepositoryInterfaceName }} interface {
 type {{ $middlewareName }} interface {
 	BeforeInsert(ctx context.Context, subject *{{ .StructName }}) (bool, error)
 	BeforeUpdate(ctx context.Context, old, subject *{{ .StructName }}) (bool, error)
-	BeforeDelete(ctx context.Context, subject *{{ .StructName }}, options ...DeleteOption) (bool, error)
-	BeforeDeleteBy{{ .KeyFieldName }}(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, options ...DeleteOption) (bool, error)
+	BeforeDelete(ctx context.Context, subject *{{ .StructName }}, opts ...DeleteOption) (bool, error)
+	BeforeDeleteBy{{ .KeyFieldName }}(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, opts ...DeleteOption) (bool, error)
 }
 
 type {{ .RepositoryStructName }} struct {
@@ -129,7 +129,7 @@ func (repo *{{ .RepositoryStructName }}) before{{ DeleteFunc }} {
 
 {{- end }}
 	for _, m := range repo.middleware {
-		c, err := m.BeforeDelete(ctx, subject, options...)
+		c, err := m.BeforeDelete(ctx, subject, opts...)
 		if err != nil {
 			return xerrors.Errorf("beforeDelete.middleware error: %w", err)
 		}
@@ -274,7 +274,7 @@ func (repo *{{ .RepositoryStructName }}) {{ ListFunc }} {
 // Get 処理中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ GetFunc }} {
 	doc := repo.GetCollection().Doc({{ .KeyValueName }})
-	return repo.GetWithDoc(ctx, doc, options...)
+	return repo.GetWithDoc(ctx, doc, opts...)
 }
 
 // GetWithDoc 処理中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
@@ -292,7 +292,7 @@ func (repo *{{ .RepositoryStructName }}) {{ GetWithDocFunc }} {
 		return nil, xerrors.Errorf("error in DataTo method: %w", err)
 	}
 {{ if .MetaFields }}
-	if len(options) == 0 || !options[0].IncludeSoftDeleted {
+	if len(opts) == 0 || !opts[0].IncludeSoftDeleted {
 		if subject.DeletedAt != nil {
 			return nil, ErrAlreadyDeleted
 		}
@@ -374,12 +374,12 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteFunc }} {
 		return xerrors.Errorf("error in Get method: %w", err)
 	}
 
-	if err := repo.beforeDelete(ctx, subject, options...); err != nil {
+	if err := repo.beforeDelete(ctx, subject, opts...); err != nil {
 		return xerrors.Errorf("before delete error: %w", err)
 	}
 {{- if .MetaFields }}
 
-	if len(options) > 0 && options[0].Mode == DeleteModeSoft {
+	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 		t := time.Now()
 		subject.DeletedAt = &t
 		if _, err := ref.Set(ctx, subject); err != nil {
@@ -401,7 +401,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteFunc }} {
 
 // DeleteBy{{ .KeyFieldName }} 処理中の {{ .StructName }} の{{ .KeyFieldName }}から削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteByFunc }} {
-	if err := repo.Delete(ctx, &{{ .StructName }}{ {{- .KeyFieldName }}: {{ .KeyValueName }}}, options...); err != nil {
+	if err := repo.Delete(ctx, &{{ .StructName }}{ {{- .KeyFieldName }}: {{ .KeyValueName }}}, opts...); err != nil {
 		return xerrors.Errorf("error in repo.Delete method: %w", err)
 	}
 	return nil
@@ -428,7 +428,7 @@ func (repo *{{ .RepositoryStructName }}) {{ GetMultiFunc }} {
 			return nil, xerrors.Errorf("error in DataTo method: %w", err)
 		}
 {{ if .MetaFields }}
-		if len(options) == 0 || !options[0].IncludeSoftDeleted {
+		if len(opts) == 0 || !opts[0].IncludeSoftDeleted {
 			if subject.DeletedAt != nil {
 				continue
 			}
@@ -547,12 +547,12 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiFunc }} {
 			return xerrors.Errorf("error in Get method [%v]: %w", subject.{{ .KeyFieldName }}, err)
 		}
 
-		if err := repo.beforeDelete(ctx, subject, options...); err != nil {
+		if err := repo.beforeDelete(ctx, subject, opts...); err != nil {
 			return xerrors.Errorf("before delete error: %w", err)
 		}
 {{- if .MetaFields }}
 
-		if len(options) > 0 && options[0].Mode == DeleteModeSoft {
+		if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 			t := time.Now()
 			subject.DeletedAt = &t
 			batch.Set(ref, subject)
@@ -587,5 +587,5 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByFunc }} {
 		subjects = append(subjects, &{{ .StructName }}{ {{- .KeyFieldName }}: {{ .KeyValueName }}})
 	}
 
-	return repo.DeleteMulti(ctx, subjects, options...)
+	return repo.DeleteMulti(ctx, subjects, opts...)
 }
