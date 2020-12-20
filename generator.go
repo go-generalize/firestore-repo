@@ -207,8 +207,8 @@ func (g *generator) setFuncMap() template.FuncMap {
 		},
 		"GetWithDocFunc": func() string {
 			raw := fmt.Sprintf(
-				"GetWithDoc(ctx context.Context, doc *firestore.DocumentRef, %s ...GetOption) (*%s, error)",
-				g.metaJudgment(), g.StructName,
+				"GetWithDoc(ctx context.Context, doc *firestore.DocumentRef, opts ...GetOption) (*%s, error)",
+				g.StructName,
 			)
 			return raw
 		},
