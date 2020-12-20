@@ -259,5 +259,19 @@ func (g *generator) setFuncMap() template.FuncMap {
 				"List(ctx context.Context, req *%sListReq, q *firestore.Query) ([]*%s, error)",
 				g.StructName, g.StructName)
 		},
+		"GetWithTxFunc": func() string {
+			raw := fmt.Sprintf(
+				"GetWithTx(tx *firestore.Transaction, %s %s, opts ...GetOption) (*%s, error)",
+				g.KeyValueName, g.KeyFieldType, g.StructName,
+			)
+			return raw
+		},
+		"GetWithDocWithTxFunc": func() string {
+			raw := fmt.Sprintf(
+				"GetWithDocWithTx(tx *firestore.Transaction, doc *firestore.DocumentRef, opts ...GetOption) (*%s, error)",
+				g.StructName,
+			)
+			return raw
+		},
 	}
 }
