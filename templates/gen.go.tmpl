@@ -273,7 +273,7 @@ func (repo *{{ .RepositoryStructName }}) {{ ListFunc }} {
 
 // Get 処理中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ GetFunc }} {
-	doc := repo.GetCollection().Doc({{ .KeyValueName }})
+	doc := repo.GetDocRef({{ .KeyValueName }})
 	return repo.get(ctx, doc, opts...)
 }
 
