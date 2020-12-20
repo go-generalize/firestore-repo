@@ -274,33 +274,12 @@ func (repo *{{ .RepositoryStructName }}) {{ ListFunc }} {
 // Get 処理中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ GetFunc }} {
 	doc := repo.GetCollection().Doc({{ .KeyValueName }})
-	return repo.GetWithDoc(ctx, doc, opts...)
+	return repo.get(ctx, doc, opts...)
 }
 
 // GetWithDoc 処理中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ GetWithDocFunc }} {
-	snapShot, err := doc.Get(ctx)
-	if err != nil {
-		if status.Code(err) == codes.NotFound {
-			return nil, ErrNotFound
-		}
-		return nil, xerrors.Errorf("error in Get method: %w", err)
-	}
-
-	subject := new({{ .StructName }})
-	if err := snapShot.DataTo(&subject); err != nil {
-		return nil, xerrors.Errorf("error in DataTo method: %w", err)
-	}
-{{ if .MetaFields }}
-	if len(opts) == 0 || !opts[0].IncludeSoftDeleted {
-		if subject.DeletedAt != nil {
-			return nil, ErrAlreadyDeleted
-		}
-	}
-{{- end }}
-	subject.{{ .KeyFieldName }} = snapShot.Ref.ID
-
-	return subject, nil
+	return repo.get(ctx, doc, opts...)
 }
 
 // Insert 処理中の {{ .StructName }} の登録処理一切の責任を持ち、これを行う
@@ -588,4 +567,42 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByFunc }} {
 	}
 
 	return repo.DeleteMulti(ctx, subjects, opts...)
+}
+
+func (repo *{{ .RepositoryStructName }}) get(x interface{}, doc *firestore.DocumentRef, {{ MetaJudgment }} ...GetOption) (*{{ .StructName }}, error) {
+	var (
+		snapShot *firestore.DocumentSnapshot
+		err      error
+	)
+
+	switch x := .(type) {
+	case *firestore.Transaction:
+		snapShot, err = x.Get(doc)
+	case context.Context:
+		snapShot, err = doc.Get(x)
+	default:
+		return nil, xerrors.Errorf("invalid type: %v", x)
+	}
+
+	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			return nil, ErrNotFound
+		}
+			return nil, xerrors.Errorf("error in Get method: %w", err)
+	}
+
+	subject := new({{ .StructName }})
+	if err := snapShot.DataTo(&subject); err != nil {
+		return nil, xerrors.Errorf("error in DataTo method: %w", err)
+	}
+{{ if .MetaFields }}
+	if len(opts) == 0 || !opts[0].IncludeSoftDeleted {
+		if subject.DeletedAt != nil {
+			return nil, ErrAlreadyDeleted
+		}
+	}
+{{- end }}
+	subject.ID = snapShot.Ref.ID
+
+	return subject, nil
 }
