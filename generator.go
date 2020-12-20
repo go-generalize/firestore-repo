@@ -171,6 +171,9 @@ func (g *generator) metaJudgment() string {
 
 func (g *generator) setFuncMap() template.FuncMap {
 	return template.FuncMap{
+		"MetaJudgment": func() string {
+			return g.metaJudgment()
+		},
 		"Parse": func(fieldType string) string {
 			fieldType = strings.TrimPrefix(fieldType, "[]")
 			fn := "Int"
