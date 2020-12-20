@@ -33,6 +33,9 @@ type {{ .RepositoryInterfaceName }} interface {
 	{{ UpdateMultiFunc }}
 	{{ DeleteMultiFunc }}
 	{{ DeleteMultiByFunc }}
+	// Transaction
+	{{ GetWithTxFunc }}
+	{{ GetWithDocWithTxFunc }}
 	// List
 	{{ ListFunc }}
 	// misc
@@ -567,6 +570,17 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByFunc }} {
 	}
 
 	return repo.DeleteMulti(ctx, subjects, opts...)
+}
+
+// GetWithTx トランザクション中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
+func (repo *{{ .RepositoryStructName }}) {{ GetWithTxFunc }} {
+	doc := repo.GetDocRef({{ .KeyValueName }})
+	return repo.get(tx, doc, opts...)
+}
+
+// GetWithDocWithTx トランザクション中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
+func (repo *{{ .RepositoryStructName }}) {{ GetWithDocWithTxFunc }} {
+	return repo.get(tx, doc, opts...)
 }
 
 func (repo *{{ .RepositoryStructName }}) get(x interface{}, doc *firestore.DocumentRef, {{ MetaJudgment }} ...GetOption) (*{{ .StructName }}, error) {
