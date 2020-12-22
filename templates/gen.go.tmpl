@@ -36,6 +36,7 @@ type {{ .RepositoryInterfaceName }} interface {
 	// Transaction
 	{{ GetWithTxFunc }}
 	{{ GetWithDocWithTxFunc }}
+	{{ InsertWithTxFunc }}
 	// List
 	{{ ListFunc }}
 	// misc
@@ -287,33 +288,7 @@ func (repo *{{ .RepositoryStructName }}) {{ GetWithDocFunc }} {
 
 // Insert 処理中の {{ .StructName }} の登録処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ InsertFunc }} {
-{{- if .MetaFields }}
-	err := repo.beforeInsert(ctx, subject)
-	if err != nil {
-		return "", xerrors.Errorf("before insert error: %w", err)
-	}
-
-{{- end }}
-{{- if .AutomaticGeneration }}
-	ref, _, err := repo.GetCollection().Add(ctx, subject)
-	if err != nil {
-		return "", xerrors.Errorf("error in Add method: %w", err)
-	}
-
-	subject.{{ .KeyFieldName }} = ref.ID
-{{- else }}
-	ref := repo.GetCollection().Doc(subject.{{ .KeyFieldName }})
-
-	if _, err := ref.Get(ctx); err == nil {
-		return "", ErrAlreadyExists
-	}
-
-	if _, err := ref.Set(ctx, subject); err != nil {
-		return "", xerrors.Errorf("error in Set method: %w", err)
-	}
-{{- end }}
-
-	return ref.ID, nil
+	return repo.insert(ctx, subject)
 }
 
 // Update 処理中の {{ .StructName }} の更新処理一切の責任を持ち、これを行う
@@ -583,6 +558,16 @@ func (repo *{{ .RepositoryStructName }}) {{ GetWithDocWithTxFunc }} {
 	return repo.get(tx, doc, opts...)
 }
 
+// InsertWithTx トランザクション中の {{ .StructName }} の登録処理一切の責任を持ち、これを行う
+func (repo *{{ .RepositoryStructName }}) {{ InsertWithTxFunc }} {
+{{- if .MetaFields }}
+	if err = repo.beforeInsert(ctx, subject); err != nil {
+		return "", xerrors.Errorf("before insert error: %w", err)
+	}
+{{- end }}
+	return repo.insert(tx, subject)
+}
+
 func (repo *{{ .RepositoryStructName }}) get(x interface{}, doc *firestore.DocumentRef, {{ MetaJudgment }} ...GetOption) (*{{ .StructName }}, error) {
 	var (
 		snapShot *firestore.DocumentSnapshot
@@ -619,4 +604,47 @@ func (repo *{{ .RepositoryStructName }}) get(x interface{}, doc *firestore.Docum
 	subject.{{ .KeyFieldName }} = snapShot.Ref.ID
 
 	return subject, nil
+}
+
+func (repo *{{ .RepositoryStructName }}) insert(v interface{}, subject *{{ .StructName }}) (string, error) {
+	var (
+{{- if .AutomaticGeneration }}
+		dr  = repo.GetCollection().NewDoc()
+{{- else }}
+		dr  = repo.GetDocRef(subject.{{ .KeyFieldName }})
+{{- end }}
+		err error
+	)
+
+	switch x := v.(type) {
+	case *firestore.Transaction:
+{{- 	if .AutomaticGeneration }}
+		if _, err = x.Get(dr); err == nil {
+			return "", ErrAlreadyExists
+		}
+{{- 	end }}
+		err = x.Set(dr, subject)
+	case context.Context:
+{{- 	if .MetaFields }}
+		if err = repo.beforeInsert(x, subject); err != nil {
+			return "", xerrors.Errorf("before insert error: %w", err)
+		}
+{{- 	end }}
+{{- 	if .AutomaticGeneration }}
+		if _, err = dr.Get(x); err == nil {
+			return "", ErrAlreadyExists
+		}
+{{- 	end }}
+		_, err = dr.Set(x, subject)
+	default:
+		return "", xerrors.Errorf("invalid type: %v", v)
+	}
+
+	if err != nil {
+		return "", xerrors.Errorf("error in Set method: %w", err)
+	}
+
+	subject.{{ .KeyFieldName }} = dr.ID
+
+	return dr.ID, nil
 }
