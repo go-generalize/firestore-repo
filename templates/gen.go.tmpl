@@ -568,13 +568,13 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertWithTxFunc }} {
 	return repo.insert(tx, subject)
 }
 
-func (repo *{{ .RepositoryStructName }}) get(x interface{}, doc *firestore.DocumentRef, {{ MetaJudgment }} ...GetOption) (*{{ .StructName }}, error) {
+func (repo *{{ .RepositoryStructName }}) get(v interface{}, doc *firestore.DocumentRef, {{ MetaJudgment }} ...GetOption) (*{{ .StructName }}, error) {
 	var (
 		snapShot *firestore.DocumentSnapshot
 		err      error
 	)
 
-	switch x := .(type) {
+	switch x := v.(type) {
 	case *firestore.Transaction:
 		snapShot, err = x.Get(doc)
 	case context.Context:
