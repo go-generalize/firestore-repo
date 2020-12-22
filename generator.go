@@ -169,6 +169,14 @@ func (g *generator) metaJudgment() string {
 	return opts
 }
 
+func (g *generator) ctxJudgment() string {
+	ret := "_"
+	if len(g.MetaFields) > 0 {
+		ret = "ctx"
+	}
+	return ret
+}
+
 func (g *generator) setFuncMap() template.FuncMap {
 	return template.FuncMap{
 		"MetaJudgment": func() string {
@@ -274,10 +282,10 @@ func (g *generator) setFuncMap() template.FuncMap {
 			return raw
 		},
 		"InsertWithTxFunc": func() string {
-			return fmt.Sprintf("InsertWithTx(%s context.Context, tx *firestore.Transaction, subject *%s) (%s, error)", g.metaJudgment(), g.StructName, g.KeyFieldType)
+			return fmt.Sprintf("InsertWithTx(%s context.Context, tx *firestore.Transaction, subject *%s) (%s, error)", g.ctxJudgment(), g.StructName, g.KeyFieldType)
 		},
 		"UpdateWithTxFunc": func() string {
-			return fmt.Sprintf("UpdateWithTx(ctx context.Context, tx *firestore.Transaction, subject *%s) error", g.StructName)
+			return fmt.Sprintf("UpdateWithTx(%s context.Context, tx *firestore.Transaction, subject *%s) error", g.ctxJudgment(), g.StructName)
 		},
 	}
 }
