@@ -288,6 +288,11 @@ func (repo *{{ .RepositoryStructName }}) {{ GetWithDocFunc }} {
 
 // Insert 処理中の {{ .StructName }} の登録処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ InsertFunc }} {
+{{- if .MetaFields }}
+	if err := repo.beforeInsert(ctx, subject); err != nil {
+		return "", xerrors.Errorf("before insert error: %w", err)
+	}
+{{- end }}
 	return repo.insert(ctx, subject)
 }
 
@@ -587,7 +592,7 @@ func (repo *{{ .RepositoryStructName }}) get(v interface{}, doc *firestore.Docum
 		if status.Code(err) == codes.NotFound {
 			return nil, ErrNotFound
 		}
-			return nil, xerrors.Errorf("error in Get method: %w", err)
+		return nil, xerrors.Errorf("error in Get method: %w", err)
 	}
 
 	subject := new({{ .StructName }})
@@ -625,11 +630,6 @@ func (repo *{{ .RepositoryStructName }}) insert(v interface{}, subject *{{ .Stru
 {{- 	end }}
 		err = x.Set(dr, subject)
 	case context.Context:
-{{- 	if .MetaFields }}
-		if err = repo.beforeInsert(x, subject); err != nil {
-			return "", xerrors.Errorf("before insert error: %w", err)
-		}
-{{- 	end }}
 {{- 	if .AutomaticGeneration }}
 		if _, err = dr.Get(x); err == nil {
 			return "", ErrAlreadyExists

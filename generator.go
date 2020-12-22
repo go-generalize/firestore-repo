@@ -274,7 +274,7 @@ func (g *generator) setFuncMap() template.FuncMap {
 			return raw
 		},
 		"InsertWithTxFunc": func() string {
-			return fmt.Sprintf("InsertWithTx(ctx context.Context, tx *firestore.Transaction, subject *%s) (%s, error)", g.StructName, g.KeyFieldType)
+			return fmt.Sprintf("InsertWithTx(%s context.Context, tx *firestore.Transaction, subject *%s) (%s, error)", g.metaJudgment(), g.StructName, g.KeyFieldType)
 		},
 	}
 }
