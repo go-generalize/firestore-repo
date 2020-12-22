@@ -298,9 +298,8 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertFunc }} {
 
 // Update 処理中の {{ .StructName }} の更新処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ UpdateFunc }} {
-	ref := repo.GetCollection().Doc(subject.{{ .KeyFieldName }})
-
-	{{ if .MetaFields }}snapShot{{ else }}_{{ end }}, err := ref.Get(ctx)
+	doc := repo.GetDocRef(subject.{{ .KeyFieldName }})
+	{{ if .MetaFields }}old{{ else }}_{{ end }}, err := repo.get(ctx, doc)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
 			return ErrNotFound
@@ -308,22 +307,11 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateFunc }} {
 		return xerrors.Errorf("error in Get method: %w", err)
 	}
 {{- if .MetaFields }}
-	old := new({{ .StructName }})
-	if err := snapShot.DataTo(&old); err != nil {
-		return xerrors.Errorf("error in DataTo method: %w", err)
-	}
-
-	err = repo.beforeUpdate(ctx, old, subject)
-	if err != nil {
+	if err = repo.beforeUpdate(ctx, old, subject); err != nil {
 		return xerrors.Errorf("before update error: %w", err)
 	}
-
 {{- end }}
-	if _, err := ref.Set(ctx, subject); err != nil {
-		return xerrors.Errorf("error in Set method: %w", err)
-	}
-
-	return nil
+	return repo.update(ctx, subject)
 }
 
 // Delete 処理中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
@@ -648,3 +636,26 @@ func (repo *{{ .RepositoryStructName }}) insert(v interface{}, subject *{{ .Stru
 
 	return dr.ID, nil
 }
+
+func (repo *{{ .RepositoryStructName }}) update(v interface{}, subject *{{ .StructName }}) error {
+	var (
+		dr  = repo.GetDocRef(subject.{{ .KeyFieldName }})
+		err error
+	)
+
+	switch x := v.(type) {
+	case *firestore.Transaction:
+		err = x.Set(dr, subject)
+	case context.Context:
+		_, err = dr.Set(x, subject)
+	default:
+		return xerrors.Errorf("invalid type: %v", v)
+	}
+
+	if err != nil {
+		return xerrors.Errorf("error in Set method: %w", err)
+	}
+
+	return nil
+}
+
