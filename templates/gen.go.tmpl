@@ -616,7 +616,7 @@ func (repo *{{ .RepositoryStructName }}) get(x interface{}, doc *firestore.Docum
 		}
 	}
 {{- end }}
-	subject.ID = snapShot.Ref.ID
+	subject.{{ .KeyFieldName }} = snapShot.Ref.ID
 
 	return subject, nil
 }
