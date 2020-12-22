@@ -606,7 +606,7 @@ func (repo *{{ .RepositoryStructName }}) get(v interface{}, doc *firestore.Docum
 	return subject, nil
 }
 
-func (repo *{{ .RepositoryStructName }}) insert(v interface{}, subject *{{ .StructName }}) (string, error) {
+func (repo *{{ .RepositoryStructName }}) insert(v interface{}, subject *{{ .StructName }}) ({{ .KeyFieldType }}, error) {
 	var (
 {{- if .AutomaticGeneration }}
 		dr  = repo.GetCollection().NewDoc()
