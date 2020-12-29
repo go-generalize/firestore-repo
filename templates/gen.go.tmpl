@@ -38,6 +38,8 @@ type {{ .RepositoryInterfaceName }} interface {
 	{{ GetWithDocWithTxFunc }}
 	{{ InsertWithTxFunc }}
 	{{ UpdateWithTxFunc }}
+	{{ DeleteWithTxFunc }}
+	{{ DeleteByWithTxFunc }}
 	// List
 	{{ ListFunc }}
 	// misc
@@ -313,45 +315,16 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateFunc }} {
 
 // Delete 処理中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteFunc }} {
-	ref := repo.GetCollection().Doc(subject.{{ .KeyFieldName }})
-	if _, err := ref.Get(ctx); err != nil {
-		if status.Code(err) == codes.NotFound {
-			return ErrNotFound
-		}
-		return xerrors.Errorf("error in Get method: %w", err)
-	}
-
 	if err := repo.beforeDelete(ctx, subject, opts...); err != nil {
 		return xerrors.Errorf("before delete error: %w", err)
 	}
-{{- if .MetaFields }}
 
-	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
-		t := time.Now()
-		subject.DeletedAt = &t
-		if _, err := ref.Set(ctx, subject); err != nil {
-			return xerrors.Errorf("error in Set method: %w", err)
-		}
-	} else {
-		if _, err := ref.Delete(ctx); err != nil {
-			return xerrors.Errorf("error in Delete method: %w", err)
-		}
-	}
-{{- else }}
-
-	if _, err := ref.Delete(ctx); err != nil {
-		return xerrors.Errorf("error in Delete method: %w", err)
-	}
-{{ end }}
-	return nil
+	return repo.deleteBy{{ .KeyFieldName }}(ctx, subject.{{ .KeyFieldName }}, opts...)
 }
 
 // DeleteBy{{ .KeyFieldName }} 処理中の {{ .StructName }} の{{ .KeyFieldName }}から削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteByFunc }} {
-	if err := repo.Delete(ctx, &{{ .StructName }}{ {{- .KeyFieldName }}: {{ .KeyValueName }}}, opts...); err != nil {
-		return xerrors.Errorf("error in repo.Delete method: %w", err)
-	}
-	return nil
+	return repo.deleteBy{{ .KeyFieldName }}(ctx, {{ .KeyValueName }}, opts...)
 }
 
 // GetMulti 処理中の {{ .StructName }} の一括取得処理一切の責任を持ち、これを行う
@@ -575,6 +548,20 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateWithTxFunc }} {
 	return repo.update(tx, subject)
 }
 
+// DeleteWithTx トランザクション中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
+func (repo *{{ .RepositoryStructName }}) {{ DeleteWithTxFunc }} {
+	if err := repo.beforeDelete(ctx, subject, opts...); err != nil {
+		return xerrors.Errorf("before delete error: %w", err)
+	}
+
+	return repo.deleteBy{{ .KeyFieldName }}(tx, subject.{{ .KeyFieldName }}, opts...)
+}
+
+// DeleteBy{{ .KeyFieldName }}WithTx トランザクション中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
+func (repo *{{ .RepositoryStructName }}) {{ DeleteByWithTxFunc }} {
+	return repo.deleteBy{{ .KeyFieldName }}(tx, {{ .KeyValueName }}, opts...)
+}
+
 func (repo *{{ .RepositoryStructName }}) get(v interface{}, doc *firestore.DocumentRef, {{ MetaJudgment }} ...GetOption) (*{{ .StructName }}, error) {
 	var (
 		snapShot *firestore.DocumentSnapshot
@@ -669,6 +656,58 @@ func (repo *{{ .RepositoryStructName }}) update(v interface{}, subject *{{ .Stru
 	if err != nil {
 		return xerrors.Errorf("error in Set method: %w", err)
 	}
+
+	return nil
+}
+
+func (repo *{{ .RepositoryStructName }}) deleteBy{{ .KeyFieldName }}(v interface{}, {{ .KeyValueName }} {{ .KeyFieldType }}, {{ MetaJudgment }} ...DeleteOption) error {
+	var (
+		dr  = repo.GetDocRef({{ .KeyValueName }})
+		err error
+	)
+{{ if .MetaFields }}
+	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
+		subject, err := repo.get(v, dr)
+		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				return ErrNotFound
+			}
+			return xerrors.Errorf("error in get method: %w", err)
+		}
+		t := time.Now()
+		subject.DeletedAt = &t
+		if err = repo.update(v, subject); err != nil {
+			return xerrors.Errorf("error in update method: %w", err)
+		}
+		return nil
+	}
+
+	switch x := v.(type) {
+	case *firestore.Transaction:
+		err = x.Delete(dr, firestore.Exists)
+	case context.Context:
+		_, err = dr.Delete(x, firestore.Exists)
+	default:
+		return xerrors.Errorf("invalid type: %v", v)
+	}
+
+	if err != nil {
+		return xerrors.Errorf("error in Delete method: %w", err)
+	}
+{{- else }}
+	switch x := v.(type) {
+	case *firestore.Transaction:
+		err = x.Delete(dr, firestore.Exists)
+	case context.Context:
+		_, err = dr.Delete(x, firestore.Exists)
+	default:
+		return xerrors.Errorf("invalid type: %v", v)
+	}
+
+	if err != nil {
+		return xerrors.Errorf("error in Delete method: %w", err)
+	}
+{{- end }}
 
 	return nil
 }
