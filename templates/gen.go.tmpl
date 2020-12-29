@@ -90,8 +90,7 @@ func (repo *{{ .RepositoryStructName }}) beforeInsert(ctx context.Context, subje
 		return xerrors.Errorf("insert data must be DeletedAt == nil: %+v", subject)
 	}
 	repo.setMeta(subject, true)
-
-{{- end }}
+{{ end }}
 	for _, m := range repo.middleware {
 		c, err := m.BeforeInsert(ctx, subject)
 		if err != nil {
@@ -114,8 +113,7 @@ func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, 
 		return xerrors.Errorf("update data must be DeletedAt == nil: %+v", subject)
 	}
 	repo.setMeta(subject, false)
-
-{{- end }}
+{{ end }}
 	for _, m := range repo.middleware {
 		c, err := m.BeforeUpdate(ctx, old, subject)
 		if err != nil {
@@ -131,8 +129,7 @@ func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, 
 func (repo *{{ .RepositoryStructName }}) before{{ DeleteFunc }} {
 {{- if .MetaFields }}
 	repo.setMeta(subject, false)
-
-{{- end }}
+{{ end }}
 	for _, m := range repo.middleware {
 		c, err := m.BeforeDelete(ctx, subject, opts...)
 		if err != nil {
@@ -289,29 +286,28 @@ func (repo *{{ .RepositoryStructName }}) {{ GetWithDocFunc }} {
 
 // Insert 処理中の {{ .StructName }} の登録処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ InsertFunc }} {
-{{- if .MetaFields }}
 	if err := repo.beforeInsert(ctx, subject); err != nil {
 		return "", xerrors.Errorf("before insert error: %w", err)
 	}
-{{- end }}
 	return repo.insert(ctx, subject)
 }
 
 // Update 処理中の {{ .StructName }} の更新処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ UpdateFunc }} {
 	doc := repo.GetDocRef(subject.{{ .KeyFieldName }})
-	{{ if .MetaFields }}old{{ else }}_{{ end }}, err := repo.get(ctx, doc)
+
+	old, err := repo.get(ctx, doc)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
 			return ErrNotFound
 		}
 		return xerrors.Errorf("error in Get method: %w", err)
 	}
-{{- if .MetaFields }}
+
 	if err = repo.beforeUpdate(ctx, old, subject); err != nil {
 		return xerrors.Errorf("before update error: %w", err)
 	}
-{{- end }}
+
 	return repo.update(ctx, subject)
 }
 
@@ -554,29 +550,28 @@ func (repo *{{ .RepositoryStructName }}) {{ GetWithDocWithTxFunc }} {
 
 // InsertWithTx トランザクション中の {{ .StructName }} の登録処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ InsertWithTxFunc }} {
-{{- if .MetaFields }}
 	if err := repo.beforeInsert(ctx, subject); err != nil {
 		return "", xerrors.Errorf("before insert error: %w", err)
 	}
-{{- end }}
+
 	return repo.insert(tx, subject)
 }
 
 // UpdateWithTx トランザクション中の {{ .StructName }} の更新処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ UpdateWithTxFunc }} {
 	doc := repo.GetDocRef(subject.{{ .KeyFieldName }})
-	{{ if .MetaFields }}old{{ else }}_{{ end }}, err := repo.get(tx, doc)
+	old, err := repo.get(tx, doc)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
 			return ErrNotFound
 		}
 		return xerrors.Errorf("error in Get method: %w", err)
 	}
-{{- 	if .MetaFields }}
+
 	if err = repo.beforeUpdate(ctx, old, subject); err != nil {
 		return xerrors.Errorf("before update error: %w", err)
 	}
-{{- 	end }}
+
 	return repo.update(tx, subject)
 }
 
