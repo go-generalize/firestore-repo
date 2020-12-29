@@ -555,7 +555,7 @@ func (repo *{{ .RepositoryStructName }}) {{ GetWithDocWithTxFunc }} {
 // InsertWithTx トランザクション中の {{ .StructName }} の登録処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ InsertWithTxFunc }} {
 {{- if .MetaFields }}
-	if err = repo.beforeInsert(ctx, subject); err != nil {
+	if err := repo.beforeInsert(ctx, subject); err != nil {
 		return "", xerrors.Errorf("before insert error: %w", err)
 	}
 {{- end }}
