@@ -274,13 +274,19 @@ func (g *generator) setFuncMap() template.FuncMap {
 			return raw
 		},
 		"InsertWithTxFunc": func() string {
-			return fmt.Sprintf("InsertWithTx(ctx context.Context, tx *firestore.Transaction, subject *%s) (%s, error)", g.StructName, g.KeyFieldType)
+			return fmt.Sprintf(
+				"InsertWithTx(ctx context.Context, tx *firestore.Transaction, subject *%s) (%s, error)",
+				g.StructName, g.KeyFieldType,
+			)
 		},
 		"UpdateWithTxFunc": func() string {
 			return fmt.Sprintf("UpdateWithTx(ctx context.Context, tx *firestore.Transaction, subject *%s) error", g.StructName)
 		},
 		"DeleteWithTxFunc": func() string {
-			return fmt.Sprintf("DeleteWithTx(ctx context.Context, tx *firestore.Transaction, subject *%s, opts ...DeleteOption) error", g.StructName)
+			return fmt.Sprintf(
+				"DeleteWithTx(ctx context.Context, tx *firestore.Transaction, subject *%s, opts ...DeleteOption) error",
+				g.StructName,
+			)
 		},
 		"DeleteByWithTxFunc": func() string {
 			return fmt.Sprintf(
