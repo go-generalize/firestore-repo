@@ -48,7 +48,7 @@ type {{ .RepositoryInterfaceName }} interface {
 	// misc
 	GetCollection() *firestore.CollectionRef
 	GetCollectionName() string
-	GetDocRef(id string) *firestore.DocumentRef
+	GetDocRef({{ .KeyValueName }} string) *firestore.DocumentRef
 }
 {{ $middlewareName := printf "%sMiddleware" .RepositoryInterfaceName }}
 // {{ $middlewareName }} middleware of {{ .RepositoryInterfaceName }}
@@ -158,8 +158,8 @@ func (repo *{{ .RepositoryStructName }}) GetCollectionName() string {
 }
 
 // GetDocRef *firestore.DocumentRef getter
-func (repo *{{ .RepositoryStructName }}) GetDocRef(id string) *firestore.DocumentRef {
-	return repo.GetCollection().Doc(id)
+func (repo *{{ .RepositoryStructName }}) GetDocRef({{ .KeyValueName }} string) *firestore.DocumentRef {
+	return repo.GetCollection().Doc({{ .KeyValueName }})
 }
 {{ $MetaName := .OmitMetaName }}
 // {{ .StructName }}ListReq List取得時に渡すリクエスト
@@ -452,13 +452,13 @@ func (repo *{{ .RepositoryStructName }}) {{ GetMultiWithTxFunc }} {
 
 // InsertMultiWithTx トランザクション中の {{ .StructName }} の一括挿入処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ InsertMultiWithTxFunc }} {
-	ids := make([]string, len(subjects))
+	{{ PluralForm .KeyValueName }} := make([]string, len(subjects))
 
 	for i, subject := range subjects {
 		if err := repo.beforeInsert(ctx, subject); err != nil {
 			return nil, xerrors.Errorf("before insert error(%d) [%v]: %w", i, subject.{{ .KeyFieldName }}, err)
 		}
-		id, err := repo.insert(tx, subject)
+	{{ .KeyValueName }}, err := repo.insert(tx, subject)
 		if err != nil {
 {{- 	if not .AutomaticGeneration }}
 			if xerrors.Is(err, ErrAlreadyExists) {
@@ -467,10 +467,10 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiWithTxFunc }} {
 {{- 	end }}
 			return nil, xerrors.Errorf("error in insert method(%d) [%v]: %w", i, subject.{{ .KeyFieldName }}, err)
 		}
-		ids[i] = id
+		{{ PluralForm .KeyValueName }}[i] = {{ .KeyValueName }}
 	}
 
-	return ids, nil
+	return {{ PluralForm .KeyValueName }}, nil
 }
 
 func (repo *{{ .RepositoryStructName }}) get(v interface{}, doc *firestore.DocumentRef, {{ MetaJudgment }} ...GetOption) (*{{ .StructName }}, error) {
