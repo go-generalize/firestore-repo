@@ -493,7 +493,7 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiWithTxFunc }} {
 
 	for i := range subjects {
 		if err := repo.update(tx, subjects[i]); err != nil {
-			return xerrors.Errorf("error in insert method(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
+			return xerrors.Errorf("error in update method(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
 	}
 
