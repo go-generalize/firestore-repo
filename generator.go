@@ -233,8 +233,8 @@ func (g *generator) setFuncMap() template.FuncMap {
 		},
 		"GetMultiFunc": func() string {
 			raw := fmt.Sprintf(
-				"GetMulti(ctx context.Context, %s []%s, %s ...GetOption) ([]*%s, error)",
-				plural.Convert(g.KeyValueName), g.KeyFieldType, g.metaJudgment(), g.StructName,
+				"GetMulti(ctx context.Context, %s []%s, opts ...GetOption) ([]*%s, error)",
+				plural.Convert(g.KeyValueName), g.KeyFieldType, g.StructName,
 			)
 			return raw
 		},
