@@ -477,7 +477,7 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiWithTxFunc }} {
 // UpdateMultiWithTx トランザクション中の {{ .StructName }} の一括挿入処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiWithTxFunc }} {
 	for i := range subjects {
-		doc := repo.GetDocRef(subjects[i].ID)
+		doc := repo.GetDocRef(subjects[i].{{ .KeyFieldName }})
 		old, err := repo.get(tx, doc)
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
