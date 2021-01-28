@@ -460,7 +460,7 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiWithTxFunc }} {
 		if err := repo.beforeInsert(ctx, subject); err != nil {
 			return nil, xerrors.Errorf("before insert error(%d) [%v]: %w", i, subject.{{ .KeyFieldName }}, err)
 		}
-	{{ .KeyValueName }}, err := repo.insert(tx, subject)
+		{{ .KeyValueName }}, err := repo.insert(tx, subject)
 		if err != nil {
 {{- 	if not .AutomaticGeneration }}
 			if xerrors.Is(err, ErrAlreadyExists) {
