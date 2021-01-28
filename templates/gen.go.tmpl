@@ -9,7 +9,6 @@ import (
 {{- end }}
 
 	"cloud.google.com/go/firestore"
-	"github.com/go-utils/dedupe"
 	"golang.org/x/xerrors"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
@@ -665,11 +664,6 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 {{- 	range $key, $value := $Meta }}
 		if req.{{ $key }} != nil {
 			for _, chain := range req.{{ $key }}.QueryGroup {
-				if chain.IsSlice() && chain.Operator == OpTypeIn {
-					if err := dedupe.Do(&chain.Value); err != nil {
-						return nil, xerrors.Errorf("error in dedupe.Do method: %w", err)
-					}
-				}
 				ref.Query = ref.Query.Where("{{ $key }}", chain.Operator, chain.Value)
 			}
 		}
@@ -685,27 +679,15 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 					continue
 				}
 				for key, value := range items {
-					if IsSlice(value) {
-						ref.Query = ref.Query.Where("{{ $fi.FsTag }}."+key, OpTypeArrayContains, value)
-						continue
-					}
 					ref.Query = ref.Query.Where("{{ $fi.FsTag }}."+key, chain.Operator, value)
 				}
 			}
 {{- 		else if eq $IsSlice true }}
 			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
-				if err := dedupe.Do(&chain.Value); err != nil {
-					return nil, xerrors.Errorf("error in dedupe.Do method: %w", err)
-				}
 				ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
 			}
 {{- 		else }}
 			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
-				if chain.IsSlice() && chain.Operator == OpTypeIn {
-					if err := dedupe.Do(&chain.Value); err != nil {
-						return nil, xerrors.Errorf("error in dedupe.Do method: %w", err)
-					}
-				}
 				ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
 			}
 {{- 		end }}
