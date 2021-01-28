@@ -41,8 +41,6 @@ linters:
     - govet
     # 意味のない再代入を検出
     - ineffassign
-    # 1行の最大長が長すぎるものを検出
-    - lll
     # スペルチェック
     - misspell
     # for中などで固定されてない変数を検出
