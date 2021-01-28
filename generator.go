@@ -314,5 +314,8 @@ func (g *generator) setFuncMap() template.FuncMap {
 		"UpdateMultiWithTxFunc": func() string {
 			return fmt.Sprintf("UpdateMultiWithTx(ctx context.Context, tx *firestore.Transaction, subjects []*%s) error", g.StructName)
 		},
+		"DeleteMultiWithTxFunc": func() string {
+			return fmt.Sprintf("DeleteMultiWithTx(ctx context.Context, tx *firestore.Transaction, subjects []*%s, opts ...DeleteOption) error", g.StructName)
+		},
 	}
 }
