@@ -226,8 +226,8 @@ func (g *generator) setFuncMap() template.FuncMap {
 		},
 		"DeleteByFunc": func() string {
 			raw := fmt.Sprintf(
-				"DeleteBy%s(ctx context.Context, %s %s, opts ...DeleteOption) error",
-				g.KeyFieldName, g.KeyValueName, g.KeyFieldType,
+				"DeleteBy%s(ctx context.Context, %s %s, %s ...DeleteOption) error",
+				g.KeyFieldName, g.KeyValueName, g.KeyFieldType, g.metaJudgment(),
 			)
 			return raw
 		},
@@ -290,8 +290,8 @@ func (g *generator) setFuncMap() template.FuncMap {
 		},
 		"DeleteByWithTxFunc": func() string {
 			return fmt.Sprintf(
-				"DeleteBy%sWithTx(tx *firestore.Transaction, %s %s, opts ...DeleteOption) error",
-				g.KeyFieldName, g.KeyValueName, g.KeyFieldType,
+				"DeleteBy%sWithTx(tx *firestore.Transaction, %s %s, %s ...DeleteOption) error",
+				g.KeyFieldName, g.KeyValueName, g.KeyFieldType, g.metaJudgment(),
 			)
 		},
 		"ListWithTxFunc": func() string {
