@@ -299,5 +299,11 @@ func (g *generator) setFuncMap() template.FuncMap {
 				"ListWithTx(tx *firestore.Transaction, req *%sListReq, q *firestore.Query) ([]*%s, error)",
 				g.StructName, g.StructName)
 		},
+		"InsertMultiWithTxFunc": func() string {
+			return fmt.Sprintf(
+				"InsertMultiWithTx(ctx context.Context, tx *firestore.Transaction, subjects []*%s) ([]string, error)",
+				g.StructName,
+			)
+		},
 	}
 }
