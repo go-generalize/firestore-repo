@@ -42,6 +42,7 @@ type {{ .RepositoryInterfaceName }} interface {
 	{{ DeleteByWithTxFunc }}
 	// List
 	{{ ListFunc }}
+	{{ ListWithTxFunc }}
 	// misc
 	GetCollection() *firestore.CollectionRef
 	GetCollectionName() string
@@ -181,98 +182,7 @@ type {{ .StructName }}ListReq struct {
 //      └─ 基本的にnilを渡せば良い
 // BUG(54m) 潜在的なバグがあるかもしれない
 func (repo *{{ .RepositoryStructName }}) {{ ListFunc }} {
-	if (req == nil && q == nil) || (req != nil && q != nil) {
-		return nil, xerrors.New("either one should be nil")
-	}
-
-	var query firestore.Query
-	if q == nil {
-		ref := repo.GetCollection()
-{{ $Meta := .MetaFields }}
-{{- range $fi := .FieldInfos }}
-{{- if eq $MetaName $fi.Field }}
-{{- 	range $key, $value := $Meta }}
-		if req.{{ $key }} != nil {
-			for _, chain := range req.{{ $key }}.QueryGroup {
-				if chain.IsSlice() && chain.Operator == OpTypeIn {
-					dedupe.Do(&chain.Value)
-					ref.Query = ref.Query.Where("{{ $key }}", chain.Operator, chain.Value)
-					continue
-				}
-				ref.Query = ref.Query.Where("{{ $key }}", chain.Operator, chain.Value)
-			}
-		}
-{{- 	end }}
-{{- else }}
-{{- 	$IsSlice := HasSlice $fi.FieldType }}
-{{- 	$IsMap := HasMap $fi.FieldType }}
-		if req.{{ $fi.Field }} != nil {
-{{- 		if eq $IsMap true }}
-			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
-				if items, ok := chain.Value.({{ $fi.FieldType }}); ok {
-					for key, value := range items {
-						if IsSlice(value) {
-							ref.Query = ref.Query.Where("{{ $fi.FsTag }}."+key, OpTypeArrayContains, value)
-							continue
-						}
-						ref.Query = ref.Query.Where("{{ $fi.FsTag }}."+key, chain.Operator, value)
-					}
-				}
-			}
-{{- 		else if eq $IsSlice true }}
-			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
-				dedupe.Do(&chain.Value)
-				if !chain.IsSlice() && chain.Operator == OpTypeArrayContains {
-					ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
-					continue
-				}
-				ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
-			}
-{{- 		else }}
-			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
-				if chain.IsSlice() && chain.Operator == OpTypeIn {
-					dedupe.Do(&chain.Value)
-					ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
-					continue
-				}
-				ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
-			}
-{{- 		end }}
-		}
-{{- 	end }}
-{{- end }}
-
-{{- if .MetaFields }}
-{{ $metaPath := (index .MetaFields "DeletedAt").ParentPath }}
-		if !req.IncludeSoftDeleted {
-			ref.Query = ref.Query.Where("DeletedAt", OpTypeEqual, nil)
-		}
-{{- end }}
-
-		query = ref.Query
-	} else {
-		query = *q
-	}
-
-	subjects := make([]*{{ .StructName }}, 0)
-	iter := query.Documents(ctx)
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, xerrors.Errorf("error in Next method: %w", err)
-		}
-		subject := new({{ .StructName }})
-		if err := doc.DataTo(&subject); err != nil {
-			return nil, xerrors.Errorf("error in DataTo method: %w", err)
-		}
-		subject.{{ .KeyFieldName }} = doc.Ref.ID
-		subjects = append(subjects, subject)
-	}
-
-	return subjects, nil
+	return repo.list(ctx, req, q)
 }
 
 // Get 処理中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
@@ -506,6 +416,10 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByFunc }} {
 	return repo.DeleteMulti(ctx, subjects, opts...)
 }
 
+func (repo *{{ .RepositoryStructName }}) {{ ListWithTxFunc }} {
+	return repo.list(tx, req, q)
+}
+
 // GetWithTx トランザクション中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ GetWithTxFunc }} {
 	doc := repo.GetDocRef({{ .KeyValueName }})
@@ -691,4 +605,129 @@ func (repo *{{ .RepositoryStructName }}) deleteBy{{ .KeyFieldName }}(v interface
 	}
 
 	return nil
+}
+
+func (repo *{{ .RepositoryStructName }}) runQuery(v interface{}, query firestore.Query) ([]*{{ .StructName }}, error) {
+	var iter *firestore.DocumentIterator
+
+	switch x := v.(type) {
+	case *firestore.Transaction:
+		iter = x.Documents(query)
+	case context.Context:
+		iter = query.Documents(x)
+	default:
+		return nil, xerrors.Errorf("invalid type: %v", v)
+	}
+
+	defer iter.Stop()
+
+	subjects := make([]*{{ .StructName }}, 0)
+
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, xerrors.Errorf("error in Next method: %w", err)
+		}
+
+		subject := new({{ .StructName }})
+
+		if err := doc.DataTo(&subject); err != nil {
+			return nil, xerrors.Errorf("error in DataTo method: %w", err)
+		}
+
+		subject.{{ .KeyFieldName }} = doc.Ref.ID
+		subjects = append(subjects, subject)
+	}
+
+	return subjects, nil
+}
+
+func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName }}ListReq, q *firestore.Query) ([]*{{ .StructName }}, error) {
+	if (req == nil && q == nil) || (req != nil && q != nil) {
+		return nil, xerrors.New("either one should be nil")
+	}
+
+	query := func() firestore.Query {
+		if q != nil {
+			return *q
+		}
+		return firestore.Query{}
+	}()
+
+	if q == nil {
+		ref := repo.GetCollection()
+{{ $Meta := .MetaFields }}
+{{- range $fi := .FieldInfos }}
+{{- if eq $MetaName $fi.Field }}
+{{- 	range $key, $value := $Meta }}
+		if req.{{ $key }} != nil {
+			for _, chain := range req.{{ $key }}.QueryGroup {
+				if chain.IsSlice() && chain.Operator == OpTypeIn {
+					if err := dedupe.Do(&chain.Value); err != nil {
+						return nil, xerrors.Errorf("error in dedupe.Do method: %w", err)
+					}
+					ref.Query = ref.Query.Where("{{ $key }}", chain.Operator, chain.Value)
+					continue
+				}
+				ref.Query = ref.Query.Where("{{ $key }}", chain.Operator, chain.Value)
+			}
+		}
+{{- 	end }}
+{{- else }}
+{{- 	$IsSlice := HasSlice $fi.FieldType }}
+{{- 	$IsMap := HasMap $fi.FieldType }}
+		if req.{{ $fi.Field }} != nil {
+{{- 		if eq $IsMap true }}
+			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
+				if items, ok := chain.Value.({{ $fi.FieldType }}); ok {
+					for key, value := range items {
+						if IsSlice(value) {
+							ref.Query = ref.Query.Where("{{ $fi.FsTag }}."+key, OpTypeArrayContains, value)
+							continue
+						}
+						ref.Query = ref.Query.Where("{{ $fi.FsTag }}."+key, chain.Operator, value)
+					}
+				}
+			}
+{{- 		else if eq $IsSlice true }}
+			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
+				if err := dedupe.Do(&chain.Value); err != nil {
+					return nil, xerrors.Errorf("error in dedupe.Do method: %w", err)
+				}
+				if !chain.IsSlice() && chain.Operator == OpTypeArrayContains {
+					ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
+					continue
+				}
+				ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
+			}
+{{- 		else }}
+			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
+				if chain.IsSlice() && chain.Operator == OpTypeIn {
+					if err := dedupe.Do(&chain.Value); err != nil {
+						return nil, xerrors.Errorf("error in dedupe.Do method: %w", err)
+					}
+					ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
+					continue
+				}
+				ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
+			}
+{{- 		end }}
+		}
+{{- 	end }}
+{{- end }}
+
+{{- if .MetaFields }}
+{{ $metaPath := (index .MetaFields "DeletedAt").ParentPath }}
+		if !req.IncludeSoftDeleted {
+			ref.Query = ref.Query.Where("DeletedAt", OpTypeEqual, nil)
+		}
+{{- end }}
+
+		query = ref.Query
+	}
+
+	return repo.runQuery(v, query)
 }
