@@ -231,13 +231,39 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteFunc }} {
 	if err := repo.beforeDelete(ctx, subject, opts...); err != nil {
 		return xerrors.Errorf("before delete error: %w", err)
 	}
+{{-  if .MetaFields }}
 
-	return repo.deleteBy{{ .KeyFieldName }}(ctx, subject.{{ .KeyFieldName }}, opts...)
+	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
+		t := time.Now()
+		subject.DeletedAt = &t
+		if err := repo.update(ctx, subject); err != nil {
+			return xerrors.Errorf("error in update method: %w", err)
+		}
+		return nil
+	}
+{{- end }}
+
+	return repo.deleteBy{{ .KeyFieldName }}(ctx, subject.{{ .KeyFieldName }})
 }
 
 // DeleteBy{{ .KeyFieldName }} 処理中の {{ .StructName }} の{{ .KeyFieldName }}から削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteByFunc }} {
-	return repo.deleteBy{{ .KeyFieldName }}(ctx, {{ .KeyValueName }}, opts...)
+{{- if .MetaFields }}
+	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
+		t := time.Now()
+		subject, err := repo.Get(ctx, {{ .KeyValueName }})
+		if err != nil {
+			return xerrors.Errorf("error in GetWithTx method: %w", err)
+		}
+		subject.DeletedAt = &t
+		if err := repo.update(ctx, subject); err != nil {
+			return xerrors.Errorf("error in update method: %w", err)
+		}
+		return nil
+	}
+{{- end }}
+
+	return repo.deleteBy{{ .KeyFieldName }}(ctx, {{ .KeyValueName }})
 }
 
 // GetMulti 処理中の {{ .StructName }} の一括取得処理一切の責任を持ち、これを行う
@@ -438,13 +464,39 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteWithTxFunc }} {
 	if err := repo.beforeDelete(ctx, subject, opts...); err != nil {
 		return xerrors.Errorf("before delete error: %w", err)
 	}
+{{-  if .MetaFields }}
 
-	return repo.deleteBy{{ .KeyFieldName }}(tx, subject.{{ .KeyFieldName }}, opts...)
+	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
+		t := time.Now()
+		subject.DeletedAt = &t
+		if err := repo.update(tx, subject); err != nil {
+			return xerrors.Errorf("error in update method: %w", err)
+		}
+		return nil
+	}
+{{- end }}
+
+	return repo.deleteBy{{ .KeyFieldName }}(tx, subject.{{ .KeyFieldName }})
 }
 
 // DeleteBy{{ .KeyFieldName }}WithTx トランザクション中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteByWithTxFunc }} {
-	return repo.deleteBy{{ .KeyFieldName }}(tx, {{ .KeyValueName }}, opts...)
+{{- if .MetaFields }}
+	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
+		t := time.Now()
+		subject, err := repo.GetWithTx(tx, {{ .KeyValueName }})
+		if err != nil {
+			return xerrors.Errorf("error in GetWithTx method: %w", err)
+		}
+		subject.DeletedAt = &t
+		if err := repo.update(tx, subject); err != nil {
+			return xerrors.Errorf("error in update method: %w", err)
+		}
+		return nil
+	}
+{{- end }}
+
+	return repo.deleteBy{{ .KeyFieldName }}(tx, {{ .KeyValueName }})
 }
 
 // GetMultiWithTx トランザクション中の {{ .StructName }} の一括取得処理一切の責任を持ち、これを行う
@@ -645,25 +697,8 @@ func (repo *{{ .RepositoryStructName }}) update(v interface{}, subject *{{ .Stru
 	return nil
 }
 
-func (repo *{{ .RepositoryStructName }}) deleteBy{{ .KeyFieldName }}(v interface{}, {{ .KeyValueName }} {{ .KeyFieldType }}, {{ MetaJudgment }} ...DeleteOption) error {
+func (repo *{{ .RepositoryStructName }}) deleteBy{{ .KeyFieldName }}(v interface{}, {{ .KeyValueName }} {{ .KeyFieldType }}) error {
 	dr := repo.GetDocRef({{ .KeyValueName }})
-{{ if .MetaFields }}
-	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
-		subject, err := repo.get(v, dr)
-		if err != nil {
-			if status.Code(err) == codes.NotFound {
-				return ErrNotFound
-			}
-			return xerrors.Errorf("error in get method: %w", err)
-		}
-		t := time.Now()
-		subject.DeletedAt = &t
-		if err = repo.update(v, subject); err != nil {
-			return xerrors.Errorf("error in update method: %w", err)
-		}
-		return nil
-	}
-{{ end }}
 	var err error
 
 	switch x := v.(type) {
