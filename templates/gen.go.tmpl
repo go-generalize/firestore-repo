@@ -669,8 +669,6 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 					if err := dedupe.Do(&chain.Value); err != nil {
 						return nil, xerrors.Errorf("error in dedupe.Do method: %w", err)
 					}
-					ref.Query = ref.Query.Where("{{ $key }}", chain.Operator, chain.Value)
-					continue
 				}
 				ref.Query = ref.Query.Where("{{ $key }}", chain.Operator, chain.Value)
 			}
@@ -682,24 +680,22 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 		if req.{{ $fi.Field }} != nil {
 {{- 		if eq $IsMap true }}
 			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
-				if items, ok := chain.Value.({{ $fi.FieldType }}); ok {
-					for key, value := range items {
-						if IsSlice(value) {
-							ref.Query = ref.Query.Where("{{ $fi.FsTag }}."+key, OpTypeArrayContains, value)
-							continue
-						}
-						ref.Query = ref.Query.Where("{{ $fi.FsTag }}."+key, chain.Operator, value)
+				items, ok := chain.Value.({{ $fi.FieldType }})
+				if !ok {
+					continue
+				}
+				for key, value := range items {
+					if IsSlice(value) {
+						ref.Query = ref.Query.Where("{{ $fi.FsTag }}."+key, OpTypeArrayContains, value)
+						continue
 					}
+					ref.Query = ref.Query.Where("{{ $fi.FsTag }}."+key, chain.Operator, value)
 				}
 			}
 {{- 		else if eq $IsSlice true }}
 			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
 				if err := dedupe.Do(&chain.Value); err != nil {
 					return nil, xerrors.Errorf("error in dedupe.Do method: %w", err)
-				}
-				if !chain.IsSlice() && chain.Operator == OpTypeArrayContains {
-					ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
-					continue
 				}
 				ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
 			}
@@ -709,8 +705,6 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 					if err := dedupe.Do(&chain.Value); err != nil {
 						return nil, xerrors.Errorf("error in dedupe.Do method: %w", err)
 					}
-					ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
-					continue
 				}
 				ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
 			}
