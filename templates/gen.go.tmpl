@@ -417,6 +417,7 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertWithTxFunc }} {
 // UpdateWithTx トランザクション中の {{ .StructName }} の更新処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ UpdateWithTxFunc }} {
 	doc := repo.GetDocRef(subject.{{ .KeyFieldName }})
+
 	old, err := repo.get(tx, doc)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
