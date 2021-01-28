@@ -80,7 +80,7 @@ func (repo *{{ .RepositoryStructName }}) setMeta(subject *{{ .StructName }}, isI
 		subject.CreatedAt = time.Now()
 	}
 	subject.UpdatedAt = now
-	subject.Version += 1
+	subject.Version++
 }
 {{ end }}
 func (repo *{{ .RepositoryStructName }}) beforeInsert(ctx context.Context, subject *{{ .StructName }}) error {
