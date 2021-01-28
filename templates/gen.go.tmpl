@@ -43,6 +43,7 @@ type {{ .RepositoryInterfaceName }} interface {
 	{{ GetMultiWithTxFunc }}
 	{{ InsertMultiWithTxFunc }}
 	{{ UpdateMultiWithTxFunc }}
+	{{ DeleteMultiWithTxFunc }}
 	// List
 	{{ ListFunc }}
 	{{ ListWithTxFunc }}
@@ -547,6 +548,49 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiWithTxFunc }} {
 	for i := range subjects {
 		if err := repo.update(tx, subjects[i]); err != nil {
 			return xerrors.Errorf("error in update method(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
+		}
+	}
+
+	return nil
+}
+
+// DeleteMultiWithTx トランザクション中の {{ .StructName }} の一括削除処理一切の責任を持ち、これを行う
+func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiWithTxFunc }} {
+{{- if .MetaFields }}
+	t := time.Now()
+{{- end }}
+	for i := range subjects {
+		dr := repo.GetDocRef(subjects[i].{{ .KeyFieldName }})
+		if _, err := repo.get(tx, dr); err != nil {
+			if status.Code(err) == codes.NotFound {
+				return xerrors.Errorf("not found(%d) [%v]", i, subjects[i].{{ .KeyFieldName }})
+			}
+			return xerrors.Errorf("error in get method(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
+		}
+
+		if err := repo.beforeDelete(ctx, subjects[i], opts...); err != nil {
+			return xerrors.Errorf("before delete error(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
+		}
+{{- if .MetaFields }}
+
+		if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
+			subjects[i].DeletedAt = &t
+			if err := repo.update(tx, subjects[i]); err != nil {
+				return xerrors.Errorf("error in update method(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
+			}
+		}
+{{- end }}
+	}
+{{- if .MetaFields }}
+
+	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
+		return nil
+	}
+{{- end }}
+
+	for i := range subjects {
+		if err := repo.deleteBy{{ .KeyFieldName }}(tx, subjects[i].{{ .KeyFieldName }}); err != nil {
+			return xerrors.Errorf("error in delete method(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
 	}
 
