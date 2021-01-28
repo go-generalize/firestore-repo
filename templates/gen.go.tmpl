@@ -39,6 +39,7 @@ type {{ .RepositoryInterfaceName }} interface {
 	{{ UpdateWithTxFunc }}
 	{{ DeleteWithTxFunc }}
 	{{ DeleteByWithTxFunc }}
+	{{ InsertMultiWithTxFunc }}
 	// List
 	{{ ListFunc }}
 	{{ ListWithTxFunc }}
@@ -469,6 +470,29 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteWithTxFunc }} {
 // DeleteBy{{ .KeyFieldName }}WithTx トランザクション中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteByWithTxFunc }} {
 	return repo.deleteBy{{ .KeyFieldName }}(tx, {{ .KeyValueName }}, opts...)
+}
+
+// InsertMultiWithTx トランザクション中の {{ .StructName }} の一括挿入処理一切の責任を持ち、これを行う
+func (repo *{{ .RepositoryStructName }}) {{ InsertMultiWithTxFunc }} {
+	ids := make([]string, len(subjects))
+
+	for i, subject := range subjects {
+		if err := repo.beforeInsert(ctx, subject); err != nil {
+			return nil, xerrors.Errorf("before insert error(%d) [%v]: %w", i, subject.{{ .KeyFieldName }}, err)
+		}
+		id, err := repo.insert(tx, subject)
+		if err != nil {
+{{- 	if not .AutomaticGeneration }}
+			if xerrors.Is(err, ErrAlreadyExists) {
+				return nil, xerrors.Errorf("already exists(%d) [%v]: %w", i, subject.{{ .KeyFieldName }}, err)
+			}
+{{- 	end }}
+			return nil, xerrors.Errorf("error in insert method(%d) [%v]: %w", i, subject.{{ .KeyFieldName }}, err)
+		}
+		ids[i] = id
+	}
+
+	return ids, nil
 }
 
 func (repo *{{ .RepositoryStructName }}) get(v interface{}, doc *firestore.DocumentRef, {{ MetaJudgment }} ...GetOption) (*{{ .StructName }}, error) {
