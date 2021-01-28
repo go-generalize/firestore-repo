@@ -317,5 +317,12 @@ func (g *generator) setFuncMap() template.FuncMap {
 		"DeleteMultiWithTxFunc": func() string {
 			return fmt.Sprintf("DeleteMultiWithTx(ctx context.Context, tx *firestore.Transaction, subjects []*%s, opts ...DeleteOption) error", g.StructName)
 		},
+		"DeleteMultiByWithTxFunc": func() string {
+			raw := fmt.Sprintf(
+				"DeleteMultiBy%sWithTx(ctx context.Context, tx *firestore.Transaction, %s []%s, opts ...DeleteOption) error",
+				plural.Convert(g.KeyFieldName), plural.Convert(g.KeyValueName), g.KeyFieldType,
+			)
+			return raw
+		},
 	}
 }
