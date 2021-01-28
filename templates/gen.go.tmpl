@@ -522,14 +522,14 @@ func (repo *{{ .RepositoryStructName }}) insert(v interface{}, subject *{{ .Stru
 
 	switch x := v.(type) {
 	case *firestore.Transaction:
-{{- 	if .AutomaticGeneration }}
+{{- 	if not .AutomaticGeneration }}
 		if _, err = x.Get(dr); err == nil {
 			return "", ErrAlreadyExists
 		}
 {{- 	end }}
 		err = x.Set(dr, subject)
 	case context.Context:
-{{- 	if .AutomaticGeneration }}
+{{- 	if not .AutomaticGeneration }}
 		if _, err = dr.Get(x); err == nil {
 			return "", ErrAlreadyExists
 		}
