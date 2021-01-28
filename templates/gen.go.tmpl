@@ -39,6 +39,7 @@ type {{ .RepositoryInterfaceName }} interface {
 	{{ UpdateWithTxFunc }}
 	{{ DeleteWithTxFunc }}
 	{{ DeleteByWithTxFunc }}
+	{{ GetMultiWithTxFunc }}
 	{{ InsertMultiWithTxFunc }}
 	// List
 	{{ ListFunc }}
@@ -239,36 +240,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteByFunc }} {
 
 // GetMulti 処理中の {{ .StructName }} の一括取得処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ GetMultiFunc }} {
-	collect := repo.GetCollection()
-	docRefs := make([]*firestore.DocumentRef, 0, len({{ PluralForm .KeyValueName }}))
-	for _, {{ .KeyValueName }} := range {{ PluralForm .KeyValueName }} {
-		ref := collect.Doc({{ .KeyValueName }})
-		docRefs = append(docRefs, ref)
-	}
-
-	snapShots, err := repo.firestoreClient.GetAll(ctx, docRefs)
-	if err != nil {
-		return nil, xerrors.Errorf("error in GetAll method: %w", err)
-	}
-
-	subjects := make([]*{{ .StructName }}, 0, len({{ PluralForm .KeyValueName }}))
-	for _, snapShot := range snapShots {
-		subject := new({{ .StructName }})
-		if err := snapShot.DataTo(&subject); err != nil {
-			return nil, xerrors.Errorf("error in DataTo method: %w", err)
-		}
-{{ if .MetaFields }}
-		if len(opts) == 0 || !opts[0].IncludeSoftDeleted {
-			if subject.DeletedAt != nil {
-				continue
-			}
-		}
-{{- end }}
-		subject.{{ .KeyFieldName }} = snapShot.Ref.ID
-		subjects = append(subjects, subject)
-	}
-
-	return subjects, nil
+	return repo.getMulti(ctx, {{ PluralForm .KeyValueName }}, opts...)
 }
 
 // InsertMulti 処理中の {{ .StructName }} の一括挿入処理一切の責任を持ち、これを行う
@@ -472,6 +444,11 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteByWithTxFunc }} {
 	return repo.deleteBy{{ .KeyFieldName }}(tx, {{ .KeyValueName }}, opts...)
 }
 
+// GetMultiWithTx トランザクション中の {{ .StructName }} の一括取得処理一切の責任を持ち、これを行う
+func (repo *{{ .RepositoryStructName }}) {{ GetMultiWithTxFunc }} {
+	return repo.getMulti(tx, {{ PluralForm .KeyValueName }}, opts...)
+}
+
 // InsertMultiWithTx トランザクション中の {{ .StructName }} の一括挿入処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ InsertMultiWithTxFunc }} {
 	ids := make([]string, len(subjects))
@@ -531,6 +508,52 @@ func (repo *{{ .RepositoryStructName }}) get(v interface{}, doc *firestore.Docum
 	subject.{{ .KeyFieldName }} = snapShot.Ref.ID
 
 	return subject, nil
+}
+
+func (repo *{{ .RepositoryStructName }}) getMulti(v interface{}, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, {{ MetaJudgment }} ...GetOption) ([]*{{ .StructName }}, error) {
+	var (
+		snapShots []*firestore.DocumentSnapshot
+		err       error
+		collect   = repo.GetCollection()
+		drs       = make([]*firestore.DocumentRef, len({{ PluralForm .KeyValueName }}))
+	)
+
+	for i, {{ .KeyValueName }} := range {{ PluralForm .KeyValueName }} {
+		ref := collect.Doc({{ .KeyValueName }})
+		drs[i] = ref
+	}
+
+	switch x := v.(type) {
+	case *firestore.Transaction:
+		snapShots, err = x.GetAll(drs)
+	case context.Context:
+		snapShots, err = repo.firestoreClient.GetAll(x, drs)
+	default:
+		return nil, xerrors.Errorf("invalid type: %v", v)
+	}
+
+	if err != nil {
+		return nil, xerrors.Errorf("error in GetAll method: %w", err)
+	}
+
+	subjects := make([]*{{ .StructName }}, 0, len({{ PluralForm .KeyValueName }}))
+	for _, snapShot := range snapShots {
+		subject := new({{ .StructName }})
+		if err := snapShot.DataTo(&subject); err != nil {
+			return nil, xerrors.Errorf("error in DataTo method: %w", err)
+		}
+{{ if .MetaFields }}
+		if len(opts) == 0 || !opts[0].IncludeSoftDeleted {
+			if subject.DeletedAt != nil {
+				continue
+			}
+		}
+{{- end }}
+		subject.{{ .KeyFieldName }} = snapShot.Ref.ID
+		subjects = append(subjects, subject)
+	}
+
+	return subjects, nil
 }
 
 func (repo *{{ .RepositoryStructName }}) insert(v interface{}, subject *{{ .StructName }}) ({{ .KeyFieldType }}, error) {
