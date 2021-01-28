@@ -311,5 +311,8 @@ func (g *generator) setFuncMap() template.FuncMap {
 				g.StructName,
 			)
 		},
+		"UpdateMultiWithTxFunc": func() string {
+			return fmt.Sprintf("UpdateMultiWithTx(ctx context.Context, tx *firestore.Transaction, subjects []*%s) error", g.StructName)
+		},
 	}
 }
