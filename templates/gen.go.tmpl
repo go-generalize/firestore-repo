@@ -44,6 +44,7 @@ type {{ .RepositoryInterfaceName }} interface {
 	{{ InsertMultiWithTxFunc }}
 	{{ UpdateMultiWithTxFunc }}
 	{{ DeleteMultiWithTxFunc }}
+	{{ DeleteMultiByWithTxFunc }}
 	// List
 	{{ ListFunc }}
 	{{ ListWithTxFunc }}
@@ -262,8 +263,8 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteByFunc }} {
 		}
 		return nil
 	}
-{{- end }}
 
+{{- end }}
 	return repo.deleteBy{{ .KeyFieldName }}(ctx, {{ .KeyValueName }})
 }
 
@@ -495,8 +496,8 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteByWithTxFunc }} {
 		}
 		return nil
 	}
-{{- end }}
 
+{{- end }}
 	return repo.deleteBy{{ .KeyFieldName }}(tx, {{ .KeyValueName }})
 }
 
@@ -591,6 +592,50 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiWithTxFunc }} {
 	for i := range subjects {
 		if err := repo.deleteBy{{ .KeyFieldName }}(tx, subjects[i].{{ .KeyFieldName }}); err != nil {
 			return xerrors.Errorf("error in delete method(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
+		}
+	}
+
+	return nil
+}
+
+// DeleteMultiBy{{ .KeyFieldName }}WithTx トランザクション中の {{ .StructName }} の一括削除処理一切の責任を持ち、これを行う
+func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByWithTxFunc }} {
+{{- if .MetaFields }}
+	t := time.Now()
+{{- end }}
+	for i := range {{ PluralForm .KeyValueName }} {
+		dr := repo.GetDocRef({{ PluralForm .KeyValueName }}[i])
+		subject, err := repo.get(tx, dr)
+		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				return xerrors.Errorf("not found(%d) [%v]", i, {{ PluralForm .KeyValueName }}[i])
+			}
+			return xerrors.Errorf("error in get method(%d) [%v]: %w", i, {{ PluralForm .KeyValueName }}[i], err)
+		}
+
+		if err := repo.beforeDelete(ctx, subject, opts...); err != nil {
+			return xerrors.Errorf("before delete error(%d) [%v]: %w", i, {{ PluralForm .KeyValueName }}[i], err)
+		}
+{{- if .MetaFields }}
+
+		if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
+			subject.DeletedAt = &t
+			if err := repo.update(tx, subject); err != nil {
+				return xerrors.Errorf("error in update method(%d) [%v]: %w", i, {{ PluralForm .KeyValueName }}[i], err)
+			}
+		}
+{{- end }}
+	}
+{{- if .MetaFields }}
+
+	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
+		return nil
+	}
+{{- end }}
+
+	for i := range {{ PluralForm .KeyValueName }} {
+		if err := repo.deleteBy{{ .KeyFieldName }}(tx, {{ PluralForm .KeyValueName }}[i]); err != nil {
+			return xerrors.Errorf("error in delete method(%d) [%v]: %w", i, {{ PluralForm .KeyValueName }}[i], err)
 		}
 	}
 
