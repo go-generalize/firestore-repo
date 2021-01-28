@@ -296,14 +296,14 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiFunc }} {
 
 	for i, subject := range subjects {
 		ref := collect.Doc(subject.{{ .KeyFieldName }})
-		{{ if .MetaFields }}snapShot{{ else }}_{{ end }}, err := ref.Get(ctx)
+		snapShot, err := ref.Get(ctx)
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
 				return xerrors.Errorf("not found [%v]: %w", subject.{{ .KeyFieldName }}, err)
 			}
 			return xerrors.Errorf("error in Get method [%v]: %w", subject.{{ .KeyFieldName }}, err)
 		}
-{{ if .MetaFields }}
+
 		old := new({{ .StructName }})
 		if err = snapShot.DataTo(&old); err != nil {
 			return xerrors.Errorf("error in DataTo method: %w", err)
@@ -312,7 +312,7 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiFunc }} {
 		if err = repo.beforeUpdate(ctx, old, subject); err != nil {
 			return xerrors.Errorf("before update error: %w", err)
 		}
-{{ end }}
+
 		batch.Set(ref, subject)
 		i++
 		if (i%500) == 0 && len(subjects) != i {
