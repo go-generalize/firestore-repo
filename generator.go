@@ -294,5 +294,10 @@ func (g *generator) setFuncMap() template.FuncMap {
 				g.KeyFieldName, g.KeyValueName, g.KeyFieldType,
 			)
 		},
+		"ListWithTxFunc": func() string {
+			return fmt.Sprintf(
+				"ListWithTx(tx *firestore.Transaction, req *%sListReq, q *firestore.Query) ([]*%s, error)",
+				g.StructName, g.StructName)
+		},
 	}
 }
