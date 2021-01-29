@@ -55,7 +55,7 @@ func compareTask(t *testing.T, expected, actual *model.Task) {
 	}
 }
 
-func TestFirestoreTransactionTask(t *testing.T) {
+func TestFirestore(t *testing.T) {
 	client := initFirestoreClient(t)
 
 	taskRepo := model.NewTaskRepository(client)
@@ -222,7 +222,7 @@ func TestFirestoreTransactionTask(t *testing.T) {
 	})
 }
 
-func TestFirestoreQueryTask(t *testing.T) {
+func TestFirestoreQuery(t *testing.T) {
 	client := initFirestoreClient(t)
 
 	taskRepo := model.NewTaskRepository(client)
@@ -402,7 +402,7 @@ func TestFirestoreQueryTask(t *testing.T) {
 }
 
 /* TODO Map版Indexes実装
-func TestFirestoreListNameWithIndexes(t *testing.T) {
+func TestFirestoreListWithIndexes(t *testing.T) {
 	client := initFirestoreClient(t)
 
 	nameRepo := model.NewNameRepository(client)
@@ -547,7 +547,7 @@ func TestFirestoreListNameWithIndexes(t *testing.T) {
 }
 */
 
-func TestFirestore(t *testing.T) {
+func TestFirestoreValueCheck(t *testing.T) {
 	client := initFirestoreClient(t)
 
 	taskRepo := model.NewTaskRepository(client)
