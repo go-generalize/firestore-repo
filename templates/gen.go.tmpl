@@ -466,7 +466,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteWithTxFunc }} {
 	if err := repo.beforeDelete(ctx, subject, opts...); err != nil {
 		return xerrors.Errorf("before delete error: %w", err)
 	}
-{{-  if .MetaFields }}
+{{- if .MetaFields }}
 
 	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 		t := time.Now()
