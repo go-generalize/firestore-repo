@@ -141,7 +141,7 @@ func TestFirestoreTransactionTask(t *testing.T) {
 
 		tr.Run("SubCollection", func(tr *testing.T) {
 			ids2 := make([]string, 0, 3)
-			doc := taskRepo.GetCollection().Doc(id)
+			doc := taskRepo.GetDocRef(id)
 			subRepo := model.NewSubTaskRepository(client, doc)
 			st := &model.SubTask{IsSubCollection: true}
 			id, err = subRepo.Insert(ctx, st)
