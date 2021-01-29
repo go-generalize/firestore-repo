@@ -188,7 +188,6 @@ func TestFirestore(t *testing.T) {
 				}
 
 				if sub.ID != sts[1].ID {
-					tr2.Log(sub.ID, sts[1].ID)
 					tr2.Fatal("not match")
 				}
 
@@ -245,7 +244,7 @@ func TestFirestoreTransaction_Single(t *testing.T) {
 	}
 
 	t.Run("Insert", func(tr *testing.T) {
-		err := client.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
+		if err := client.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
 			tk := &model.Task{
 				Identity:   "identity",
 				Desc:       fmt.Sprintf("%s01", desc),
@@ -267,9 +266,7 @@ func TestFirestoreTransaction_Single(t *testing.T) {
 
 			ids = append(ids, id)
 			return nil
-		})
-
-		if err != nil {
+		}); err != nil {
 			tr.Fatalf("error: %+v", err)
 		}
 
@@ -285,7 +282,7 @@ func TestFirestoreTransaction_Single(t *testing.T) {
 
 	t.Run("Update", func(tr *testing.T) {
 		id := ids[len(ids)-1]
-		err := client.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
+		if err := client.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
 			tk, err := taskRepo.GetWithTx(tx, id)
 			if err != nil {
 				return err
@@ -299,10 +296,9 @@ func TestFirestoreTransaction_Single(t *testing.T) {
 			if err = taskRepo.UpdateWithTx(cx, tx, tk); err != nil {
 				return err
 			}
-			return nil
-		})
 
-		if err != nil {
+			return nil
+		}); err != nil {
 			tr.Fatalf("error: %+v", err)
 		}
 
@@ -355,6 +351,7 @@ func TestFirestoreQuery(t *testing.T) {
 		}
 		tks = append(tks, tk)
 	}
+
 	ids, err := taskRepo.InsertMulti(ctx, tks)
 	if err != nil {
 		t.Fatalf("%+v", err)
