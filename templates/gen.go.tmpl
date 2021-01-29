@@ -438,7 +438,12 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertWithTxFunc }} {
 	if err := repo.beforeInsert(ctx, subject); err != nil {
 		return "", xerrors.Errorf("before insert error: %w", err)
 	}
+{{- if not .AutomaticGeneration }}
 
+	if _, err := tx.Get(new(firestore.DocumentRef)); err == nil {
+		return "", ErrAlreadyExists
+	}
+{{ end }}
 	return repo.insert(tx, subject)
 }
 
@@ -508,20 +513,23 @@ func (repo *{{ .RepositoryStructName }}) {{ GetMultiWithTxFunc }} {
 
 // InsertMultiWithTx トランザクション中の {{ .StructName }} の一括挿入処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ InsertMultiWithTxFunc }} {
+{{- if not .AutomaticGeneration }}
+	for i := range subjects {
+		if _, err := tx.Get(new(firestore.DocumentRef)); err == nil {
+			return nil, xerrors.Errorf("already exists(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
+		}
+	}
+
+{{- end }}
 	{{ PluralForm .KeyValueName }} := make([]string, len(subjects))
 
-	for i, subject := range subjects {
-		if err := repo.beforeInsert(ctx, subject); err != nil {
-			return nil, xerrors.Errorf("before insert error(%d) [%v]: %w", i, subject.{{ .KeyFieldName }}, err)
+	for i := range subjects {
+		if err := repo.beforeInsert(ctx, subjects[i]); err != nil {
+			return nil, xerrors.Errorf("before insert error(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
-		{{ .KeyValueName }}, err := repo.insert(tx, subject)
+		{{ .KeyValueName }}, err := repo.insert(tx, subjects[i])
 		if err != nil {
-{{- 	if not .AutomaticGeneration }}
-			if xerrors.Is(err, ErrAlreadyExists) {
-				return nil, xerrors.Errorf("already exists(%d) [%v]: %w", i, subject.{{ .KeyFieldName }}, err)
-			}
-{{- 	end }}
-			return nil, xerrors.Errorf("error in insert method(%d) [%v]: %w", i, subject.{{ .KeyFieldName }}, err)
+			return nil, xerrors.Errorf("error in insert method(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
 		{{ PluralForm .KeyValueName }}[i] = {{ .KeyValueName }}
 	}
@@ -738,11 +746,6 @@ func (repo *{{ .RepositoryStructName }}) insert(v interface{}, subject *{{ .Stru
 
 	switch x := v.(type) {
 	case *firestore.Transaction:
-{{- 	if not .AutomaticGeneration }}
-		if _, err = x.Get(dr); err == nil {
-			return "", ErrAlreadyExists
-		}
-{{- 	end }}
 		err = x.Set(dr, subject)
 	case context.Context:
 {{- 	if not .AutomaticGeneration }}
