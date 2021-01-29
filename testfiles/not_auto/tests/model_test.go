@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -218,6 +219,100 @@ func TestFirestore(t *testing.T) {
 
 		if tsk.Count != 12 {
 			tr.Fatalf("unexpected Count: %d (expected: %d)", tsk.Count, 12)
+		}
+	})
+}
+
+func TestFirestoreTransaction_Single(t *testing.T) {
+	client := initFirestoreClient(t)
+
+	taskRepo := model.NewTaskRepository(client)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	var ids []string
+	defer func() {
+		defer cancel()
+		if err := taskRepo.DeleteMultiByIdentities(ctx, ids); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	now := time.Unix(0, time.Now().UnixNano())
+	desc := "Hello, World!"
+	latLng := &latlng.LatLng{
+		Latitude:  35.678803,
+		Longitude: 139.756263,
+	}
+
+	t.Run("Insert", func(tr *testing.T) {
+		err := client.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
+			tk := &model.Task{
+				Identity:   "identity",
+				Desc:       fmt.Sprintf("%s01", desc),
+				Created:    now,
+				Done:       true,
+				Done2:      false,
+				Count:      10,
+				Count64:    11,
+				NameList:   []string{"a", "b", "c"},
+				Proportion: 0.12345 + 11,
+				Geo:        latLng,
+				Flag:       true,
+			}
+
+			id, err := taskRepo.InsertWithTx(cx, tx, tk)
+			if err != nil {
+				return err
+			}
+
+			ids = append(ids, id)
+			return nil
+		})
+
+		if err != nil {
+			tr.Fatalf("error: %+v", err)
+		}
+
+		tsk, err := taskRepo.Get(ctx, ids[len(ids)-1])
+		if err != nil {
+			tr.Fatalf("%+v", err)
+		}
+
+		if reflect.DeepEqual(tsk.Geo, latLng) {
+			tr.Fatalf("unexpected Geo: %+v (expected: %+v)", tsk.Geo, latLng)
+		}
+	})
+
+	t.Run("Update", func(tr *testing.T) {
+		id := ids[len(ids)-1]
+		err := client.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
+			tk, err := taskRepo.GetWithTx(tx, id)
+			if err != nil {
+				return err
+			}
+
+			if tk.Count != 10 {
+				return fmt.Errorf("unexpected Count: %d (expected: %d)", tk.Count, 10)
+			}
+
+			tk.Count = 11
+			if err = taskRepo.UpdateWithTx(cx, tx, tk); err != nil {
+				return err
+			}
+			return nil
+		})
+
+		if err != nil {
+			tr.Fatalf("error: %+v", err)
+		}
+
+		tsk, err := taskRepo.Get(ctx, id)
+		if err != nil {
+			tr.Fatalf("%+v", err)
+		}
+
+		if tsk.Count != 11 {
+			tr.Fatalf("unexpected Count: %d (expected: %d)", tsk.Count, 11)
 		}
 	})
 }
