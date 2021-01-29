@@ -313,6 +313,92 @@ func TestFirestoreTransaction_Single(t *testing.T) {
 	})
 }
 
+func TestFirestoreTransaction_Multi(t *testing.T) {
+	client := initFirestoreClient(t)
+
+	taskRepo := model.NewTaskRepository(client)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	var ids []string
+	defer func() {
+		defer cancel()
+		if err := taskRepo.DeleteMultiByIdentities(ctx, ids); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	now := time.Unix(0, time.Now().UnixNano())
+	desc := "Hello, World!"
+	latLng := &latlng.LatLng{
+		Latitude:  35.678803,
+		Longitude: 139.756263,
+	}
+
+	tks := make([]*model.Task, 0)
+	t.Run("InsertMulti", func(tr *testing.T) {
+		for i := int64(1); i <= 10; i++ {
+			tk := &model.Task{
+				Identity:   fmt.Sprintf("Task_%d", i),
+				Desc:       fmt.Sprintf("%s%d", desc, i),
+				Created:    now,
+				Done:       true,
+				Done2:      false,
+				Count:      int(i),
+				Count64:    0,
+				NameList:   []string{"a", "b", "c"},
+				Proportion: 0.12345 + float64(i),
+				Geo:        latLng,
+				Flag:       model.Flag(true),
+			}
+			tks = append(tks, tk)
+		}
+
+		if err := client.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
+			idList, err := taskRepo.InsertMultiWithTx(ctx, tx, tks)
+			if err != nil {
+				return err
+			}
+			ids = append(ids, idList...)
+			return nil
+		}); err != nil {
+			tr.Fatalf("error: %+v", err)
+		}
+	})
+
+	tks2 := make([]*model.Task, 0)
+	t.Run("UpdateMulti", func(tr *testing.T) {
+		for i := int64(1); i <= 10; i++ {
+			tk := &model.Task{
+				Identity:   ids[i-1],
+				Desc:       fmt.Sprintf("%s%d", desc, i+1),
+				Created:    now,
+				Done:       false,
+				Done2:      true,
+				Count:      int(i),
+				Count64:    i,
+				NameList:   []string{"a", "b", "c"},
+				Proportion: 0.12345 + float64(i),
+				Geo:        latLng,
+				Flag:       model.Flag(true),
+			}
+			tks2 = append(tks2, tk)
+		}
+
+		if err := client.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
+			if err := taskRepo.UpdateMultiWithTx(cx, tx, tks2); err != nil {
+				return err
+			}
+			return nil
+		}); err != nil {
+			tr.Fatalf("error: %+v", err)
+		}
+
+		if tks[0].Identity != tks2[0].Identity {
+			tr.Fatalf("unexpected identity: %s (expected: %s)", tks[0].Identity, tks2[0].Identity)
+		}
+	})
+}
+
 func TestFirestoreQuery(t *testing.T) {
 	client := initFirestoreClient(t)
 
