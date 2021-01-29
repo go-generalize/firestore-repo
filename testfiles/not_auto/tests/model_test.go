@@ -12,6 +12,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	model "github.com/go-generalize/firestore-repo/testfiles/not_auto"
+	"golang.org/x/xerrors"
 	"google.golang.org/genproto/googleapis/type/latlng"
 )
 
@@ -575,6 +576,95 @@ func TestFirestoreQuery(t *testing.T) {
 
 		if len(tasks) != 4 {
 			tr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 4)
+		}
+	})
+}
+
+func TestFirestoreError(t *testing.T) {
+	client := initFirestoreClient(t)
+
+	taskRepo := model.NewTaskRepository(client)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	var ids []string
+	defer func() {
+		defer cancel()
+		if err := taskRepo.DeleteMultiByIdentities(ctx, ids); err != nil {
+			t.Fatalf("%+v\n", err)
+		}
+	}()
+
+	now := time.Unix(0, time.Now().UnixNano())
+	desc := "Hello, World!"
+
+	t.Run("Prepare", func(tr *testing.T) {
+		tk := &model.Task{
+			Identity:   "identity",
+			Desc:       desc,
+			Created:    now,
+			Done:       true,
+			Done2:      false,
+			Count:      11,
+			Count64:    11,
+			Proportion: 0.12345 + 11,
+			NameList:   []string{"a", "b", "c"},
+			Flag:       model.Flag(true),
+		}
+		id, err := taskRepo.Insert(ctx, tk)
+		if err != nil {
+			tr.Fatalf("%+v", err)
+		}
+		ids = append(ids, id)
+	})
+
+	t.Run("ErrorReadAfterWrite", func(tr *testing.T) {
+		tkID := ids[len(ids)-1]
+		errReadAfterWrite := xerrors.New("firestore: read after write in transaction")
+
+		if err := client.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
+			tk, err := taskRepo.GetWithTx(tx, tkID)
+			if err != nil {
+				return err
+			}
+
+			if tk.Count != 11 {
+				return fmt.Errorf("unexpected Count: %d (expected: %d)", tk.Count, 11)
+			}
+
+			tk.Count = 12
+			if err = taskRepo.UpdateWithTx(cx, tx, tk); err != nil {
+				return err
+			}
+
+			if _, err = taskRepo.GetWithTx(tx, tkID); err != nil {
+				return err
+			}
+			return nil
+		}); err != nil && xerrors.Is(xerrors.Unwrap(err), errReadAfterWrite) {
+			tr.Fatalf("error: %+v", err)
+		}
+
+		tsk, err := taskRepo.Get(ctx, tkID)
+		if err != nil {
+			tr.Fatalf("%+v", err)
+		}
+
+		if tsk.Count != 11 {
+			tr.Fatalf("unexpected Count: %d (expected: %d)", tsk.Count, 11)
+		}
+
+		if err = client.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
+			id, err := taskRepo.InsertWithTx(cx, tx, new(model.Task))
+			if err != nil {
+				return err
+			}
+
+			if _, err = taskRepo.GetWithTx(tx, id); err != nil {
+				return err
+			}
+			return nil
+		}); err != nil && xerrors.Is(xerrors.Unwrap(err), errReadAfterWrite) {
+			tr.Fatalf("error: %+v", err)
 		}
 	})
 }
