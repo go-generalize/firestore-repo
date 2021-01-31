@@ -75,6 +75,7 @@ func traverse(pkg *ast.Package, fs *token.FileSet, structName string) error {
 	if *isSubCollection {
 		gen.IsSubCollection = true
 	}
+
 	for name, file := range pkg.Files {
 		gen.FileName = strings.TrimSuffix(filepath.Base(name), ".go")
 		gen.GeneratedFileName = gen.FileName + "_gen"
@@ -119,17 +120,18 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 	dupMap := make(map[string]int)
 	fieldLabel = gen.StructName + queryLabel
 
-	var metaList map[string]*Field
+	metaList := make(map[string]*Field)
 	metaFieldName := ""
 	if !*disableMeta {
-		var err error
 		fList := listAllField(structType.Fields, "", false)
+
 		metas, mfn, err := searchMetaProperties(fList)
 		if err != nil {
 			return err
 		}
+
 		metaFieldName = mfn
-		metaList = make(map[string]*Field)
+
 		for _, m := range metas {
 			metaList[m.Name] = m
 		}
@@ -141,8 +143,10 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		if len(field.Names) > 1 {
 			return xerrors.New("`field.Names` must have only one element")
 		}
+
 		isMetaFiled := false
 		name := ""
+
 		if field.Names == nil || len(field.Names) == 0 {
 			switch field.Type.(type) {
 			case *ast.Ident:
