@@ -208,8 +208,8 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 				FieldType: typeName,
 			}
 
-			if tag, err := dataStoreTagCheck(pos, tags); err != nil {
-				return xerrors.Errorf("error in tagCheck method: %w", err)
+			if tag, er := dataStoreTagCheck(pos, tags); er != nil {
+				return xerrors.Errorf("error in tagCheck method: %w", er)
 			} else if tag != "" {
 				fieldInfo.FsTag = tag
 			}
