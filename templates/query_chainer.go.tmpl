@@ -99,6 +99,17 @@ func (qc *QueryChainer) In(v interface{}) *QueryChainer {
 	return qc
 }
 
+// NotIn - `not-in`
+func (qc *QueryChainer) NotIn(v interface{}) *QueryChainer {
+	q, err := newQuery(v, OpTypeNotIn)
+	if err != nil {
+		qc.err = err
+		return qc
+	}
+	qc.QueryGroup = append(qc.QueryGroup, q)
+	return qc
+}
+
 // ArrayContains - `array-contains`
 func (qc *QueryChainer) ArrayContains(v interface{}) *QueryChainer {
 	q, err := newQuery(v, OpTypeArrayContains)
