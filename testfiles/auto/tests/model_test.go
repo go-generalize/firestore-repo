@@ -504,7 +504,7 @@ func TestFirestoreQuery(t *testing.T) {
 		}
 	})
 
-	t.Run("NotEqual", func(tr *testing.T) {
+	t.Run("NotEqual(9件)", func(tr *testing.T) {
 		description := fmt.Sprintf("%s%d", desc, 1)
 		req := &model.TaskListReq{
 			Desc: model.NewQueryChainer().NotEqual(description),
@@ -518,7 +518,7 @@ func TestFirestoreQuery(t *testing.T) {
 		}
 	})
 
-	t.Run("NotIn", func(tr *testing.T) {
+	t.Run("NotIn(8件)", func(tr *testing.T) {
 		description1 := fmt.Sprintf("%s%d", desc, 1)
 		description2 := fmt.Sprintf("%s%d", desc, 2)
 		req := &model.TaskListReq{
