@@ -87,7 +87,7 @@ func (qb *QueryBuilder) Equal(path string, value interface{}) *QueryBuilder {
 		return qb
 	}
 	qb.equalCounter[path] = struct{}{}
-	qb.q = qb.q.Where(path, "==", value)
+	qb.q = qb.q.Where(path, OpTypeEqual, value)
 	return qb
 }
 
@@ -98,7 +98,7 @@ func (qb *QueryBuilder) NotEqual(path string, value interface{}) *QueryBuilder {
 		return qb
 	}
 	qb.equalCounter[path] = struct{}{}
-	qb.q = qb.q.Where(path, "!=", value)
+	qb.q = qb.q.Where(path, OpTypeNotEqual, value)
 	return qb
 }
 
@@ -113,7 +113,7 @@ func (qb *QueryBuilder) LessThan(path string, value interface{}) *QueryBuilder {
 		return qb
 	}
 	qb.rangeCounter[path] = struct{}{}
-	qb.q = qb.q.Where(path, "<", value)
+	qb.q = qb.q.Where(path, OpTypeLessThan, value)
 	return qb
 }
 
@@ -128,7 +128,7 @@ func (qb *QueryBuilder) LessThanOrEqual(path string, value interface{}) *QueryBu
 		return qb
 	}
 	qb.rangeCounter[path] = struct{}{}
-	qb.q = qb.q.Where(path, "<=", value)
+	qb.q = qb.q.Where(path, OpTypeLessThanOrEqual, value)
 	return qb
 }
 
@@ -143,7 +143,7 @@ func (qb *QueryBuilder) GreaterThan(path string, value interface{}) *QueryBuilde
 		return qb
 	}
 	qb.rangeCounter[path] = struct{}{}
-	qb.q = qb.q.Where(path, ">", value)
+	qb.q = qb.q.Where(path, OpTypeGreaterThan, value)
 	return qb
 }
 
