@@ -504,6 +504,20 @@ func TestFirestoreQuery(t *testing.T) {
 		}
 	})
 
+	t.Run("NotEqual", func(tr *testing.T) {
+		description := fmt.Sprintf("%s%d", desc, 1)
+		req := &model.TaskListReq{
+			Desc: model.NewQueryChainer().NotEqual(description),
+		}
+		tasks, err := taskRepo.List(ctx, req, nil)
+		if err != nil {
+			tr.Fatalf("%+v", err)
+		}
+		if len(tasks) != 9 {
+			tr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 9)
+		}
+	})
+
 	t.Run("UseQueryBuilder", func(tr *testing.T) {
 		qb := model.NewQueryBuilder(taskRepo.GetCollection())
 		qb.GreaterThan("count", 3)
