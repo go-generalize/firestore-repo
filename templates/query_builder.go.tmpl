@@ -91,6 +91,17 @@ func (qb *QueryBuilder) Equal(path string, value interface{}) *QueryBuilder {
 	return qb
 }
 
+// NotEqual - inequality filter
+func (qb *QueryBuilder) NotEqual(path string, value interface{}) *QueryBuilder {
+	if _, ok := qb.rangeCounter[path]; ok {
+		qb.errs = append(qb.errs, newErrs(OpTypeNotEqual, path, alreadyRange, value))
+		return qb
+	}
+	qb.equalCounter[path] = struct{}{}
+	qb.q = qb.q.Where(path, "!=", value)
+	return qb
+}
+
 // LessThan - range filter
 func (qb *QueryBuilder) LessThan(path string, value interface{}) *QueryBuilder {
 	if _, ok := qb.equalCounter[path]; ok {

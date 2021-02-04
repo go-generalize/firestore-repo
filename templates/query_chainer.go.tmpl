@@ -33,6 +33,17 @@ func (qc *QueryChainer) Equal(v interface{}) *QueryChainer {
 	return qc
 }
 
+// NotEqual - change operator
+func (qc *QueryChainer) NotEqual(v interface{}) *QueryChainer {
+	q, err := newQuery(v, OpTypeNotEqual)
+	if err != nil {
+		qc.err = err
+		return qc
+	}
+	qc.QueryGroup = append(qc.QueryGroup, q)
+	return qc
+}
+
 // LessThan - change operator
 func (qc *QueryChainer) LessThan(v interface{}) *QueryChainer {
 	q, err := newQuery(v, OpTypeLessThan)
