@@ -167,7 +167,7 @@ func (qb *QueryBuilder) In(path string, value interface{}) *QueryBuilder {
 	switch rv := reflect.ValueOf(value); rv.Kind() {
 	case reflect.Slice, reflect.Array:
 		if rv.Len() > 10 {
-			qb.errs = append(qb.errs, newErrs(OpTypeArrayContainsAny, path, notLessThan10, value))
+			qb.errs = append(qb.errs, newErrs(OpTypeIn, path, notLessThan10, value))
 			return qb
 		}
 	default:
@@ -175,7 +175,7 @@ func (qb *QueryBuilder) In(path string, value interface{}) *QueryBuilder {
 		return qb
 	}
 	if qb.usedIn || qb.usedAny {
-		qb.errs = append(qb.errs, newErrs(OpTypeArrayContainsAny, path, alreadyUsingOnce, value))
+		qb.errs = append(qb.errs, newErrs(OpTypeIn, path, alreadyUsingOnce, value))
 		return qb
 	}
 	qb.usedIn = true
@@ -186,7 +186,7 @@ func (qb *QueryBuilder) In(path string, value interface{}) *QueryBuilder {
 // ArrayContains - array filter ( array-contains )
 func (qb *QueryBuilder) ArrayContains(path string, value interface{}) *QueryBuilder {
 	if qb.usedAny {
-		qb.errs = append(qb.errs, newErrs(OpTypeArrayContainsAny, path, cannotCombineAny, value))
+		qb.errs = append(qb.errs, newErrs(OpTypeArrayContains, path, cannotCombineAny, value))
 		return qb
 	}
 	qb.q = qb.q.Where(path, OpTypeArrayContains, value)
