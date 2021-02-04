@@ -534,18 +534,46 @@ func TestFirestoreQuery(t *testing.T) {
 	})
 
 	t.Run("UseQueryBuilder", func(tr *testing.T) {
-		qb := model.NewQueryBuilder(taskRepo.GetCollection())
-		qb.GreaterThan("count", 3)
-		qb.LessThan("count", 8)
+		tr.Run("range query(3<count<8)", func(ttr *testing.T) {
+			qb := model.NewQueryBuilder(taskRepo.GetCollection())
+			qb.GreaterThan("count", 3)
+			qb.LessThan("count", 8)
 
-		tasks, err := taskRepo.List(ctx, nil, qb.Query())
-		if err != nil {
-			tr.Fatalf("%+v", err)
-		}
+			tasks, err := taskRepo.List(ctx, nil, qb.Query())
+			if err != nil {
+				ttr.Fatalf("%+v", err)
+			}
 
-		if len(tasks) != 4 {
-			tr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 4)
-		}
+			if len(tasks) != 4 {
+				ttr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 4)
+			}
+		})
+		tr.Run("!=(count!=1)", func(ttr *testing.T) {
+			qb := model.NewQueryBuilder(taskRepo.GetCollection())
+			qb.NotEqual("count", 1)
+
+			tasks, err := taskRepo.List(ctx, nil, qb.Query())
+			if err != nil {
+				ttr.Fatalf("%+v", err)
+			}
+
+			if len(tasks) != 9 {
+				ttr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 9)
+			}
+		})
+		tr.Run("not-in(count not-in [1,2,3,4,5])", func(ttr *testing.T) {
+			qb := model.NewQueryBuilder(taskRepo.GetCollection())
+			qb.NotIn("count", []int{1, 2, 3, 4, 5})
+
+			tasks, err := taskRepo.List(ctx, nil, qb.Query())
+			if err != nil {
+				ttr.Fatalf("%+v", err)
+			}
+
+			if len(tasks) != 5 {
+				ttr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 5)
+			}
+		})
 	})
 }
 
