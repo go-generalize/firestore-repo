@@ -73,7 +73,7 @@ func (qb *QueryBuilder) Check() error {
 	var result string
 	for _, err := range qb.errs {
 		result += fmt.Sprintf(
-			"tryOp: %s, tryField: %s, tryValue: %v, message: %s \n",
+			"tryOp: %s, tryField: %s, tryValue: %v, message: %s\n",
 			err.TryOperator, err.TryField, err.TryValue, err.Message,
 		)
 	}
