@@ -80,7 +80,7 @@ func (qb *QueryBuilder) Check() error {
 	return xerrors.New(result)
 }
 
-// Equal - equality filter
+// Equal - equality filter ( == )
 func (qb *QueryBuilder) Equal(path string, value interface{}) *QueryBuilder {
 	if _, ok := qb.rangeCounter[path]; ok {
 		qb.errs = append(qb.errs, newErrs(OpTypeEqual, path, alreadyRange, value))
@@ -91,7 +91,7 @@ func (qb *QueryBuilder) Equal(path string, value interface{}) *QueryBuilder {
 	return qb
 }
 
-// NotEqual - inequality filter
+// NotEqual - inequality filter ( != )
 func (qb *QueryBuilder) NotEqual(path string, value interface{}) *QueryBuilder {
 	if _, ok := qb.rangeCounter[path]; ok {
 		qb.errs = append(qb.errs, newErrs(OpTypeNotEqual, path, alreadyRange, value))
@@ -102,7 +102,7 @@ func (qb *QueryBuilder) NotEqual(path string, value interface{}) *QueryBuilder {
 	return qb
 }
 
-// LessThan - range filter
+// LessThan - range filter ( < )
 func (qb *QueryBuilder) LessThan(path string, value interface{}) *QueryBuilder {
 	if _, ok := qb.equalCounter[path]; ok {
 		qb.errs = append(qb.errs, newErrs(OpTypeLessThan, path, alreadyEqual, value))
@@ -117,7 +117,7 @@ func (qb *QueryBuilder) LessThan(path string, value interface{}) *QueryBuilder {
 	return qb
 }
 
-// LessThanOrEqual - range filter
+// LessThanOrEqual - range filter ( <= )
 func (qb *QueryBuilder) LessThanOrEqual(path string, value interface{}) *QueryBuilder {
 	if _, ok := qb.equalCounter[path]; ok {
 		qb.errs = append(qb.errs, newErrs(OpTypeLessThanOrEqual, path, alreadyEqual, value))
@@ -132,7 +132,7 @@ func (qb *QueryBuilder) LessThanOrEqual(path string, value interface{}) *QueryBu
 	return qb
 }
 
-// GreaterThan - range filter
+// GreaterThan - range filter ( > )
 func (qb *QueryBuilder) GreaterThan(path string, value interface{}) *QueryBuilder {
 	if _, ok := qb.equalCounter[path]; ok {
 		qb.errs = append(qb.errs, newErrs(OpTypeGreaterThan, path, alreadyEqual, value))
@@ -147,7 +147,7 @@ func (qb *QueryBuilder) GreaterThan(path string, value interface{}) *QueryBuilde
 	return qb
 }
 
-// GreaterThanOrEqual - range filter
+// GreaterThanOrEqual - range filter ( >= )
 func (qb *QueryBuilder) GreaterThanOrEqual(path string, value interface{}) *QueryBuilder {
 	if _, ok := qb.equalCounter[path]; ok {
 		qb.errs = append(qb.errs, newErrs(OpTypeGreaterThanOrEqual, path, alreadyEqual, value))
@@ -162,7 +162,7 @@ func (qb *QueryBuilder) GreaterThanOrEqual(path string, value interface{}) *Quer
 	return qb
 }
 
-// In - filter
+// In - array filter ( in )
 func (qb *QueryBuilder) In(path string, value interface{}) *QueryBuilder {
 	switch rv := reflect.ValueOf(value); rv.Kind() {
 	case reflect.Slice, reflect.Array:
@@ -183,7 +183,7 @@ func (qb *QueryBuilder) In(path string, value interface{}) *QueryBuilder {
 	return qb
 }
 
-// ArrayContains - range filter
+// ArrayContains - array filter ( array-contains )
 func (qb *QueryBuilder) ArrayContains(path string, value interface{}) *QueryBuilder {
 	if qb.usedAny {
 		qb.errs = append(qb.errs, newErrs(OpTypeArrayContainsAny, path, cannotCombineAny, value))
@@ -193,7 +193,7 @@ func (qb *QueryBuilder) ArrayContains(path string, value interface{}) *QueryBuil
 	return qb
 }
 
-// ArrayContainsAny - filter
+// ArrayContainsAny - array filter ( array-contains-any )
 func (qb *QueryBuilder) ArrayContainsAny(path string, value interface{}) *QueryBuilder {
 	switch rv := reflect.ValueOf(value); rv.Kind() {
 	case reflect.Slice, reflect.Array:

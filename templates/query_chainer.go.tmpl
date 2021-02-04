@@ -11,7 +11,7 @@ import (
 	"google.golang.org/genproto/googleapis/type/latlng"
 )
 
-// QueryChainer ...
+// QueryChainer - query chainer
 type QueryChainer struct {
 	QueryGroup []*Query
 	err        error
@@ -22,7 +22,7 @@ func NewQueryChainer() *QueryChainer {
 	return new(QueryChainer)
 }
 
-// Equal - change operator
+// Equal - `==`
 func (qc *QueryChainer) Equal(v interface{}) *QueryChainer {
 	q, err := newQuery(v, OpTypeEqual)
 	if err != nil {
@@ -33,7 +33,7 @@ func (qc *QueryChainer) Equal(v interface{}) *QueryChainer {
 	return qc
 }
 
-// NotEqual - change operator
+// NotEqual - `!=`
 func (qc *QueryChainer) NotEqual(v interface{}) *QueryChainer {
 	q, err := newQuery(v, OpTypeNotEqual)
 	if err != nil {
@@ -44,7 +44,7 @@ func (qc *QueryChainer) NotEqual(v interface{}) *QueryChainer {
 	return qc
 }
 
-// LessThan - change operator
+// LessThan - `<`
 func (qc *QueryChainer) LessThan(v interface{}) *QueryChainer {
 	q, err := newQuery(v, OpTypeLessThan)
 	if err != nil {
@@ -55,7 +55,7 @@ func (qc *QueryChainer) LessThan(v interface{}) *QueryChainer {
 	return qc
 }
 
-// LessThanOrEqual - change operator
+// LessThanOrEqual - `<=`
 func (qc *QueryChainer) LessThanOrEqual(v interface{}) *QueryChainer {
 	q, err := newQuery(v, OpTypeLessThanOrEqual)
 	if err != nil {
@@ -66,7 +66,7 @@ func (qc *QueryChainer) LessThanOrEqual(v interface{}) *QueryChainer {
 	return qc
 }
 
-// GreaterThan - change operator
+// GreaterThan - `>`
 func (qc *QueryChainer) GreaterThan(v interface{}) *QueryChainer {
 	q, err := newQuery(v, OpTypeGreaterThan)
 	if err != nil {
@@ -77,7 +77,7 @@ func (qc *QueryChainer) GreaterThan(v interface{}) *QueryChainer {
 	return qc
 }
 
-// GreaterThanOrEqual - change operator
+// GreaterThanOrEqual - `>=`
 func (qc *QueryChainer) GreaterThanOrEqual(v interface{}) *QueryChainer {
 	q, err := newQuery(v, OpTypeGreaterThanOrEqual)
 	if err != nil {
@@ -88,7 +88,7 @@ func (qc *QueryChainer) GreaterThanOrEqual(v interface{}) *QueryChainer {
 	return qc
 }
 
-// In - change operator
+// In - `in`
 func (qc *QueryChainer) In(v interface{}) *QueryChainer {
 	q, err := newQuery(v, OpTypeIn)
 	if err != nil {
@@ -99,7 +99,7 @@ func (qc *QueryChainer) In(v interface{}) *QueryChainer {
 	return qc
 }
 
-// ArrayContains - change operator
+// ArrayContains - `array-contains`
 func (qc *QueryChainer) ArrayContains(v interface{}) *QueryChainer {
 	q, err := newQuery(v, OpTypeArrayContains)
 	if err != nil {
@@ -110,7 +110,7 @@ func (qc *QueryChainer) ArrayContains(v interface{}) *QueryChainer {
 	return qc
 }
 
-// ArrayContainsAny - change operator
+// ArrayContainsAny - `array-contains-any`
 func (qc *QueryChainer) ArrayContainsAny(v interface{}) *QueryChainer {
 	q, err := newQuery(v, OpTypeArrayContainsAny)
 	if err != nil {
@@ -126,7 +126,7 @@ func (qc *QueryChainer) Error() error {
 	return qc.err
 }
 
-// Query ...
+// Query - query
 type Query struct {
 	Operator OpType
 	Value    interface{}
@@ -204,7 +204,7 @@ func newQuery(v interface{}, opType OpType) (*Query, error) {
 	return q, nil
 }
 
-// IsSlice ...
+// IsSlice - slice judgment
 func IsSlice(v interface{}) bool {
 	switch v.(type) {
 	case []bool, []string, []int, []int64, []float64,
@@ -214,7 +214,7 @@ func IsSlice(v interface{}) bool {
 	return false
 }
 
-// IsSlice ...
+// IsSlice - slice judgment
 func (q *Query) IsSlice() bool {
 	return IsSlice(q.Value)
 }
