@@ -518,6 +518,21 @@ func TestFirestoreQuery(t *testing.T) {
 		}
 	})
 
+	t.Run("NotIn", func(tr *testing.T) {
+		description1 := fmt.Sprintf("%s%d", desc, 1)
+		description2 := fmt.Sprintf("%s%d", desc, 2)
+		req := &model.TaskListReq{
+			Desc: model.NewQueryChainer().NotIn([]string{description1, description2}),
+		}
+		tasks, err := taskRepo.List(ctx, req, nil)
+		if err != nil {
+			tr.Fatalf("%+v", err)
+		}
+		if len(tasks) != 8 {
+			tr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 8)
+		}
+	})
+
 	t.Run("UseQueryBuilder", func(tr *testing.T) {
 		qb := model.NewQueryBuilder(taskRepo.GetCollection())
 		qb.GreaterThan("count", 3)
