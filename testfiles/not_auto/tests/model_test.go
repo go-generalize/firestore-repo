@@ -416,12 +416,12 @@ func TestFirestoreQuery(t *testing.T) {
 
 	now := time.Unix(0, time.Now().UnixNano())
 	desc := "Hello, World!"
-
-	tks := make([]*model.Task, 0)
 	latLng := &latlng.LatLng{
 		Latitude:  35.678803,
 		Longitude: 139.756263,
 	}
+
+	tks := make([]*model.Task, 0)
 	for i := 1; i <= 10; i++ {
 		tk := &model.Task{
 			Identity:   fmt.Sprintf("%d", i),
