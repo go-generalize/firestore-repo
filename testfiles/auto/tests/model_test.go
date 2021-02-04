@@ -504,19 +504,76 @@ func TestFirestoreQuery(t *testing.T) {
 		}
 	})
 
-	t.Run("UseQueryBuilder", func(tr *testing.T) {
-		qb := model.NewQueryBuilder(taskRepo.GetCollection())
-		qb.GreaterThan("count", 3)
-		qb.LessThan("count", 8)
-
-		tasks, err := taskRepo.List(ctx, nil, qb.Query())
+	t.Run("NotEqual(9件)", func(tr *testing.T) {
+		description := fmt.Sprintf("%s%d", desc, 1)
+		req := &model.TaskListReq{
+			Desc: model.NewQueryChainer().NotEqual(description),
+		}
+		tasks, err := taskRepo.List(ctx, req, nil)
 		if err != nil {
 			tr.Fatalf("%+v", err)
 		}
-
-		if len(tasks) != 4 {
-			tr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 4)
+		if len(tasks) != 9 {
+			tr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 9)
 		}
+	})
+
+	t.Run("NotIn(8件)", func(tr *testing.T) {
+		description1 := fmt.Sprintf("%s%d", desc, 1)
+		description2 := fmt.Sprintf("%s%d", desc, 2)
+		req := &model.TaskListReq{
+			Desc: model.NewQueryChainer().NotIn([]string{description1, description2}),
+		}
+		tasks, err := taskRepo.List(ctx, req, nil)
+		if err != nil {
+			tr.Fatalf("%+v", err)
+		}
+		if len(tasks) != 8 {
+			tr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 8)
+		}
+	})
+
+	t.Run("UseQueryBuilder", func(tr *testing.T) {
+		tr.Run("range query(3<count<8)", func(ttr *testing.T) {
+			qb := model.NewQueryBuilder(taskRepo.GetCollection())
+			qb.GreaterThan("count", 3)
+			qb.LessThan("count", 8)
+
+			tasks, err := taskRepo.List(ctx, nil, qb.Query())
+			if err != nil {
+				ttr.Fatalf("%+v", err)
+			}
+
+			if len(tasks) != 4 {
+				ttr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 4)
+			}
+		})
+		tr.Run("!=(count!=1)", func(ttr *testing.T) {
+			qb := model.NewQueryBuilder(taskRepo.GetCollection())
+			qb.NotEqual("count", 1)
+
+			tasks, err := taskRepo.List(ctx, nil, qb.Query())
+			if err != nil {
+				ttr.Fatalf("%+v", err)
+			}
+
+			if len(tasks) != 9 {
+				ttr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 9)
+			}
+		})
+		tr.Run("not-in(count not-in [1,2,3,4,5])", func(ttr *testing.T) {
+			qb := model.NewQueryBuilder(taskRepo.GetCollection())
+			qb.NotIn("count", []int{1, 2, 3, 4, 5})
+
+			tasks, err := taskRepo.List(ctx, nil, qb.Query())
+			if err != nil {
+				ttr.Fatalf("%+v", err)
+			}
+
+			if len(tasks) != 5 {
+				ttr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 5)
+			}
+		})
 	})
 }
 

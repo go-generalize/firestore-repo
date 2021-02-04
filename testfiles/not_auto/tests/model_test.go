@@ -416,13 +416,17 @@ func TestFirestoreQuery(t *testing.T) {
 
 	now := time.Unix(0, time.Now().UnixNano())
 	desc := "Hello, World!"
-
-	tks := make([]*model.Task, 0)
 	latLng := &latlng.LatLng{
 		Latitude:  35.678803,
 		Longitude: 139.756263,
 	}
-	for i := 1; i <= 10; i++ {
+	skyTreeLatLng := &latlng.LatLng{
+		Latitude:  35.7100069,
+		Longitude: 139.8108103,
+	}
+
+	tks := make([]*model.Task, 0)
+	for i := 1; i <= 9; i++ {
 		tk := &model.Task{
 			Identity:   fmt.Sprintf("%d", i),
 			Desc:       fmt.Sprintf("%s%d", desc, i),
@@ -434,6 +438,23 @@ func TestFirestoreQuery(t *testing.T) {
 			NameList:   []string{"a", "b", "c"},
 			Proportion: 0.12345 + float64(i),
 			Geo:        latLng,
+			Flag:       model.Flag(true),
+		}
+		tks = append(tks, tk)
+	}
+
+	{
+		tk := &model.Task{
+			Identity:   fmt.Sprintf("%d", 10),
+			Desc:       fmt.Sprintf("%s%d", desc, 10),
+			Created:    now,
+			Done:       true,
+			Done2:      false,
+			Count:      10,
+			Count64:    10,
+			NameList:   []string{"a", "b", "c"},
+			Proportion: 10.12345,
+			Geo:        skyTreeLatLng,
 			Flag:       model.Flag(true),
 		}
 		tks = append(tks, tk)
@@ -549,7 +570,7 @@ func TestFirestoreQuery(t *testing.T) {
 		}
 	})
 
-	t.Run("Geo(10件)", func(t *testing.T) {
+	t.Run("Geo(9件)", func(t *testing.T) {
 		req := &model.TaskListReq{
 			Geo: model.NewQueryChainer().Equal(latLng),
 		}
@@ -559,24 +580,78 @@ func TestFirestoreQuery(t *testing.T) {
 			t.Fatalf("%+v", err)
 		}
 
-		if len(tasks) != 10 {
+		if len(tasks) != 9 {
 			t.Fatal("not match")
 		}
 	})
 
-	t.Run("UseQueryBuilder", func(tr *testing.T) {
-		qb := model.NewQueryBuilder(taskRepo.GetCollection())
-		qb.GreaterThan("count", 3)
-		qb.LessThan("count", 8)
-
-		tasks, err := taskRepo.List(ctx, nil, qb.Query())
+	t.Run("NotEqual(1件)", func(tr *testing.T) {
+		req := &model.TaskListReq{
+			Geo: model.NewQueryChainer().NotEqual(latLng),
+		}
+		tasks, err := taskRepo.List(ctx, req, nil)
 		if err != nil {
 			tr.Fatalf("%+v", err)
 		}
-
-		if len(tasks) != 4 {
-			tr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 4)
+		if len(tasks) != 1 {
+			tr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 1)
 		}
+	})
+
+	t.Run("NotIn(9件)", func(tr *testing.T) {
+		req := &model.TaskListReq{
+			Geo: model.NewQueryChainer().NotIn([]*latlng.LatLng{skyTreeLatLng}),
+		}
+		tasks, err := taskRepo.List(ctx, req, nil)
+		if err != nil {
+			tr.Fatalf("%+v", err)
+		}
+		if len(tasks) != 9 {
+			tr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 9)
+		}
+	})
+
+	t.Run("UseQueryBuilder", func(tr *testing.T) {
+		tr.Run("range query(3<count<8)", func(ttr *testing.T) {
+			qb := model.NewQueryBuilder(taskRepo.GetCollection())
+			qb.GreaterThan("count", 3)
+			qb.LessThan("count", 8)
+
+			tasks, err := taskRepo.List(ctx, nil, qb.Query())
+			if err != nil {
+				ttr.Fatalf("%+v", err)
+			}
+
+			if len(tasks) != 4 {
+				ttr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 4)
+			}
+		})
+		tr.Run("!=(count!=1)", func(ttr *testing.T) {
+			qb := model.NewQueryBuilder(taskRepo.GetCollection())
+			qb.NotEqual("count", 1)
+
+			tasks, err := taskRepo.List(ctx, nil, qb.Query())
+			if err != nil {
+				ttr.Fatalf("%+v", err)
+			}
+
+			if len(tasks) != 9 {
+				ttr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 9)
+			}
+		})
+		tr.Run("not-in(count not-in [1,2,3,4,5])", func(ttr *testing.T) {
+			qb := model.NewQueryBuilder(taskRepo.GetCollection())
+			qb.NotIn("count", []int{1, 2, 3, 4, 5})
+
+			tasks, err := taskRepo.List(ctx, nil, qb.Query())
+			if err != nil {
+				ttr.Fatalf("%+v", err)
+			}
+
+			if len(tasks) != 5 {
+				ttr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 5)
+			}
+		})
 	})
 }
 
