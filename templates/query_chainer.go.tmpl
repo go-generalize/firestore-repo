@@ -173,23 +173,15 @@ func newQuery(v interface{}, opType OpType) (*Query, error) {
 			return dupErr(err)
 		}
 		v = x
-	case []*latlng.LatLng:
-		if err := dedupe.Do(&x); err != nil {
-			return dupErr(err)
-		}
-		v = x
-	case []*firestore.DocumentRef:
-		if err := dedupe.Do(&x); err != nil {
-			return dupErr(err)
-		}
-		v = x
 	case bool,
 		string,
 		int,
 		int64,
 		float64,
 		*latlng.LatLng,
+		[]*latlng.LatLng,
 		*firestore.DocumentRef,
+		[]*firestore.DocumentRef,
 		map[string]bool,
 		map[string]string,
 		map[string]int,
