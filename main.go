@@ -75,6 +75,7 @@ func traverse(pkg *ast.Package, fs *token.FileSet, structName string) error {
 	if *isSubCollection {
 		gen.IsSubCollection = true
 	}
+
 	for name, file := range pkg.Files {
 		gen.FileName = strings.TrimSuffix(filepath.Base(name), ".go")
 		gen.GeneratedFileName = gen.FileName + "_gen"
@@ -119,17 +120,18 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 	dupMap := make(map[string]int)
 	fieldLabel = gen.StructName + queryLabel
 
-	var metaList map[string]*Field
+	metaList := make(map[string]*Field)
 	metaFieldName := ""
 	if !*disableMeta {
-		var err error
 		fList := listAllField(structType.Fields, "", false)
+
 		metas, mfn, err := searchMetaProperties(fList)
 		if err != nil {
 			return err
 		}
+
 		metaFieldName = mfn
-		metaList = make(map[string]*Field)
+
 		for _, m := range metas {
 			metaList[m.Name] = m
 		}
@@ -141,8 +143,10 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		if len(field.Names) > 1 {
 			return xerrors.New("`field.Names` must have only one element")
 		}
+
 		isMetaFiled := false
 		name := ""
+
 		if field.Names == nil || len(field.Names) == 0 {
 			switch field.Type.(type) {
 			case *ast.Ident:
@@ -192,54 +196,59 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 			continue
 		}
 
-		if tags, err := structtag.Parse(strings.Trim(field.Tag.Value, "`")); err != nil {
+		tags, err := structtag.Parse(strings.Trim(field.Tag.Value, "`"))
+		if err != nil {
 			log.Printf(
 				"%s: tag for %s in struct %s in %s",
 				pos, name, gen.StructName, gen.GeneratedFileName+".go",
 			)
 			continue
-		} else {
-			if name == "Indexes" {
-				gen.EnableIndexes = true
-				fieldInfo := &FieldInfo{
-					FsTag:     name,
-					Field:     name,
-					FieldType: typeName,
-				}
-				if tag, err := dataStoreTagCheck(pos, tags); err != nil {
-					return xerrors.Errorf("error in tagCheck method: %w", err)
-				} else if tag != "" {
-					fieldInfo.FsTag = tag
-				}
-				gen.FieldInfoForIndexes = fieldInfo
-				continue
+		}
+		if name == "Indexes" {
+			gen.EnableIndexes = true
+			fieldInfo := &FieldInfo{
+				FsTag:     name,
+				Field:     name,
+				FieldType: typeName,
 			}
-			if tag, err := tags.Get("firestore_key"); err != nil {
-				fieldInfo := &FieldInfo{
-					FsTag:     name,
-					Field:     name,
-					FieldType: typeName,
-					Indexes:   make([]*IndexesInfo, 0),
-				}
-				if fieldInfo, err = appendIndexer(pos, tags, fieldInfo, dupMap); err != nil {
-					return xerrors.Errorf("error in appendIndexer: %w", err)
-				}
-				gen.FieldInfos = append(gen.FieldInfos, fieldInfo)
-				continue
-			} else {
-				switch tag.Value() {
-				case "":
-					// ok
-				case "auto":
-					gen.AutomaticGeneration = true
-				default:
-					return xerrors.Errorf(
-						`%s: The contents of the firestore_key tag should be "" or "auto"`, pos)
-				}
+
+			if tag, er := dataStoreTagCheck(pos, tags); er != nil {
+				return xerrors.Errorf("error in tagCheck method: %w", er)
+			} else if tag != "" {
+				fieldInfo.FsTag = tag
 			}
-			if err := keyFieldHandler(gen, tags, name, typeName, pos); err != nil {
-				return xerrors.Errorf("error in keyFieldHandler: %w", err)
+
+			gen.FieldInfoForIndexes = fieldInfo
+			continue
+		}
+
+		tag, err := tags.Get("firestore_key")
+		if err != nil {
+			fieldInfo := &FieldInfo{
+				FsTag:     name,
+				Field:     name,
+				FieldType: typeName,
+				Indexes:   make([]*IndexesInfo, 0),
 			}
+			if fieldInfo, err = appendIndexer(pos, tags, fieldInfo, dupMap); err != nil {
+				return xerrors.Errorf("error in appendIndexer: %w", err)
+			}
+			gen.FieldInfos = append(gen.FieldInfos, fieldInfo)
+			continue
+		}
+
+		switch tag.Value() {
+		case "":
+			// ok
+		case "auto":
+			gen.AutomaticGeneration = true
+		default:
+			return xerrors.Errorf(
+				`%s: The contents of the firestore_key tag should be "" or "auto"`, pos)
+		}
+
+		if err := keyFieldHandler(gen, tags, name, typeName, pos); err != nil {
+			return xerrors.Errorf("error in keyFieldHandler: %w", err)
 		}
 	}
 

@@ -3,16 +3,18 @@
 package {{ .PackageName }}
 
 import (
-	"fmt"
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"github.com/go-utils/dedupe"
+	"golang.org/x/xerrors"
 	"google.golang.org/genproto/googleapis/type/latlng"
 )
 
 // QueryChainer ...
 type QueryChainer struct {
 	QueryGroup []*Query
+	err        error
 }
 
 // NewQueryChainer - constructor
@@ -21,51 +23,96 @@ func NewQueryChainer() *QueryChainer {
 }
 
 // Equal - change operator
-func (q *QueryChainer) Equal(v interface{}) *QueryChainer {
-	q.QueryGroup = append(q.QueryGroup, newQuery(v, OpTypeEqual))
-	return q
+func (qc *QueryChainer) Equal(v interface{}) *QueryChainer {
+	q, err := newQuery(v, OpTypeEqual)
+	if err != nil {
+		qc.err = err
+		return qc
+	}
+	qc.QueryGroup = append(qc.QueryGroup, q)
+	return qc
 }
 
 // LessThan - change operator
-func (q *QueryChainer) LessThan(v interface{}) *QueryChainer {
-	q.QueryGroup = append(q.QueryGroup, newQuery(v, OpTypeLessThan))
-	return q
+func (qc *QueryChainer) LessThan(v interface{}) *QueryChainer {
+	q, err := newQuery(v, OpTypeLessThan)
+	if err != nil {
+		qc.err = err
+		return qc
+	}
+	qc.QueryGroup = append(qc.QueryGroup, q)
+	return qc
 }
 
 // LessThanOrEqual - change operator
-func (q *QueryChainer) LessThanOrEqual(v interface{}) *QueryChainer {
-	q.QueryGroup = append(q.QueryGroup, newQuery(v, OpTypeLessThanOrEqual))
-	return q
+func (qc *QueryChainer) LessThanOrEqual(v interface{}) *QueryChainer {
+	q, err := newQuery(v, OpTypeLessThanOrEqual)
+	if err != nil {
+		qc.err = err
+		return qc
+	}
+	qc.QueryGroup = append(qc.QueryGroup, q)
+	return qc
 }
 
 // GreaterThan - change operator
-func (q *QueryChainer) GreaterThan(v interface{}) *QueryChainer {
-	q.QueryGroup = append(q.QueryGroup, newQuery(v, OpTypeGreaterThan))
-	return q
+func (qc *QueryChainer) GreaterThan(v interface{}) *QueryChainer {
+	q, err := newQuery(v, OpTypeGreaterThan)
+	if err != nil {
+		qc.err = err
+		return qc
+	}
+	qc.QueryGroup = append(qc.QueryGroup, q)
+	return qc
 }
 
 // GreaterThanOrEqual - change operator
-func (q *QueryChainer) GreaterThanOrEqual(v interface{}) *QueryChainer {
-	q.QueryGroup = append(q.QueryGroup, newQuery(v, OpTypeGreaterThanOrEqual))
-	return q
+func (qc *QueryChainer) GreaterThanOrEqual(v interface{}) *QueryChainer {
+	q, err := newQuery(v, OpTypeGreaterThanOrEqual)
+	if err != nil {
+		qc.err = err
+		return qc
+	}
+	qc.QueryGroup = append(qc.QueryGroup, q)
+	return qc
 }
 
 // In - change operator
-func (q *QueryChainer) In(v interface{}) *QueryChainer {
-	q.QueryGroup = append(q.QueryGroup, newQuery(v, OpTypeIn))
-	return q
+func (qc *QueryChainer) In(v interface{}) *QueryChainer {
+	q, err := newQuery(v, OpTypeIn)
+	if err != nil {
+		qc.err = err
+		return qc
+	}
+	qc.QueryGroup = append(qc.QueryGroup, q)
+	return qc
 }
 
 // ArrayContains - change operator
-func (q *QueryChainer) ArrayContains(v interface{}) *QueryChainer {
-	q.QueryGroup = append(q.QueryGroup, newQuery(v, OpTypeArrayContains))
-	return q
+func (qc *QueryChainer) ArrayContains(v interface{}) *QueryChainer {
+	q, err := newQuery(v, OpTypeArrayContains)
+	if err != nil {
+		qc.err = err
+		return qc
+	}
+	qc.QueryGroup = append(qc.QueryGroup, q)
+	return qc
 }
 
 // ArrayContainsAny - change operator
-func (q *QueryChainer) ArrayContainsAny(v interface{}) *QueryChainer {
-	q.QueryGroup = append(q.QueryGroup, newQuery(v, OpTypeArrayContainsAny))
-	return q
+func (qc *QueryChainer) ArrayContainsAny(v interface{}) *QueryChainer {
+	q, err := newQuery(v, OpTypeArrayContainsAny)
+	if err != nil {
+		qc.err = err
+		return qc
+	}
+	qc.QueryGroup = append(qc.QueryGroup, q)
+	return qc
+}
+
+// Error - error
+func (qc *QueryChainer) Error() error {
+	return qc.err
 }
 
 // Query ...
@@ -74,15 +121,53 @@ type Query struct {
 	Value    interface{}
 }
 
-func newQuery(v interface{}, opType OpType) *Query {
+func newQuery(v interface{}, opType OpType) (*Query, error) {
+	dupErr := func(err error) (*Query, error) {
+		return nil, xerrors.Errorf("failed to deduplication: %w", err)
+	}
 	switch x := v.(type) {
-	case bool, []bool,
-		string, []string,
-		int, []int,
-		int64, []int64,
-		float64, []float64,
-		*latlng.LatLng, []*latlng.LatLng,
-		*firestore.DocumentRef, []*firestore.DocumentRef,
+	case []bool:
+		if err := dedupe.Do(&x); err != nil {
+			return dupErr(err)
+		}
+		v = x
+	case []string:
+		if err := dedupe.Do(&x); err != nil {
+			return dupErr(err)
+		}
+		v = x
+	case []int:
+		if err := dedupe.Do(&x); err != nil {
+			return dupErr(err)
+		}
+		v = x
+	case []int64:
+		if err := dedupe.Do(&x); err != nil {
+			return dupErr(err)
+		}
+		v = x
+	case []float64:
+		if err := dedupe.Do(&x); err != nil {
+			return dupErr(err)
+		}
+		v = x
+	case []*latlng.LatLng:
+		if err := dedupe.Do(&x); err != nil {
+			return dupErr(err)
+		}
+		v = x
+	case []*firestore.DocumentRef:
+		if err := dedupe.Do(&x); err != nil {
+			return dupErr(err)
+		}
+		v = x
+	case bool,
+		string,
+		int,
+		int64,
+		float64,
+		*latlng.LatLng,
+		*firestore.DocumentRef,
 		map[string]bool,
 		map[string]string,
 		map[string]int,
@@ -92,19 +177,20 @@ func newQuery(v interface{}, opType OpType) *Query {
 	case time.Time:
 		v = SetLastThreeToZero(x)
 	case []time.Time:
-		after := make([]time.Time, len(x), len(x))
+		after := make([]time.Time, len(x))
 		for n, t := range x {
 			after[n] = SetLastThreeToZero(t)
 		}
 		v = after
 	default:
-		panic(fmt.Sprintf("unsupported types: %#v", v))
+		return nil, xerrors.Errorf("unsupported types: %#v", v)
 	}
 
-	return &Query{
+	q := &Query{
 		Operator: opType,
 		Value:    v,
 	}
+	return q, nil
 }
 
 // IsSlice ...
