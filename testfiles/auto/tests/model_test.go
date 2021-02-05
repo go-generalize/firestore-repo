@@ -943,8 +943,6 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 
 		ids = append(ids, id)
 
-		time.Sleep(1 * time.Second)
-
 		text = "hello!!!"
 		l.Text = text
 		err = lockRepo.Update(ctx, l)
@@ -960,8 +958,8 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 		if text != ret.Text {
 			tr.Fatalf("unexpected text: %s (expected: %s)", text, ret.Text)
 		}
-		if ret.CreatedAt.Unix() == ret.UpdatedAt.Unix() {
-			tr.Fatalf("unexpected createdAt == updatedAt: %d == %d",
+		if ret.CreatedAt.Equal(ret.UpdatedAt) {
+			tr.Fatalf("unexpected CreatedAt == updatedAt: %d == %d",
 				ret.CreatedAt.Unix(), ret.UpdatedAt.Unix())
 		}
 	})
