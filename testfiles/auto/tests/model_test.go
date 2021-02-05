@@ -919,13 +919,13 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 		}
 
 		if text != ret.Text {
-			tr.Fatalf("unexpected text: %s (expected: %s)", text, ret.Text)
+			tr.Fatalf("unexpected Text: %s (expected: %s)", ret.Text, text)
 		}
 		if ret.CreatedAt.IsZero() {
-			tr.Fatalf("unexpected createdAt zero:")
+			tr.Fatal("unexpected createdAt zero")
 		}
 		if ret.UpdatedAt.IsZero() {
-			tr.Fatalf("unexpected updatedAt zero:")
+			tr.Fatal("unexpected updatedAt zero")
 		}
 	})
 
@@ -956,7 +956,7 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 		}
 
 		if text != ret.Text {
-			tr.Fatalf("unexpected text: %s (expected: %s)", text, ret.Text)
+			tr.Fatalf("unexpected Text: %s (expected: %s)", ret.Text, text)
 		}
 		if ret.CreatedAt.Equal(ret.UpdatedAt) {
 			tr.Fatalf("unexpected CreatedAt == updatedAt: %d == %d",
@@ -994,10 +994,10 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 		}
 
 		if text != ret.Text {
-			tr.Fatalf("unexpected text: %s (expected: %s)", text, ret.Text)
+			tr.Fatalf("unexpected Text: %s (expected: %s)", ret.Text, text)
 		}
 		if ret.DeletedAt == nil {
-			tr.Fatalf("unexpected deletedAt == nil: %+v", ret.DeletedAt)
+			tr.Fatalf("unexpected DeletedAt == nil: %+v", ret.DeletedAt)
 		}
 	})
 
