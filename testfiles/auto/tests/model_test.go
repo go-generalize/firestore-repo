@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -168,6 +169,52 @@ func TestFirestore(t *testing.T) {
 		if _, ok := tsk.Flag["4"]; !ok {
 			tr.Fatalf("unexpected Flag: %v (expected: %v)", ok, true)
 		}
+
+		tr.Run("UpdateBuilder", func(ttr *testing.T) {
+			desc1002 := fmt.Sprintf("%s%d", desc, 1002)
+
+			updateParam := &model.TaskUpdateParam{
+				Desc:       model.NewUpdater(desc1002),
+				Created:    model.NewUpdater(firestore.ServerTimestamp),
+				Done:       model.NewUpdater(false),
+				Count:      model.NewUpdater(firestore.Increment(1)),
+				Count64:    model.NewUpdater(firestore.Increment(2)),
+				Proportion: model.NewUpdater(firestore.Increment(0.1)),
+			}
+
+			if err = taskRepo.StrictUpdate(ctx, tsk.ID, updateParam); err != nil {
+				ttr.Fatalf("%+v", err)
+			}
+
+			tsk, err = taskRepo.Get(ctx, tk.ID)
+			if err != nil {
+				ttr.Fatalf("%+v", err)
+			}
+
+			if tsk.Desc != desc1002 {
+				ttr.Fatalf("unexpected Desc: %s (expected: %s)", tsk.Desc, desc1002)
+			}
+
+			if tsk.Created.Before(now) {
+				ttr.Fatalf("unexpected Created > now: %t (expected: %t)", tsk.Created.Before(now), tsk.Created.After(now))
+			}
+
+			if tsk.Done {
+				ttr.Fatalf("unexpected Done: %t (expected: %t)", tsk.Done, false)
+			}
+
+			if tsk.Count != 13 {
+				ttr.Fatalf("unexpected Count: %d (expected: %d)", tsk.Count, 13)
+			}
+
+			if tsk.Count64 != 13 {
+				ttr.Fatalf("unexpected Count64: %d (expected: %d)", tsk.Count64, 13)
+			}
+
+			if tsk.Proportion != 11.22345 {
+				ttr.Fatalf("unexpected Proportion: %g (expected: %g)", tsk.Proportion, 11.22345)
+			}
+		})
 	})
 }
 
@@ -1110,5 +1157,61 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 		if len(locks) != 6 {
 			tr.Fatalf("unexpected length: %d (expected: %d)", len(locks), 6)
 		}
+	})
+
+	t.Run("update_builder", func(tr *testing.T) {
+		l := &model.Lock{
+			Text: text,
+			Flag: nil,
+			Meta: model.Meta{},
+		}
+
+		id, err := lockRepo.Insert(ctx, l)
+		if err != nil {
+			tr.Fatalf("failed to put item: %+v", err)
+		}
+
+		ids = append(ids, id)
+
+		flag := map[string]float64{"test": 123.456}
+		hello := fmt.Sprintf("%s world", text)
+
+		updateParam := &model.LockUpdateParam{
+			Text:      model.NewUpdater(hello),
+			Flag:      model.NewUpdater(flag),
+			UpdatedAt: model.NewUpdater(firestore.ServerTimestamp),
+			Version:   model.NewUpdater(firestore.Increment(1)),
+		}
+
+		if err = lockRepo.StrictUpdate(ctx, id, updateParam); err != nil {
+			tr.Fatalf("failed to update item: %+v", err)
+		}
+
+		ret, err := lockRepo.Get(ctx, id)
+		if err != nil {
+			tr.Fatalf("failed to get item: %+v", err)
+		}
+
+		if ret.Text != hello {
+			tr.Fatalf("unexpected Text: %s (expected: %s)", ret.Text, hello)
+		}
+
+		if !reflect.DeepEqual(ret.Flag, flag) {
+			tr.Fatalf("unexpected Flag: %v (expected: %v)", ret.Flag, flag)
+		}
+
+		if ret.CreatedAt.Equal(ret.UpdatedAt) {
+			tr.Fatalf("unexpected CreatedAt == UpdatedAt: %d == %d",
+				ret.CreatedAt.Unix(), ret.UpdatedAt.Unix())
+		}
+
+		if ret.UpdatedAt.Before(ret.CreatedAt) {
+			tr.Fatalf("unexpected UpdatedAt > CreatedAt: %t (expected: %t)", ret.UpdatedAt.Before(ret.CreatedAt), ret.UpdatedAt.After(ret.CreatedAt))
+		}
+
+		if ret.Version != 2 {
+			tr.Fatalf("unexpected Version: %d (expected: %d)", ret.Version, 2)
+		}
+
 	})
 }
