@@ -321,6 +321,15 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		gen.generateQueryChainer(fp)
 	}
 
+	{
+		fp, err := os.Create("update_builder_gen.go")
+		if err != nil {
+			panic(err)
+		}
+		defer fp.Close()
+		gen.generateUpdateBuilder(fp)
+	}
+
 	return nil
 }
 

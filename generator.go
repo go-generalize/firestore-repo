@@ -163,6 +163,16 @@ func (g *generator) generateQueryChainer(writer io.Writer) {
 	}
 }
 
+func (g *generator) generateUpdateBuilder(writer io.Writer) {
+	contents := getFileContents("update_builder")
+
+	t := template.Must(template.New("TemplateUpdateBuilder").Parse(contents))
+
+	if err := t.Execute(writer, g); err != nil {
+		log.Printf("failed to execute template: %+v", err)
+	}
+}
+
 func (g *generator) metaJudgment() string {
 	opts := "_"
 	if len(g.MetaFields) > 0 {
