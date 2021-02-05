@@ -1047,8 +1047,8 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 		ids = append(ids, id)
 
 		qb := model.NewQueryBuilder(lockRepo.GetCollection())
-		qb.GreaterThanOrEqual("CreatedAt", model.SetLastThreeToZero(l.CreatedAt).Add(-100))
-		qb.LessThanOrEqual("CreatedAt", model.SetLastThreeToZero(l.CreatedAt).Add(100))
+		qb.GreaterThanOrEqual("createdAt", model.SetLastThreeToZero(l.CreatedAt).Add(-100))
+		qb.LessThanOrEqual("createdAt", model.SetLastThreeToZero(l.CreatedAt).Add(100))
 		if err = qb.Check(); err != nil {
 			tr.Fatal(err)
 		}
