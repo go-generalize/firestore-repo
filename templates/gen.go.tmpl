@@ -248,7 +248,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteFunc }} {
 	return repo.deleteBy{{ .KeyFieldName }}(ctx, subject.{{ .KeyFieldName }})
 }
 
-// DeleteBy{{ .KeyFieldName }} 処理中の {{ .StructName }} の{{ .KeyFieldName }}から削除処理一切の責任を持ち、これを行う
+// DeleteBy{{ .KeyFieldName }} 処理中の {{ .StructName }} の {{ .KeyFieldName }}から削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteByFunc }} {
 {{- if .MetaFields }}
 	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
@@ -407,7 +407,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiFunc }} {
 	return nil
 }
 
-// DeleteMultiBy{{ PluralForm .KeyFieldName }} 処理中の {{ .StructName }} の{{ .KeyFieldName }}群を元に一括削除処理一切の責任を持ち、これを行う
+// DeleteMultiBy{{ PluralForm .KeyFieldName }} 処理中の {{ .StructName }} の {{ .KeyFieldName }}群を元に一括削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByFunc }} {
 	subjects := make([]*{{ .StructName }}, 0, len({{ PluralForm .KeyValueName }}))
 
