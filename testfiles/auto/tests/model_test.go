@@ -308,6 +308,67 @@ func TestFirestoreTransaction_Single(t *testing.T) {
 			tr.Fatalf("unexpected Count: %d (expected: %d)", tsk.Count, 11)
 		}
 	})
+
+	t.Run("UseUpdateBuilder", func(tr *testing.T) {
+		tkID := ids[len(ids)-1]
+		desc1002 := fmt.Sprintf("%s%d", desc, 1002)
+		err := client.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
+			tk, err := taskRepo.GetWithTx(tx, tkID)
+			if err != nil {
+				return err
+			}
+
+			if tk.Count != 11 {
+				return fmt.Errorf("unexpected Count: %d (expected: %d)", tk.Count, 11)
+			}
+
+			updateParam := &model.TaskUpdateParam{
+				Desc:       model.NewUpdater(desc1002),
+				Created:    model.NewUpdater(firestore.ServerTimestamp),
+				Done:       model.NewUpdater(false),
+				Count:      model.NewUpdater(firestore.Increment(1)),
+				Count64:    model.NewUpdater(firestore.Increment(2)),
+				Proportion: model.NewUpdater(firestore.Increment(0.1)),
+			}
+			if err = taskRepo.StrictUpdateWithTx(tx, tk.ID, updateParam); err != nil {
+				return err
+			}
+			return nil
+		})
+
+		if err != nil {
+			tr.Fatalf("error: %+v", err)
+		}
+
+		tsk, err := taskRepo.Get(ctx, tkID)
+		if err != nil {
+			tr.Fatalf("%+v", err)
+		}
+
+		if tsk.Desc != desc1002 {
+			tr.Fatalf("unexpected Desc: %s (expected: %s)", tsk.Desc, desc1002)
+		}
+
+		if tsk.Created.Before(now) {
+			tr.Fatalf("unexpected Created > now: %t (expected: %t)", tsk.Created.Before(now), tsk.Created.After(now))
+		}
+
+		if tsk.Done {
+			tr.Fatalf("unexpected Done: %t (expected: %t)", tsk.Done, false)
+		}
+
+		if tsk.Count != 12 {
+			tr.Fatalf("unexpected Count: %d (expected: %d)", tsk.Count, 12)
+		}
+
+		if tsk.Count64 != 13 {
+			tr.Fatalf("unexpected Count64: %d (expected: %d)", tsk.Count64, 13)
+		}
+
+		if tsk.Proportion != 11.22345 {
+			tr.Fatalf("unexpected Proportion: %g (expected: %g)", tsk.Proportion, 11.22345)
+		}
+	})
 }
 
 func TestFirestoreTransaction_Multi(t *testing.T) {
