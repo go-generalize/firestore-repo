@@ -11,4 +11,4 @@ statik:
 
 .PHONY: goimports
 goimports:
-	cd /tmp && go get golang.org/x/tools/cmd/goimports
+	go get golang.org/x/tools/cmd/goimports
