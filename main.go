@@ -212,7 +212,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 				FieldType: typeName,
 			}
 
-			if tag, er := dataStoreTagCheck(pos, tags); er != nil {
+			if tag, er := fireStoreTagCheck(pos, tags); er != nil {
 				return xerrors.Errorf("error in tagCheck method: %w", er)
 			} else if tag != "" {
 				fieldInfo.FsTag = tag
@@ -331,7 +331,7 @@ func keyFieldHandler(gen *generator, tags *structtag.Tags, name, typeName, pos s
 }
 
 func appendIndexer(pos string, tags *structtag.Tags, fieldInfo *FieldInfo, dupMap map[string]int) (*FieldInfo, error) {
-	if tag, err := dataStoreTagCheck(pos, tags); err != nil {
+	if tag, err := fireStoreTagCheck(pos, tags); err != nil {
 		return nil, xerrors.Errorf("error in tagCheck method: %w", err)
 	} else if tag != "" {
 		fieldInfo.FsTag = tag
@@ -381,7 +381,7 @@ func appendIndexer(pos string, tags *structtag.Tags, fieldInfo *FieldInfo, dupMa
 	return fieldInfo, nil
 }
 
-func dataStoreTagCheck(pos string, tags *structtag.Tags) (string, error) {
+func fireStoreTagCheck(pos string, tags *structtag.Tags) (string, error) {
 	if FsTag, err := tags.Get("firestore"); err == nil {
 		tag := strings.Split(FsTag.Value(), ",")[0]
 		if !valueCheck.MatchString(tag) {
