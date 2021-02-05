@@ -70,7 +70,7 @@ func TestFirestore(t *testing.T) {
 		}
 	}()
 
-	now := time.Unix(0, time.Now().UnixNano())
+	now := time.Unix(0, time.Now().UnixNano()).UTC()
 	desc := "Hello, World!"
 
 	t.Run("Multi", func(tr *testing.T) {
