@@ -5,6 +5,8 @@ package {{ .PackageName }}
 import (
 	"context"
 {{- if .MetaFields }}
+	"reflect"
+	"strings"
 	"time"
 {{- end }}
 
@@ -24,6 +26,7 @@ type {{ .RepositoryInterfaceName }} interface {
 	{{ GetWithDocFunc }}
 	{{ InsertFunc }}
 	{{ UpdateFunc }}
+	{{ StrictUpdateFunc }}
 	{{ DeleteFunc }}
 	{{ DeleteByFunc }}
 	// Multiple
@@ -37,6 +40,7 @@ type {{ .RepositoryInterfaceName }} interface {
 	{{ GetWithDocWithTxFunc }}
 	{{ InsertWithTxFunc }}
 	{{ UpdateWithTxFunc }}
+	{{ StrictUpdateWithTxFunc }}
 	{{ DeleteWithTxFunc }}
 	{{ DeleteByWithTxFunc }}
 	// Multiple(Transaction)
@@ -182,6 +186,20 @@ type {{ .StructName }}ListReq struct {
 {{- end  }}
 }
 
+// {{ .StructName }}UpdateParam - 厳格な更新をするためのパラメータ
+type {{ .StructName }}UpdateParam struct {
+{{- range .FieldInfos }}
+{{- 	if ne $MetaName .Field }}
+	{{ .Field }}{{ .Space }} *UpdateBuilder `firestore:"{{ .FsTag }}"`
+{{- 	end }}
+{{- end }}
+{{- if .MetaFields }}
+{{- 	range $key, $value := .MetaFields }}
+	{{ $key }}{{ $value.Space }} *UpdateBuilder
+{{- 	end }}
+{{- end  }}
+}
+
 // List firestore.Queryを使用し条件抽出をする
 //  └─ 第3引数はNOT/OR/IN/RANGEなど、より複雑な条件を適用したいときにつける
 //      └─ 基本的にnilを渡せば良い
@@ -226,6 +244,11 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateFunc }} {
 	}
 
 	return repo.update(ctx, subject)
+}
+
+// StrictUpdate 処理中の {{ .StructName }} の厳格な更新処理一切の責任を持ち、これを行う
+func (repo *{{ .RepositoryStructName }}) {{ StrictUpdateFunc }} {
+	return repo.strictUpdate(ctx, id, param)
 }
 
 // Delete 処理中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
@@ -464,6 +487,11 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateWithTxFunc }} {
 	}
 
 	return repo.update(tx, subject)
+}
+
+// StrictUpdateWithTx トランザクション中の {{ .StructName }} の厳格な更新処理一切の責任を持ち、これを行う
+func (repo *{{ .RepositoryStructName }}) {{ StrictUpdateWithTxFunc }} {
+	return repo.strictUpdate(tx, id, param)
 }
 
 // DeleteWithTx トランザクション中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
@@ -788,6 +816,52 @@ func (repo *{{ .RepositoryStructName }}) update(v interface{}, subject *{{ .Stru
 
 	return nil
 }
+{{ if .MetaFields }}
+var {{ .RepositoryStructName }}Meta = func() map[string]string {
+	metaMap := make(map[string]string)
+	rv := reflect.Indirect(reflect.ValueOf({{ .MetaPath }}{}))
+	rt := rv.Type()
+	if !strings.HasSuffix(rt.Name(), "Meta") {
+		return metaMap
+	}
+	for i := 0; i < rt.NumField(); i++ {
+		f := rt.Field(i)
+		tag, ok := f.Tag.Lookup("firestore")
+		if !ok {
+			tag = f.Name
+		}
+		if _, ok := metaMap[f.Name]; !ok {
+			metaMap[f.Name] = tag
+		}
+	}
+	return metaMap
+}()
+{{ end }}
+func (repo *{{ .RepositoryStructName }}) strictUpdate(v interface{}, id string, param *{{ .StructName }}UpdateParam, opts ...firestore.Precondition) error {
+	var (
+		dr  = repo.GetDocRef(id)
+		err error
+	)
+{{ if .MetaFields }}
+	updates := getUpdateParams(param, {{ .RepositoryStructName }}Meta)
+{{ else }}
+	updates := getUpdateParams(param)
+{{ end }}
+	switch x := v.(type) {
+	case *firestore.Transaction:
+		err = x.Update(dr, updates, opts...)
+	case context.Context:
+		_, err = dr.Update(x, updates, opts...)
+	default:
+		return xerrors.Errorf("invalid type: %v", v)
+	}
+
+	if err != nil {
+		return xerrors.Errorf("error in Update method: %w", err)
+	}
+
+	return nil
+}
 
 func (repo *{{ .RepositoryStructName }}) deleteBy{{ .KeyFieldName }}(v interface{}, {{ .KeyValueName }} {{ .KeyFieldType }}) error {
 	dr := repo.GetDocRef({{ .KeyValueName }})
@@ -862,12 +936,13 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 	if q == nil {
 		ref := repo.GetCollection()
 {{ $Meta := .MetaFields }}
+{{- $RepositoryStructName := .RepositoryStructName }}
 {{- range $fi := .FieldInfos }}
 {{- if eq $MetaName $fi.Field }}
 {{- 	range $key, $value := $Meta }}
 		if req.{{ $key }} != nil {
 			for _, chain := range req.{{ $key }}.QueryGroup {
-				ref.Query = ref.Query.Where("{{ $key }}", chain.Operator, chain.Value)
+				ref.Query = ref.Query.Where({{ $RepositoryStructName }}Meta["{{ $key }}"], chain.Operator, chain.Value)
 			}
 		}
 {{- 	end }}
