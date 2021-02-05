@@ -64,8 +64,10 @@ type generator struct {
 	AutomaticGeneration bool
 	IsSubCollection     bool
 
-	MetaFields   map[string]*Field
-	OmitMetaName string
+	MetaFields         map[string]*Field
+	OmitMetaName       string
+	OmitMetaParentName string
+	MetaPath           string
 }
 
 func (g *generator) setting() {
