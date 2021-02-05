@@ -48,6 +48,11 @@ jobs:
           go get github.com/rakyll/statik
           make statik
 
+      - name: get goimports
+        run: |
+          PATH="$PATH":"$HOME"/go/bin
+          go get golang.org/x/tools/cmd/goimports
+
       - name: Run tests
         run: |
           make test TEST_OPT='-tags="emulator"'
