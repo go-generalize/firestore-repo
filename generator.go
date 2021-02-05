@@ -233,6 +233,12 @@ func (g *generator) setFuncMap() template.FuncMap {
 		"UpdateFunc": func() string {
 			return fmt.Sprintf("Update(ctx context.Context, subject *%s) error", g.StructName)
 		},
+		"StrictUpdateFunc": func() string {
+			return fmt.Sprintf(
+				"StrictUpdate(ctx context.Context, id string, param *%sUpdateParam, opts ...firestore.Precondition) error",
+				g.StructName,
+			)
+		},
 		"DeleteFunc": func() string {
 			return fmt.Sprintf("Delete(ctx context.Context, subject *%s, opts ...DeleteOption) error", g.StructName)
 		},
@@ -293,6 +299,12 @@ func (g *generator) setFuncMap() template.FuncMap {
 		},
 		"UpdateWithTxFunc": func() string {
 			return fmt.Sprintf("UpdateWithTx(ctx context.Context, tx *firestore.Transaction, subject *%s) error", g.StructName)
+		},
+		"StrictUpdateWithTxFunc": func() string {
+			return fmt.Sprintf(
+				"StrictUpdateWithTx(tx *firestore.Transaction, id string, param *%sUpdateParam, opts ...firestore.Precondition) error",
+				g.StructName,
+			)
 		},
 		"DeleteWithTxFunc": func() string {
 			return fmt.Sprintf(
