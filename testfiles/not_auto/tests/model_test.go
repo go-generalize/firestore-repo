@@ -131,7 +131,7 @@ func TestFirestore(t *testing.T) {
 			Done2:      false,
 			Count:      11,
 			Count64:    11,
-			Proportion: 0.12345 + 11,
+			Proportion: 11.12345,
 			NameList:   []string{"a", "b", "c"},
 			Flag:       model.Flag(true),
 		}
@@ -207,7 +207,7 @@ func TestFirestore(t *testing.T) {
 			}
 		})
 
-		tk.Count = 12
+		tk.Count++
 		if err := taskRepo.Update(ctx, tk); err != nil {
 			tr.Fatalf("%+v", err)
 		}

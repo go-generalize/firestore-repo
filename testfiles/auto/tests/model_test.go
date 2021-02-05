@@ -137,7 +137,7 @@ func TestFirestore(t *testing.T) {
 			Done2:      false,
 			Count:      11,
 			Count64:    11,
-			Proportion: 0.12345 + 11,
+			Proportion: 11.12345,
 			NameList:   []string{"a", "b", "c"},
 			Flag: map[string]float64{
 				"1": 1.1,
@@ -151,7 +151,7 @@ func TestFirestore(t *testing.T) {
 		}
 		ids = append(ids, id)
 
-		tk.Count = 12
+		tk.Count++
 		tk.Flag["4"] = 4.4
 		if err := taskRepo.Update(ctx, tk); err != nil {
 			tr.Fatalf("%+v", err)
@@ -244,7 +244,7 @@ func TestFirestoreTransaction_Single(t *testing.T) {
 				Done2:      false,
 				Count:      10,
 				Count64:    11,
-				Proportion: 0.12345 + 11,
+				Proportion: 11.12345,
 				NameList:   []string{"a", "b", "c"},
 				Flag: map[string]float64{
 					"1": 1.1,
