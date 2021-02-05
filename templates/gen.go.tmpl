@@ -169,14 +169,14 @@ func (repo *{{ .RepositoryStructName }}) GetDocRef({{ .KeyValueName }} string) *
 // └─ bool/int(64)|float64 は stringの独自型で渡す(BoolCriteria | NumericCriteria)
 type {{ .StructName }}ListReq struct {
 {{- range .FieldInfos }}
-{{- if ne $MetaName .Field }}
+{{- 	if ne $MetaName .Field }}
 	{{ .Field }}{{ .Space }} *QueryChainer
-{{- end }}
+{{- 	end }}
 {{- end }}
 {{- if .MetaFields }}
-{{- range $key, $value := .MetaFields }}
+{{- 	range $key, $value := .MetaFields }}
 	{{ $key }}{{ $value.Space }} *QueryChainer
-{{- end }}
+{{- 	end }}
 
 	IncludeSoftDeleted bool
 {{- end  }}
