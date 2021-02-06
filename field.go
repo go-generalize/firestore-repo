@@ -3,10 +3,8 @@ package main
 import (
 	"fmt"
 	"go/ast"
-	"log"
 	"strings"
 
-	"github.com/fatih/structtag"
 	"golang.org/x/xerrors"
 )
 
@@ -17,7 +15,6 @@ type Field struct {
 	IsEmbed    bool
 	IsPointer  bool
 	Space      string
-	Tag        string
 }
 
 type MetaField struct {
@@ -73,25 +70,12 @@ func listAllField(field *ast.FieldList, parentName string, isEmbed bool) []*Fiel
 			isCurrentEmbed = true
 		}
 
-		tag := name
-		if f.Tag != nil {
-			tags, err := structtag.Parse(strings.Trim(f.Tag.Value, "`"))
-			if err != nil {
-				log.Fatalf("invalid tag: %+v", err)
-			}
-			tag, err = fireStoreTagCheck(tags)
-			if err != nil && tag != "-" {
-				log.Fatalf("%v: Field=%s", err, name)
-			}
-		}
-
 		result = append(result, &Field{
 			Name:       name,
 			Type:       typeName,
 			ParentPath: parentName,
 			IsEmbed:    isEmbed,
 			IsPointer:  isPointer,
-			Tag:        tag,
 		})
 
 		t, ok := f.Type.(*ast.Ident)
