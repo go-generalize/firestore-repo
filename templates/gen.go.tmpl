@@ -248,7 +248,7 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateFunc }} {
 
 // StrictUpdate 処理中の {{ .StructName }} の厳格な更新処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ StrictUpdateFunc }} {
-	return repo.strictUpdate(ctx, id, param)
+	return repo.strictUpdate(ctx, id, param, opts...)
 }
 
 // Delete 処理中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
@@ -491,7 +491,7 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateWithTxFunc }} {
 
 // StrictUpdateWithTx トランザクション中の {{ .StructName }} の厳格な更新処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ StrictUpdateWithTxFunc }} {
-	return repo.strictUpdate(tx, id, param)
+	return repo.strictUpdate(tx, id, param, opts...)
 }
 
 // DeleteWithTx トランザクション中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
