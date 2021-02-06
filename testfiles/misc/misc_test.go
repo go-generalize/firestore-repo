@@ -181,3 +181,47 @@ func Test_updater(t *testing.T) {
 		})
 	}
 }
+
+func Test_tagMap(t *testing.T) {
+	type args struct {
+		v interface{}
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want map[string]string
+	}{
+		{
+			args: args{
+				v: article{},
+			},
+			want: map[string]string{
+				"CreatedAt":           "createdAt",
+				"CreatedBy":           "createdBy",
+				"DeletedAt":           "deletedAt",
+				"DeletedBy":           "deletedBy",
+				"Page":                "page",
+				"Published":           "published",
+				"UpdatedAt":           "updatedAt",
+				"UpdatedBy":           "updatedBy",
+				"Version":             "version",
+				"user.Age":            "user.age",
+				"user.BirthDay":       "user.birthDay",
+				"user.IsAdult":        "user.isAdult",
+				"user.Name":           "user.name",
+				"user.address.LatLng": "user.address.LatLng",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt // escape: Using the variable on range scope `tt` in loop literal
+		t.Run(tt.name, func(t *testing.T) {
+			got := tagMap(tt.args.v)
+			if diff := cmp.Diff(got, tt.want); diff != "" {
+				t.Errorf("tagMap() = %v, want %v\n%s", got, tt.want, diff)
+			}
+		})
+	}
+}
