@@ -116,3 +116,68 @@ func Test_updateBuilder(t *testing.T) {
 		})
 	}
 }
+
+func Test_updater(t *testing.T) {
+	type args struct {
+		v     interface{}
+		param *articleUpdateParam
+	}
+
+	unix := time.Unix(0, 0)
+	age := time.Now().Year() - unix.Year()
+	latLng := &latlng.LatLng{
+		Latitude:  35.678803,
+		Longitude: 139.756263,
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want []firestore.Update
+	}{
+		{
+			args: args{
+				v: article{},
+				param: &articleUpdateParam{
+					User: user{
+						Name:     "john",
+						Age:      age,
+						BirthDay: &unix,
+						IsAdult:  false,
+						Address: address{
+							LatLng: latLng,
+						},
+					},
+					Page:      "section",
+					Published: false,
+					CreatedAt: unix,
+					CreatedBy: "operator",
+					UpdatedAt: unix,
+					Version:   1,
+				},
+			},
+			want: []firestore.Update{
+				{FieldPath: firestore.FieldPath{"createdAt"}, Value: unix},
+				{FieldPath: firestore.FieldPath{"createdBy"}, Value: "operator"},
+				{FieldPath: firestore.FieldPath{"page"}, Value: "section"},
+				{FieldPath: firestore.FieldPath{"published"}, Value: false},
+				{FieldPath: firestore.FieldPath{"updatedAt"}, Value: unix},
+				{FieldPath: firestore.FieldPath{"user", "address", "LatLng"}, Value: latLng},
+				{FieldPath: firestore.FieldPath{"user", "age"}, Value: age},
+				{FieldPath: firestore.FieldPath{"user", "birthDay"}, Value: &unix},
+				{FieldPath: firestore.FieldPath{"user", "name"}, Value: "john"},
+				{FieldPath: firestore.FieldPath{"version"}, Value: 1},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt // escape: Using the variable on range scope `tt` in loop literal
+		t.Run(tt.name, func(t *testing.T) {
+			got := updater(tt.args.v, tt.args.param)
+			if diff := cmp.Diff(got, tt.want, cmpopts.IgnoreUnexported(latlng.LatLng{})); diff != "" {
+				t.Errorf("updater() = %v, want %v\n%s", got, tt.want, diff)
+			}
+		})
+	}
+}
