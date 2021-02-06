@@ -5,8 +5,6 @@ package {{ .PackageName }}
 import (
 	"context"
 {{- if .MetaFields }}
-	"reflect"
-	"strings"
 	"time"
 {{- end }}
 
@@ -816,27 +814,7 @@ func (repo *{{ .RepositoryStructName }}) update(v interface{}, subject *{{ .Stru
 
 	return nil
 }
-{{ if .MetaFields }}
-var {{ .RepositoryStructName }}Meta = func() map[string]string {
-	metaMap := make(map[string]string)
-	rv := reflect.Indirect(reflect.ValueOf({{ .MetaPath }}{}))
-	rt := rv.Type()
-	if !strings.HasSuffix(rt.Name(), "Meta") {
-		return metaMap
-	}
-	for i := 0; i < rt.NumField(); i++ {
-		f := rt.Field(i)
-		tag, ok := f.Tag.Lookup("firestore")
-		if !ok {
-			tag = f.Name
-		}
-		if _, ok := metaMap[f.Name]; !ok {
-			metaMap[f.Name] = tag
-		}
-	}
-	return metaMap
-}()
-{{ end }}
+
 func (repo *{{ .RepositoryStructName }}) strictUpdate(v interface{}, id string, param *{{ .StructName }}UpdateParam, opts ...firestore.Precondition) error {
 	var (
 		dr  = repo.GetDocRef(id)
