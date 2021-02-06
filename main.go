@@ -212,8 +212,8 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 				FieldType: typeName,
 			}
 
-			if tag, er := dataStoreTagCheck(pos, tags); er != nil {
-				return xerrors.Errorf("error in tagCheck method: %w", er)
+			if tag, er := fireStoreTagCheck(tags); er != nil {
+				log.Fatalf("%s: %v", pos, er)
 			} else if tag != "" {
 				fieldInfo.FsTag = tag
 			}
@@ -230,8 +230,8 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 				FieldType: typeName,
 				Indexes:   make([]*IndexesInfo, 0),
 			}
-			if fieldInfo, err = appendIndexer(pos, tags, fieldInfo, dupMap); err != nil {
-				return xerrors.Errorf("error in appendIndexer: %w", err)
+			if fieldInfo, err = appendIndexer(tags, fieldInfo, dupMap); err != nil {
+				log.Fatalf("%s: %v", pos, err)
 			}
 			gen.FieldInfos = append(gen.FieldInfos, fieldInfo)
 			continue
@@ -243,12 +243,12 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		case "auto":
 			gen.AutomaticGeneration = true
 		default:
-			return xerrors.Errorf(
+			log.Fatalf(
 				`%s: The contents of the firestore_key tag should be "" or "auto"`, pos)
 		}
 
-		if err := keyFieldHandler(gen, tags, name, typeName, pos); err != nil {
-			return xerrors.Errorf("error in keyFieldHandler: %w", err)
+		if err := keyFieldHandler(gen, tags, name, typeName); err != nil {
+			log.Fatalf("%s: %v", pos, err)
 		}
 	}
 
@@ -311,28 +311,28 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 	return nil
 }
 
-func keyFieldHandler(gen *generator, tags *structtag.Tags, name, typeName, pos string) error {
+func keyFieldHandler(gen *generator, tags *structtag.Tags, name, typeName string) error {
 	FsTag, err := tags.Get("firestore")
 
 	// firestore タグが存在しないか-になっていない
 	if err != nil || strings.Split(FsTag.Value(), ",")[0] != "-" {
-		return xerrors.Errorf("%s: key field for firestore should have firestore:\"-\" tag", pos)
+		return xerrors.New("key field for firestore should have firestore:\"-\" tag")
 	}
 
 	gen.KeyFieldName = name
 	gen.KeyFieldType = typeName
 
 	if gen.KeyFieldType != typeString {
-		return xerrors.Errorf("%s: supported key types are string", pos)
+		return xerrors.New("supported key types are string")
 	}
 
 	gen.KeyValueName = strcase.ToLowerCamel(name)
 	return nil
 }
 
-func appendIndexer(pos string, tags *structtag.Tags, fieldInfo *FieldInfo, dupMap map[string]int) (*FieldInfo, error) {
-	if tag, err := dataStoreTagCheck(pos, tags); err != nil {
-		return nil, xerrors.Errorf("error in tagCheck method: %w", err)
+func appendIndexer(tags *structtag.Tags, fieldInfo *FieldInfo, dupMap map[string]int) (*FieldInfo, error) {
+	if tag, err := fireStoreTagCheck(tags); err != nil {
+		return nil, err
 	} else if tag != "" {
 		fieldInfo.FsTag = tag
 	}
@@ -381,14 +381,14 @@ func appendIndexer(pos string, tags *structtag.Tags, fieldInfo *FieldInfo, dupMa
 	return fieldInfo, nil
 }
 
-func dataStoreTagCheck(pos string, tags *structtag.Tags) (string, error) {
+func fireStoreTagCheck(tags *structtag.Tags) (string, error) {
 	if FsTag, err := tags.Get("firestore"); err == nil {
 		tag := strings.Split(FsTag.Value(), ",")[0]
 		if !valueCheck.MatchString(tag) {
-			return "", xerrors.Errorf("%s: key field for firestore should have other than blanks and symbols tag", pos)
+			return "", xerrors.New("key field for firestore should have other than blanks and symbols tag")
 		}
 		if unicode.IsDigit(rune(tag[0])) {
-			return "", xerrors.Errorf("%s: key field for firestore should have indexerPrefix other than numbers required", pos)
+			return "", xerrors.New("key field for firestore should have indexerPrefix other than numbers required")
 		}
 		return tag, nil
 	}

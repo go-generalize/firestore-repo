@@ -71,7 +71,7 @@ func TestFirestore(t *testing.T) {
 		}
 	}()
 
-	now := time.Unix(0, time.Now().UnixNano())
+	now := time.Unix(0, time.Now().UnixNano()).UTC()
 	desc := "Hello, World!"
 
 	t.Run("Multi", func(tr *testing.T) {
@@ -131,7 +131,7 @@ func TestFirestore(t *testing.T) {
 			Done2:      false,
 			Count:      11,
 			Count64:    11,
-			Proportion: 0.12345 + 11,
+			Proportion: 11.12345,
 			NameList:   []string{"a", "b", "c"},
 			Flag:       model.Flag(true),
 		}
@@ -207,7 +207,7 @@ func TestFirestore(t *testing.T) {
 			}
 		})
 
-		tk.Count = 12
+		tk.Count++
 		if err := taskRepo.Update(ctx, tk); err != nil {
 			tr.Fatalf("%+v", err)
 		}
@@ -220,6 +220,52 @@ func TestFirestore(t *testing.T) {
 		if tsk.Count != 12 {
 			tr.Fatalf("unexpected Count: %d (expected: %d)", tsk.Count, 12)
 		}
+
+		tr.Run("UpdateBuilder", func(ttr *testing.T) {
+			desc1002 := fmt.Sprintf("%s%d", desc, 1002)
+
+			updateParam := &model.TaskUpdateParam{
+				Desc:       desc1002,
+				Created:    firestore.ServerTimestamp,
+				Done:       false,
+				Count:      firestore.Increment(1),
+				Count64:    firestore.Increment(2),
+				Proportion: firestore.Increment(0.1),
+			}
+
+			if err = taskRepo.StrictUpdate(ctx, tsk.Identity, updateParam); err != nil {
+				ttr.Fatalf("%+v", err)
+			}
+
+			tsk, err = taskRepo.Get(ctx, tk.Identity)
+			if err != nil {
+				ttr.Fatalf("%+v", err)
+			}
+
+			if tsk.Desc != desc1002 {
+				ttr.Fatalf("unexpected Desc: %s (expected: %s)", tsk.Desc, desc1002)
+			}
+
+			if tsk.Created.Before(now) {
+				ttr.Fatalf("unexpected Created > now: %t (expected: %t)", tsk.Created.Before(now), tsk.Created.After(now))
+			}
+
+			if tsk.Done {
+				ttr.Fatalf("unexpected Done: %t (expected: %t)", tsk.Done, false)
+			}
+
+			if tsk.Count != 13 {
+				ttr.Fatalf("unexpected Count: %d (expected: %d)", tsk.Count, 13)
+			}
+
+			if tsk.Count64 != 13 {
+				ttr.Fatalf("unexpected Count64: %d (expected: %d)", tsk.Count64, 13)
+			}
+
+			if tsk.Proportion != 11.22345 {
+				ttr.Fatalf("unexpected Proportion: %g (expected: %g)", tsk.Proportion, 11.22345)
+			}
+		})
 	})
 }
 
@@ -310,6 +356,67 @@ func TestFirestoreTransaction_Single(t *testing.T) {
 
 		if tsk.Count != 11 {
 			tr.Fatalf("unexpected Count: %d (expected: %d)", tsk.Count, 11)
+		}
+	})
+
+	t.Run("UseUpdateBuilder", func(tr *testing.T) {
+		tkID := ids[len(ids)-1]
+		desc1002 := fmt.Sprintf("%s%d", desc, 1002)
+		err := client.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
+			tk, err := taskRepo.GetWithTx(tx, tkID)
+			if err != nil {
+				return err
+			}
+
+			if tk.Count != 11 {
+				return fmt.Errorf("unexpected Count: %d (expected: %d)", tk.Count, 11)
+			}
+
+			updateParam := &model.TaskUpdateParam{
+				Desc:       desc1002,
+				Created:    firestore.ServerTimestamp,
+				Done:       false,
+				Count:      firestore.Increment(1),
+				Count64:    firestore.Increment(2),
+				Proportion: firestore.Increment(0.1),
+			}
+			if err = taskRepo.StrictUpdateWithTx(tx, tk.Identity, updateParam); err != nil {
+				return err
+			}
+			return nil
+		})
+
+		if err != nil {
+			tr.Fatalf("error: %+v", err)
+		}
+
+		tsk, err := taskRepo.Get(ctx, tkID)
+		if err != nil {
+			tr.Fatalf("%+v", err)
+		}
+
+		if tsk.Desc != desc1002 {
+			tr.Fatalf("unexpected Desc: %s (expected: %s)", tsk.Desc, desc1002)
+		}
+
+		if tsk.Created.Before(now) {
+			tr.Fatalf("unexpected Created > now: %t (expected: %t)", tsk.Created.Before(now), tsk.Created.After(now))
+		}
+
+		if tsk.Done {
+			tr.Fatalf("unexpected Done: %t (expected: %t)", tsk.Done, false)
+		}
+
+		if tsk.Count != 12 {
+			tr.Fatalf("unexpected Count: %d (expected: %d)", tsk.Count, 12)
+		}
+
+		if tsk.Count64 != 13 {
+			tr.Fatalf("unexpected Count64: %d (expected: %d)", tsk.Count64, 13)
+		}
+
+		if tsk.Proportion != 11.22345 {
+			tr.Fatalf("unexpected Proportion: %g (expected: %g)", tsk.Proportion, 11.22345)
 		}
 	})
 }

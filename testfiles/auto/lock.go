@@ -5,13 +5,13 @@ import "time"
 //go:generate firestore-repo Lock
 
 type Meta struct {
-	CreatedAt time.Time
-	CreatedBy string
-	UpdatedAt time.Time
-	UpdatedBy string
-	DeletedAt *time.Time
-	DeletedBy string
-	Version   int
+	CreatedAt time.Time  `firestore:"createdAt"`
+	CreatedBy string     `firestore:"createdBy"`
+	UpdatedAt time.Time  `firestore:"updatedAt"`
+	UpdatedBy string     `firestore:"updatedBy"`
+	DeletedAt *time.Time `firestore:"deletedAt"`
+	DeletedBy string     `firestore:"deletedBy"`
+	Version   int        `firestore:"version"`
 }
 
 // Lock ID自動生成あり
