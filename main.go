@@ -253,19 +253,13 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 	}
 
 	{
-		fileName := gen.GeneratedFileName + ".go"
-		fp, err := os.Create(fileName)
+		fp, err := os.Create(gen.GeneratedFileName + ".go")
 		if err != nil {
 			panic(err)
 		}
 		defer fp.Close()
 
 		gen.generate(fp)
-
-		_, err = execCommand("goimports", "-w", fileName)
-		if err != nil {
-			log.Fatalf("goimports exec error (%s): %v", fileName, err)
-		}
 	}
 
 	if gen.EnableIndexes {
