@@ -174,12 +174,12 @@ func TestFirestore(t *testing.T) {
 			desc1002 := fmt.Sprintf("%s%d", desc, 1002)
 
 			updateParam := &model.TaskUpdateParam{
-				Desc:       model.NewUpdater(desc1002),
-				Created:    model.NewUpdater(firestore.ServerTimestamp),
-				Done:       model.NewUpdater(false),
-				Count:      model.NewUpdater(firestore.Increment(1)),
-				Count64:    model.NewUpdater(firestore.Increment(2)),
-				Proportion: model.NewUpdater(firestore.Increment(0.1)),
+				Desc:       desc1002,
+				Created:    firestore.ServerTimestamp,
+				Done:       false,
+				Count:      firestore.Increment(1),
+				Count64:    firestore.Increment(2),
+				Proportion: firestore.Increment(0.1),
 			}
 
 			if err = taskRepo.StrictUpdate(ctx, tsk.ID, updateParam); err != nil {
@@ -323,12 +323,12 @@ func TestFirestoreTransaction_Single(t *testing.T) {
 			}
 
 			updateParam := &model.TaskUpdateParam{
-				Desc:       model.NewUpdater(desc1002),
-				Created:    model.NewUpdater(firestore.ServerTimestamp),
-				Done:       model.NewUpdater(false),
-				Count:      model.NewUpdater(firestore.Increment(1)),
-				Count64:    model.NewUpdater(firestore.Increment(2)),
-				Proportion: model.NewUpdater(firestore.Increment(0.1)),
+				Desc:       desc1002,
+				Created:    firestore.ServerTimestamp,
+				Done:       false,
+				Count:      firestore.Increment(1),
+				Count64:    firestore.Increment(2),
+				Proportion: firestore.Increment(0.1),
 			}
 			if err = taskRepo.StrictUpdateWithTx(tx, tk.ID, updateParam); err != nil {
 				return err
@@ -1238,10 +1238,10 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 		hello := fmt.Sprintf("%s world", text)
 
 		updateParam := &model.LockUpdateParam{
-			Text:      model.NewUpdater(hello),
-			Flag:      model.NewUpdater(flag),
-			UpdatedAt: model.NewUpdater(firestore.ServerTimestamp),
-			Version:   model.NewUpdater(firestore.Increment(1)),
+			Text:      hello,
+			Flag:      flag,
+			UpdatedAt: firestore.ServerTimestamp,
+			Version:   firestore.Increment(1),
 		}
 
 		if err = lockRepo.StrictUpdate(ctx, id, updateParam); err != nil {
