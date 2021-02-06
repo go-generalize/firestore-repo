@@ -385,7 +385,7 @@ func fireStoreTagCheck(tags *structtag.Tags) (string, error) {
 	if FsTag, err := tags.Get("firestore"); err == nil {
 		tag := strings.Split(FsTag.Value(), ",")[0]
 		if !valueCheck.MatchString(tag) {
-			return tag, xerrors.New("key field for firestore should have other than blanks and symbols tag")
+			return "", xerrors.New("key field for firestore should have other than blanks and symbols tag")
 		}
 		if unicode.IsDigit(rune(tag[0])) {
 			return "", xerrors.New("key field for firestore should have indexerPrefix other than numbers required")
