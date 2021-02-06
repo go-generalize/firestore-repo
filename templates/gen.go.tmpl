@@ -188,12 +188,12 @@ type {{ .StructName }}ListReq struct {
 type {{ .StructName }}UpdateParam struct {
 {{- range .FieldInfos }}
 {{- 	if ne $MetaName .Field }}
-	{{ .Field }}{{ .Space }} *UpdateBuilder `firestore:"{{ .FsTag }}"`
+	{{ .Field }}{{ .Space }} interface{}
 {{- 	end }}
 {{- end }}
 {{- if .MetaFields }}
 {{- 	range $key, $value := .MetaFields }}
-	{{ $key }}{{ $value.Space }} *UpdateBuilder
+	{{ $key }}{{ $value.Space }} interface{}
 {{- 	end }}
 {{- end  }}
 }
@@ -820,11 +820,9 @@ func (repo *{{ .RepositoryStructName }}) strictUpdate(v interface{}, id string, 
 		dr  = repo.GetDocRef(id)
 		err error
 	)
-{{ if .MetaFields }}
-	updates := getUpdateParams(param, {{ .RepositoryStructName }}Meta)
-{{ else }}
-	updates := getUpdateParams(param)
-{{ end }}
+
+	updates := updater({{ .StructName }}{}, param)
+
 	switch x := v.(type) {
 	case *firestore.Transaction:
 		err = x.Update(dr, updates, opts...)
@@ -898,7 +896,9 @@ func (repo *{{ .RepositoryStructName }}) runQuery(v interface{}, query firestore
 
 	return subjects, nil
 }
-
+{{ if .MetaFields }}
+var {{ .RepositoryStructName }}Meta = tagMap({{ .StructName }}{})
+{{ end }}
 func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName }}ListReq, q *firestore.Query) ([]*{{ .StructName }}, error) {
 	if (req == nil && q == nil) || (req != nil && q != nil) {
 		return nil, xerrors.New("either one should be nil")
