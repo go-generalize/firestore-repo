@@ -32,6 +32,53 @@ func updater(v, param interface{}) []firestore.Update {
 	return updates
 }
 
+func tagMap(v interface{}) map[string]string {
+	rv := reflect.Indirect(reflect.ValueOf(v))
+	rt := rv.Type()
+	tags := make(map[string]string)
+	for i := 0; i < rt.NumField(); i++ {
+		ft := rt.Field(i)
+		fv := rv.Field(i)
+		if ft.Anonymous {
+			for key, val := range tagMap(fv.Interface()) {
+				if _, ok := tags[key]; ok {
+					panic("fields with the same name cannot be used")
+				}
+				tags[key] = val
+			}
+			continue
+		}
+		tag := ft.Name
+		if firestoreTag, ok := ft.Tag.Lookup("firestore"); ok {
+			tag = strings.Split(firestoreTag, ",")[0]
+		}
+		switch fv.Kind() {
+		case reflect.Ptr:
+			ptrType := reflect.PtrTo(fv.Type()).Elem()
+			fv = reflect.New(ptrType.Elem())
+			fallthrough
+		case reflect.Struct:
+			if isReservedType(fv) {
+				break
+			}
+			for key, value := range tagMap(fv.Interface()) {
+				compositeKey := strings.Join([]string{tag, key}, ".")
+				if _, ok := tags[compositeKey]; ok {
+					panic("fields with the same name cannot be used")
+				}
+				compositeValue := strings.Join([]string{tag, value}, ".")
+				tags[compositeKey] = compositeValue
+			}
+			continue
+		}
+		if _, ok := tags[ft.Name]; ok {
+			panic("fields with the same name cannot be used")
+		}
+		tags[ft.Name] = tag
+	}
+	return tags
+}
+
 func updateBuilder(v, param interface{}) map[string]firestore.Update {
 	rv := reflect.Indirect(reflect.ValueOf(v))
 	rt := rv.Type()
