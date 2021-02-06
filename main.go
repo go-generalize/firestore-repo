@@ -124,14 +124,6 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 	metaFieldName := ""
 	if !*disableMeta {
 		fList := listAllField(structType.Fields, "", false)
-		for _, field := range fList {
-			if gen.OmitMetaParentName != "" {
-				break
-			}
-			if sp := strings.Split(field.Name, "."); len(sp) > 1 {
-				gen.OmitMetaParentName = sp[0]
-			}
-		}
 
 		metas, mfn, err := searchMetaProperties(fList)
 		if err != nil {
@@ -166,7 +158,6 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 			if !*disableMeta && name == metaFieldName {
 				isMetaFiled = true
 				gen.OmitMetaName = name
-				gen.MetaPath = name
 			}
 		} else {
 			name = field.Names[0].Name
@@ -259,10 +250,6 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		if err := keyFieldHandler(gen, tags, name, typeName); err != nil {
 			log.Fatalf("%s: %v", pos, err)
 		}
-	}
-
-	if gen.OmitMetaParentName != "" {
-		gen.MetaPath = fmt.Sprintf("%s.%s", gen.OmitMetaParentName, gen.OmitMetaName)
 	}
 
 	{
