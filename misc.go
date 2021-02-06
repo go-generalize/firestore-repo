@@ -5,7 +5,6 @@ import (
 	"go/ast"
 	"io/ioutil"
 	"log"
-	"os/exec"
 	"regexp"
 
 	"github.com/go-utils/cont"
@@ -71,21 +70,6 @@ func appendIndexesInfo(fieldInfo *FieldInfo, dupMap map[string]int) {
 		idx.Method += "Something"
 	}
 	fieldInfo.Indexes = append(fieldInfo.Indexes, idx)
-}
-
-func execCommand(command string, args ...string) (string, error) {
-	cmd := exec.Command(command, args...)
-	b, err := cmd.CombinedOutput()
-
-	if err != nil {
-		return "", err
-	}
-
-	if exitCode := cmd.ProcessState.ExitCode(); exitCode != 0 {
-		return "", fmt.Errorf("failed to exec git command: (exit code: %d, output: %s)", exitCode, string(b))
-	}
-
-	return string(b), nil
 }
 
 func getTypeName(typ ast.Expr) string {
