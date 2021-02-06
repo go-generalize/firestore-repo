@@ -1,7 +1,9 @@
 package misc
 
 import (
+	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 	"time"
 
@@ -17,6 +19,17 @@ func isReservedType(value reflect.Value) bool {
 		return true
 	}
 	return false
+}
+
+func updater(v, param interface{}) []firestore.Update {
+	updates := make([]firestore.Update, 0)
+	for _, update := range updateBuilder(v, param) {
+		updates = append(updates, update)
+	}
+	sort.Slice(updates, func(i, j int) bool {
+		return fmt.Sprint(updates[i].FieldPath) < fmt.Sprint(updates[j].FieldPath)
+	})
+	return updates
 }
 
 func updateBuilder(v, param interface{}) map[string]firestore.Update {
