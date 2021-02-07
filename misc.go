@@ -75,19 +75,6 @@ func uppercaseExtraction(name string, dupMap map[string]int) (lower string) {
 	return
 }
 
-func appendIndexesInfo(fieldInfo *FieldInfo, dupMap map[string]int) {
-	idx := &IndexesInfo{
-		ConstName: fieldLabel + fieldInfo.Field,
-		Label:     uppercaseExtraction(fieldInfo.Field, dupMap),
-		Method:    "Add",
-	}
-	idx.Comment = fmt.Sprintf("%s %s", idx.ConstName, fieldInfo.Field)
-	if fieldInfo.FieldType != typeString {
-		idx.Method += "Something"
-	}
-	fieldInfo.Indexes = append(fieldInfo.Indexes, idx)
-}
-
 func getTypeName(typ ast.Expr) string {
 	switch v := typ.(type) {
 	case *ast.SelectorExpr:
