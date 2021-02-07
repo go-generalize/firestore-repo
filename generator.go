@@ -30,6 +30,8 @@ type IndexesInfo struct {
 	Label     string
 	Method    string
 	Use       bool
+	Space1    string
+	Space2    string
 }
 
 type FieldInfo struct {
