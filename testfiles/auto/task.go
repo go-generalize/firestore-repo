@@ -9,7 +9,7 @@ import (
 // Task ID自動生成あり
 type Task struct {
 	ID         string             `firestore:"-" firestore_key:"auto"`
-	Desc       string             `firestore:"description"`
+	Desc       string             `firestore:"description" indexer:"e,p,s"`
 	Created    time.Time          `firestore:"created"`
 	Done       bool               `firestore:"done"`
 	Done2      bool               `firestore:"done2"`
@@ -18,4 +18,5 @@ type Task struct {
 	NameList   []string           `firestore:"nameList"`
 	Proportion float64            `firestore:"proportion"`
 	Flag       map[string]float64 `firestore:"flag"`
+	Indexes    map[string]bool    `firestore:"indexes"`
 }
