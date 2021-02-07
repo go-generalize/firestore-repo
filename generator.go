@@ -29,6 +29,7 @@ type IndexesInfo struct {
 	ConstName string
 	Label     string
 	Method    string
+	Use       bool
 }
 
 type FieldInfo struct {
