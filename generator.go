@@ -102,6 +102,26 @@ func (g *generator) insertSpace() {
 	}
 }
 
+func (g *generator) insertSpaceForLabel() {
+	var max1, max2 int
+	for _, x := range g.FieldInfos {
+		for _, index := range x.Indexes {
+			if size := len(index.ConstName); size > max1 {
+				max1 = size
+			}
+			if size := len(index.Label); size > max2 {
+				max2 = size
+			}
+		}
+	}
+	for _, x := range g.FieldInfos {
+		for _, index := range x.Indexes {
+			index.Space1 = strings.Repeat(" ", max1-len(index.ConstName))
+			index.Space2 = strings.Repeat(" ", max2-len(index.Label))
+		}
+	}
+}
+
 func (g *generator) generate(writer io.Writer) {
 	g.setting()
 	funcMap := g.setFuncMap()
@@ -115,6 +135,7 @@ func (g *generator) generate(writer io.Writer) {
 }
 
 func (g *generator) generateLabel(writer io.Writer) {
+	g.insertSpaceForLabel()
 	contents := getFileContents("label")
 
 	t := template.Must(template.New("TemplateLabel").Parse(contents))
