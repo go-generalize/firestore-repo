@@ -330,6 +330,16 @@ func keyFieldHandler(gen *generator, tags *structtag.Tags, name, typeName string
 	return nil
 }
 
+func isUseIndexer(filters []string, p1, p2 string) bool {
+	for _, filter := range filters {
+		switch filter {
+		case p1, p2:
+			return true
+		}
+	}
+	return false
+}
+
 func appendIndexer(tags *structtag.Tags, fieldInfo *FieldInfo, dupMap map[string]int) (*FieldInfo, error) {
 	if tag, err := fireStoreTagCheck(tags); err != nil {
 		return nil, err
