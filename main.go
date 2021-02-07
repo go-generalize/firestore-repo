@@ -204,7 +204,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 			)
 			continue
 		}
-		if name == "Indexes" {
+		if name == "Indexes" && typeName == typeBoolMap {
 			gen.EnableIndexes = true
 			fieldInfo := &FieldInfo{
 				FsTag:     name,
