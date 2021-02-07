@@ -191,7 +191,9 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 				FieldType: typeName,
 				Indexes:   make([]*IndexesInfo, 0),
 			}
-			appendIndexesInfo(fieldInfo, dupMap)
+			if _, err := appendIndexer(nil, fieldInfo, dupMap); err != nil {
+				log.Fatalf("%s: %v", pos, err)
+			}
 			gen.FieldInfos = append(gen.FieldInfos, fieldInfo)
 			continue
 		}
