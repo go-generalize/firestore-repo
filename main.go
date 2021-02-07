@@ -341,52 +341,51 @@ func isUseIndexer(filters []string, p1, p2 string) bool {
 }
 
 func appendIndexer(tags *structtag.Tags, fieldInfo *FieldInfo, dupMap map[string]int) (*FieldInfo, error) {
-	if tag, err := fireStoreTagCheck(tags); err != nil {
-		return nil, err
-	} else if tag != "" {
-		fieldInfo.FsTag = tag
-	}
-	if idr, err := tags.Get("indexer"); err != nil || fieldInfo.FieldType != typeString {
-		appendIndexesInfo(fieldInfo, dupMap)
-	} else {
-		filters := strings.Split(idr.Value(), ",")
-		dupIdr := make(map[string]struct{})
-		for _, fil := range filters {
-			idx := &IndexesInfo{
-				ConstName: fieldLabel + fieldInfo.Field,
-				Label:     uppercaseExtraction(fieldInfo.Field, dupMap),
-				Method:    "Add",
-			}
-			var dupFlag string
-			switch fil {
-			case "p", "prefix": // 前方一致 (AddPrefix)
-				idx.Method += prefix
-				idx.ConstName += prefix
-				idx.Comment = fmt.Sprintf("%s %s前方一致", idx.ConstName, fieldInfo.Field)
-				dupFlag = "p"
-			case "s", "suffix": /* TODO 後方一致
-				idx.Method += Suffix
-				idx.ConstName += Suffix
-				idx.Comment = fmt.Sprintf("%s %s後方一致", idx.ConstName, name)
-				dup = "s"*/
-			case "e", "equal": // 完全一致 (Add) Default
-				idx.Comment = fmt.Sprintf("%s %s", idx.ConstName, fieldInfo.Field)
-				dupIdr["equal"] = struct{}{}
-				dupFlag = "e"
-			case "l", "like": // 部分一致
-				idx.Method += biunigrams
-				idx.ConstName += "Like"
-				idx.Comment = fmt.Sprintf("%s %s部分一致", idx.ConstName, fieldInfo.Field)
-				dupFlag = "l"
-			default:
-				continue
-			}
-			if _, ok := dupIdr[dupFlag]; ok {
-				continue
-			}
-			dupIdr[dupFlag] = struct{}{}
-			fieldInfo.Indexes = append(fieldInfo.Indexes, idx)
+	filters := make([]string, 0)
+	if tags != nil {
+		if tag, err := fireStoreTagCheck(tags); err != nil {
+			return nil, err
+		} else if tag != "" {
+			fieldInfo.FsTag = tag
 		}
+		idr, err := tags.Get("indexer")
+		if err == nil {
+			filters = strings.Split(idr.Value(), ",")
+		}
+	}
+	patterns := [4]string{
+		prefix, suffix, like, equal,
+	}
+	for i := range patterns {
+		idx := &IndexesInfo{
+			ConstName: fieldLabel + fieldInfo.Field + patterns[i],
+			Label:     uppercaseExtraction(fieldInfo.Field, dupMap),
+			Method:    "Add",
+		}
+		if fieldInfo.FieldType != typeString {
+			idx.Method += "Something"
+			fieldInfo.Indexes = append(fieldInfo.Indexes, idx)
+			idx.Comment = fmt.Sprintf("perfect-match of %s", fieldInfo.Field)
+			continue
+		}
+		switch patterns[i] {
+		case prefix:
+			idx.Use = isUseIndexer(filters, "p", prefix)
+			idx.Method += prefix
+			idx.Comment = fmt.Sprintf("prefix-match of %s", fieldInfo.Field)
+		case suffix:
+			idx.Use = isUseIndexer(filters, "s", suffix)
+			idx.Method += suffix
+			idx.Comment = fmt.Sprintf("suffix-match of %s", fieldInfo.Field)
+		case like:
+			idx.Use = isUseIndexer(filters, "l", like)
+			idx.Method += biunigrams
+			idx.Comment = fmt.Sprintf("like-match of %s", fieldInfo.Field)
+		case equal:
+			idx.Use = isUseIndexer(filters, "e", equal)
+			idx.Comment = fmt.Sprintf("perfect-match of %s", fieldInfo.Field)
+		}
+		fieldInfo.Indexes = append(fieldInfo.Indexes, idx)
 	}
 	return fieldInfo, nil
 }
