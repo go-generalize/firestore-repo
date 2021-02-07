@@ -1,9 +1,12 @@
 package main
 
 const (
+	equal          = "Equal"
 	biunigrams     = "Biunigrams"
+	like           = "Like"
 	prefix         = "Prefix"
-	queryLabel     = "QueryLabel"
+	suffix         = "Suffix"
+	indexLabel     = "IndexLabel"
 	typeString     = "string"
 	typeInt        = "int"
 	typeInt64      = "int64"
@@ -17,5 +20,6 @@ const (
 	typeIntMap     = "map[string]int"
 	typeInt64Map   = "map[string]int64"
 	typeFloat64Map = "map[string]float64"
+	typeBoolMap    = "map[string]bool"
 	NgType         = "NG"
 )

@@ -118,7 +118,7 @@ func traverse(pkg *ast.Package, fs *token.FileSet, structName string) error {
 
 func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) error {
 	dupMap := make(map[string]int)
-	fieldLabel = gen.StructName + queryLabel
+	fieldLabel = gen.StructName + indexLabel
 
 	metaList := make(map[string]*Field)
 	metaFieldName := ""
