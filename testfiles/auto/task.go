@@ -16,7 +16,7 @@ type Task struct {
 	Count      int                `firestore:"count"`
 	Count64    int64              `firestore:"count64"`
 	NameList   []string           `firestore:"nameList"`
-	Proportion float64            `firestore:"proportion"`
+	Proportion float64            `firestore:"proportion" indexer:"e"`
 	Flag       map[string]float64 `firestore:"flag"`
 	Indexes    map[string]bool    `firestore:"indexes"`
 }
