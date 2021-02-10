@@ -916,15 +916,15 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 {{ $Meta := .MetaFields }}
 {{- $RepositoryStructName := .RepositoryStructName }}
 {{- range $fi := .FieldInfos }}
-{{- if eq $MetaName $fi.Field }}
-{{- 	range $key, $value := $Meta }}
+{{- 	if eq $MetaName $fi.Field }}
+{{- 		range $key, $value := $Meta }}
 		if req.{{ $key }} != nil {
 			for _, chain := range req.{{ $key }}.QueryGroup {
 				ref.Query = ref.Query.Where({{ $RepositoryStructName }}Meta["{{ $key }}"], chain.Operator, chain.Value)
 			}
 		}
-{{- 	end }}
-{{- else }}
+{{- 		end }}
+{{- 	else }}
 {{- 	$IsSlice := HasSlice $fi.FieldType }}
 {{- 	$IsMap := HasMap $fi.FieldType }}
 		if req.{{ $fi.Field }} != nil {
