@@ -17,6 +17,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+{{- $bracketsStart := "{" }}
+{{- $bracketsEnd := "}" }}
 {{ $generate := "go:generate" }}
 //{{ $generate }} mockgen -source {{ .GeneratedFileName }}.go -destination mock/mock_{{ .GeneratedFileName }}/mock_{{ .GeneratedFileName }}.go
 
@@ -903,8 +905,6 @@ func (repo *{{ .RepositoryStructName }}) runQuery(v interface{}, query firestore
 var {{ .RepositoryStructName }}Meta = tagMap({{ .StructName }}{})
 {{ end }}
 func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName }}ListReq, q *firestore.Query) ([]*{{ .StructName }}, error) {
-{{- 	$bracketsStart := "{" }}
-{{- 	$bracketsEnd := "}" }}
 	if (req == nil && q == nil) || (req != nil && q != nil) {
 		return nil, xerrors.New("either one should be nil")
 	}
@@ -926,6 +926,7 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 		})
 {{- end }}
 {{ $Meta := .MetaFields }}
+{{- $EnableIndexes := .EnableIndexes }}
 {{- $RepositoryStructName := .RepositoryStructName }}
 {{- range $fi := .FieldInfos }}
 {{- 	if eq $MetaName $fi.Field }}
@@ -958,7 +959,7 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
 				ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
 			}
-{{- 			if ne ( len $fi.Indexes ) 0 }}
+{{- 			if and (eq $EnableIndexes true ) (ne ( len $fi.Indexes ) 0) }}
 			value, ok := req.{{ $fi.Field }}.Filter.Value.(string)
 {{- 				$indexerInfo := IndexerInfo $fi }}
 {{- 				if ne $indexerInfo "" }}
