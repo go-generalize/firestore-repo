@@ -171,6 +171,34 @@ func (repo *{{ .RepositoryStructName }}) GetCollectionName() string {
 func (repo *{{ .RepositoryStructName }}) GetDocRef({{ .KeyValueName }} string) *firestore.DocumentRef {
 	return repo.GetCollection().Doc({{ .KeyValueName }})
 }
+{{- if .EnableIndexes }}
+
+func (repo *{{ .RepositoryStructName }}) saveIndexes(subject *{{ .StructName }}) error {
+	idx := xim.NewIndexes(&xim.Config{
+		IgnoreCase:         true,
+		SaveNoFiltersIndex: true,
+	})
+	{{ $bracketsStart}}
+{{- range $fi := .FieldInfos }}
+{{- 	range $index := $fi.Indexes }}
+{{- 		if eq $index.Use true }}
+		idx.{{ if HasSuffix $index.Method "fix" }}{{ PluralForm $index.Method }}{{ else }}{{ $index.Method }}{{ end }}({{ $index.ConstName }}, subject.{{ $fi.Field }})
+{{- 		end }}
+{{- 	end }}
+{{- end }}
+	{{ $bracketsEnd}}
+	indexes, err := idx.Build()
+	if err != nil {
+		return xerrors.Errorf("failed to index build: %w", err)
+	} else if len(indexes) == 0 {
+		return nil
+	}
+
+	subject.Indexes = indexes
+
+	return nil
+}
+{{- end }}
 {{ $MetaName := .OmitMetaName }}
 // {{ .StructName }}ListReq List取得時に渡すリクエスト
 // └─ bool/int(64)|float64 は stringの独自型で渡す(BoolCriteria | NumericCriteria)
