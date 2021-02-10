@@ -9,6 +9,9 @@ import (
 {{- end }}
 
 	"cloud.google.com/go/firestore"
+{{- if .EnableIndexes }}
+	"github.com/go-utils/xim"
+{{- end }}
 	"golang.org/x/xerrors"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
@@ -900,6 +903,8 @@ func (repo *{{ .RepositoryStructName }}) runQuery(v interface{}, query firestore
 var {{ .RepositoryStructName }}Meta = tagMap({{ .StructName }}{})
 {{ end }}
 func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName }}ListReq, q *firestore.Query) ([]*{{ .StructName }}, error) {
+{{- 	$bracketsStart := "{" }}
+{{- 	$bracketsEnd := "}" }}
 	if (req == nil && q == nil) || (req != nil && q != nil) {
 		return nil, xerrors.New("either one should be nil")
 	}
@@ -913,6 +918,13 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 
 	if q == nil {
 		ref := repo.GetCollection()
+{{- if .EnableIndexes }}
+
+		filters := xim.NewFilters(&xim.Config{
+			IgnoreCase:         true,
+			SaveNoFiltersIndex: true,
+		})
+{{- end }}
 {{ $Meta := .MetaFields }}
 {{- $RepositoryStructName := .RepositoryStructName }}
 {{- range $fi := .FieldInfos }}
@@ -946,6 +958,40 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
 				ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
 			}
+{{- 			if ne ( len $fi.Indexes ) 0 }}
+			value, ok := req.{{ $fi.Field }}.Filter.Value.(string)
+{{- 				$indexerInfo := IndexerInfo $fi }}
+{{- 				if ne $indexerInfo "" }}
+			{{ print $indexerInfo }}
+{{- 				end }}
+			for _, filter := range req.{{ $fi.Field }}.Filter.FilterTypes {
+				switch filter {
+{{- 				$EqualLabel := "" }}
+{{- 				range $filters := $fi.Indexes }}
+{{- 					if eq (HasSuffix $filters.ConstName "Equal") true }}
+							{{- $EqualLabel = $filters.ConstName }}
+{{- 					end }}
+{{- 					if eq $filters.Use true }}
+{{- 						if ne $filters.Method "Add" }}
+				case {{ if eq $filters.Method "AddPrefix" }}FilterTypeAddPrefix{{ else if eq $filters.Method "AddSuffix" }}FilterTypeAddSuffix{{ else if eq $filters.Method "AddBiunigrams" }}FilterTypeAddBiunigrams{{ end }}:
+					if ok {
+						filters.{{ $filters.Method }}({{ $filters.ConstName }}, value)
+					}
+{{- 						end }}
+{{- 					end }}
+{{- 				end }}
+				// Treat `Add` or otherwise as `Equal`.
+				case FilterTypeAdd:
+					fallthrough
+				default:
+					if !ok {
+						filters.AddSomething({{ $EqualLabel }}, req.{{ $fi.Field }}.Filter.Value)
+						continue
+					}
+					filters.Add({{ $EqualLabel }}, value)
+				}
+			}
+{{- 			end }}
 {{- 		end }}
 		}
 {{- 	end }}
@@ -957,7 +1003,16 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 			ref.Query = ref.Query.Where("DeletedAt", OpTypeEqual, nil)
 		}
 {{- end }}
+{{- if .EnableIndexes }}
 
+		build, err := filters.Build()
+		if err != nil {
+			return nil, xerrors.Errorf("failed to filter build: %w", err)
+		}
+		for key := range build {
+			ref.Query = ref.Query.WherePath(firestore.FieldPath{{ $bracketsStart }}"{{ .FieldInfoForIndexes.FsTag }}", key{{ $bracketsEnd}}, OpTypeEqual, true)
+		}
+{{ end }}
 		query = ref.Query
 	}
 
