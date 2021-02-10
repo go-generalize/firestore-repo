@@ -367,6 +367,7 @@ func appendIndexer(tags *structtag.Tags, fieldInfo *FieldInfo, dupMap map[string
 			Method:    "Add",
 		}
 		if fieldInfo.FieldType != typeString {
+			idx.Use = isUseIndexer(filters, "e", equal)
 			idx.Method += "Something"
 			fieldInfo.Indexes = append(fieldInfo.Indexes, idx)
 			idx.Comment = fmt.Sprintf("perfect-match of %s", fieldInfo.Field)
