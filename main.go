@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"unicode"
 
@@ -389,6 +390,9 @@ func appendIndexer(tags *structtag.Tags, fieldInfo *FieldInfo, dupMap map[string
 		}
 		fieldInfo.Indexes = append(fieldInfo.Indexes, idx)
 	}
+	sort.Slice(fieldInfo.Indexes, func(i, j int) bool {
+		return fieldInfo.Indexes[i].Method < fieldInfo.Indexes[j].Method
+	})
 	return fieldInfo, nil
 }
 
