@@ -353,6 +353,7 @@ func appendIndexer(tags *structtag.Tags, fieldInfo *FieldInfo, dupMap map[string
 		}
 		idr, err := tags.Get("indexer")
 		if err == nil {
+			fieldInfo.IndexerTag = idr.Value()
 			filters = strings.Split(idr.Value(), ",")
 		}
 	}

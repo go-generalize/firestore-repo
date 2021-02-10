@@ -35,11 +35,12 @@ type IndexesInfo struct {
 }
 
 type FieldInfo struct {
-	FsTag     string
-	Field     string
-	FieldType string
-	Space     string
-	Indexes   []*IndexesInfo
+	FsTag      string
+	Field      string
+	FieldType  string
+	Space      string
+	IndexerTag string
+	Indexes    []*IndexesInfo
 }
 
 type generator struct {
