@@ -35,6 +35,44 @@ type Task struct {
 $ go generate
 ```
 
+#### Search Query
+Task.Desc = "Hello, World!".
+- Bigrams / Unigrams
+```go
+req := &model.TaskListReq{
+	Desc: model.NewQueryChainer().Filters("o, Wor", model.FilterTypeAddBiunigrams),
+}
+
+tasks, err := taskRepo.List(ctx, req, nil)
+if err != nil {
+	// error handling
+}
+```
+
+- Prefix
+```go
+req := &model.TaskListReq{
+	Desc: model.NewQueryChainer().Filters("Hell", model.FilterTypeAddPrefix),
+}
+
+tasks, err := taskRepo.List(ctx, req, nil)
+if err != nil {
+	// error handling
+}
+```
+
+- Suffix
+```go
+req := &model.TaskListReq{
+	Desc: model.NewQueryChainer().Filters("orld!", model.FilterTypeAddSuffix),
+}
+
+tasks, err := taskRepo.List(ctx, req, nil)
+if err != nil {
+	// error handling
+}
+```
+
 ## License
 - Under the MIT License
 - Copyright (C) 2020 go-generalize
