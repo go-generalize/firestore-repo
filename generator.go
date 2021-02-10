@@ -216,6 +216,9 @@ func (g *generator) setFuncMap() template.FuncMap {
 			}
 			return fn
 		},
+		"HasSuffix": func(s, suffix string) bool {
+			return strings.HasSuffix(s, suffix)
+		},
 		"HasSlice": func(types string) bool {
 			return strings.HasPrefix(types, "[]")
 		},
