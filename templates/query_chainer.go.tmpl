@@ -14,6 +14,7 @@ import (
 // QueryChainer - query chainer
 type QueryChainer struct {
 	QueryGroup []*Query
+	Filter     Filter
 	err        error
 }
 
@@ -137,6 +138,22 @@ func (qc *QueryChainer) Error() error {
 	return qc.err
 }
 
+// Filter - filters of extra indexer
+type Filter struct {
+	FilterTypes []FilterType
+	Value       interface{}
+}
+
+// Filters - using `xim`
+func (qc *QueryChainer) Filters(v interface{}, filterTypes ...FilterType) *QueryChainer {
+	qc.Filter.Value = v
+	if len(filterTypes) == 0 {
+		qc.Filter.FilterTypes = append(qc.Filter.FilterTypes, FilterTypeAdd)
+		return qc
+	}
+	qc.Filter.FilterTypes = filterTypes
+	return qc
+}
 // Query - query
 type Query struct {
 	Operator OpType
