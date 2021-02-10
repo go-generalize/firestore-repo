@@ -255,6 +255,11 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertFunc }} {
 	if err := repo.beforeInsert(ctx, subject); err != nil {
 		return "", xerrors.Errorf("before insert error: %w", err)
 	}
+{{ if eq .EnableIndexes true}}
+	if err := repo.saveIndexes(subject); err != nil {
+		return "", xerrors.Errorf("failed to saveIndexes: %w", err)
+	}
+{{ end }}
 	return repo.insert(ctx, subject)
 }
 
@@ -273,7 +278,11 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateFunc }} {
 	if err = repo.beforeUpdate(ctx, old, subject); err != nil {
 		return xerrors.Errorf("before update error: %w", err)
 	}
-
+{{ if eq .EnableIndexes true}}
+	if err := repo.saveIndexes(subject); err != nil {
+		return xerrors.Errorf("failed to saveIndexes: %w", err)
+	}
+{{ end }}
 	return repo.update(ctx, subject)
 }
 
@@ -352,6 +361,11 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiFunc }} {
 				return nil, xerrors.Errorf("already exists [%v]: %#v", subject.{{ .KeyFieldName }}, s)
 			}
 		}
+{{ if eq .EnableIndexes true}}
+		if err := repo.saveIndexes(subjects[i]); err != nil {
+			return nil, xerrors.Errorf("failed to saveIndexes: %w", err)
+		}
+{{ end }}
 		batch.Set(ref, subject)
 		{{ PluralForm .KeyValueName }} = append({{ PluralForm .KeyValueName }}, ref.ID)
 		i++
@@ -395,7 +409,11 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiFunc }} {
 		if err = repo.beforeUpdate(ctx, old, subject); err != nil {
 			return xerrors.Errorf("before update error: %w", err)
 		}
-
+{{ if eq .EnableIndexes true}}
+		if err := repo.saveIndexes(subjects[i]); err != nil {
+			return xerrors.Errorf("failed to saveIndexes: %w", err)
+		}
+{{ end }}
 		batch.Set(ref, subject)
 		i++
 		if (i%500) == 0 && len(subjects) != i {
@@ -498,6 +516,11 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertWithTxFunc }} {
 		return "", ErrAlreadyExists
 	}
 {{ end }}
+{{ if eq .EnableIndexes true}}
+	if err := repo.saveIndexes(subject); err != nil {
+		return "", xerrors.Errorf("failed to saveIndexes: %w", err)
+	}
+{{ end }}
 	return repo.insert(tx, subject)
 }
 
@@ -516,7 +539,11 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateWithTxFunc }} {
 	if err = repo.beforeUpdate(ctx, old, subject); err != nil {
 		return xerrors.Errorf("before update error: %w", err)
 	}
-
+{{ if eq .EnableIndexes true}}
+	if err := repo.saveIndexes(subject); err != nil {
+		return xerrors.Errorf("failed to saveIndexes: %w", err)
+	}
+{{ end }}
 	return repo.update(tx, subject)
 }
 
@@ -586,6 +613,11 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiWithTxFunc }} {
 		if err := repo.beforeInsert(ctx, subjects[i]); err != nil {
 			return nil, xerrors.Errorf("before insert error(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
+{{ if eq .EnableIndexes true}}
+		if err := repo.saveIndexes(subjects[i]); err != nil {
+			return nil, xerrors.Errorf("failed to saveIndexes: %w", err)
+		}
+{{ end }}
 		{{ .KeyValueName }}, err := repo.insert(tx, subjects[i])
 		if err != nil {
 			return nil, xerrors.Errorf("error in insert method(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
@@ -614,6 +646,11 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiWithTxFunc }} {
 	}
 
 	for i := range subjects {
+{{- if eq .EnableIndexes true}}
+		if err := repo.saveIndexes(subjects[i]); err != nil {
+			return xerrors.Errorf("failed to saveIndexes: %w", err)
+		}
+{{- end }}
 		if err := repo.update(tx, subjects[i]); err != nil {
 			return xerrors.Errorf("error in update method(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
