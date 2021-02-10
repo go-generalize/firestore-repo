@@ -1037,7 +1037,7 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 {{- 					if eq (HasSuffix $filters.ConstName "Equal") true }}
 							{{- $EqualLabel = $filters.ConstName }}
 {{- 					end }}
-{{- 					if eq $filters.Use true }}
+{{- 					if and (ne $filters.Method "AddSomething" ) (eq $filters.Use true) }}
 {{- 						if ne $filters.Method "Add" }}
 				case {{ if eq $filters.Method "AddPrefix" }}FilterTypeAddPrefix{{ else if eq $filters.Method "AddSuffix" }}FilterTypeAddSuffix{{ else if eq $filters.Method "AddBiunigrams" }}FilterTypeAddBiunigrams{{ end }}:
 					if ok {

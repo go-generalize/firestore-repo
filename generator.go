@@ -9,6 +9,7 @@ import (
 	"text/template"
 
 	_ "github.com/go-generalize/firestore-repo/statik"
+	"github.com/go-utils/cont"
 	"github.com/go-utils/plural"
 	"github.com/iancoleman/strcase"
 	"github.com/rakyll/statik/fs"
@@ -234,17 +235,19 @@ func (g *generator) setFuncMap() template.FuncMap {
 				return
 			}
 			comment += fmt.Sprintf(`// The value of the "indexer" tag = "%s"`, fieldInfo.IndexerTag)
-			tmp := "// "
+			items := make([]string, 0)
 			for _, index := range fieldInfo.Indexes {
 				if !index.Use {
 					continue
 				}
-				tmp += index.Method + "/"
+				if !cont.Contains(items, index.Method) {
+					items = append(items, index.Method)
+				}
 			}
-			if len(tmp) > 3 {
-				tmp = strings.TrimSuffix(tmp, "/")
-				tmp += " is valid."
-				comment += "\n\t\t\t" + tmp
+			if len(items) > 3 {
+				comment += "\n\t\t\t// "
+				comment += strings.Join(items, "/")
+				comment += " is valid."
 			}
 			return
 		},
