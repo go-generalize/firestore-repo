@@ -233,7 +233,7 @@ func (g *generator) setFuncMap() template.FuncMap {
 			if fieldInfo.IndexerTag == "" {
 				return
 			}
-			comment += fmt.Sprintf("// The value of the `indexer` tag = `indexer:\"%s\"`", fieldInfo.IndexerTag)
+			comment += fmt.Sprintf(`// The value of the "indexer" tag = "%s"`, fieldInfo.IndexerTag)
 			tmp := "// "
 			for _, index := range fieldInfo.Indexes {
 				if !index.Use {
