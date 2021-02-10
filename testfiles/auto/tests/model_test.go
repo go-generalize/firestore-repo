@@ -1237,6 +1237,10 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 		flag := map[string]float64{"test": 123.456}
 		hello := fmt.Sprintf("%s world", text)
 
+		t := time.NewTicker(1 * time.Millisecond)
+		defer t.Stop()
+		<-t.C
+
 		updateParam := &model.LockUpdateParam{
 			Text:      hello,
 			Flag:      flag,
