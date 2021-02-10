@@ -20,6 +20,17 @@ const (
 	OpTypeArrayContainsAny   OpType = "array-contains-any"
 )
 
+// FilterType - extra indexes filters type
+type FilterType = int
+
+const (
+	FilterTypeAdd FilterType = 1 << iota
+	FilterTypeAddPrefix
+	FilterTypeAddSuffix
+	FilterTypeAddBiunigrams
+	FilterTypeAddSomething
+)
+
 var (
 	ErrAlreadyExists  = xerrors.New("already exists")
 	ErrAlreadyDeleted = xerrors.New("already been deleted")
