@@ -8,7 +8,7 @@ require (
 	github.com/go-utils/cont v0.1.2
 	github.com/go-utils/dedupe v0.2.1
 	github.com/go-utils/plural v0.0.1
-	github.com/go-utils/xim v0.1.0
+	github.com/go-utils/xim v0.1.1
 	github.com/google/go-cmp v0.5.4
 	github.com/iancoleman/strcase v0.0.0-20191112232945-16388991a334
 	github.com/rakyll/statik v0.1.7
