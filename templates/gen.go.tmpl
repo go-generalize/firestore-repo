@@ -947,7 +947,7 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 					continue
 				}
 				for key, value := range items {
-					ref.Query = ref.Query.Where("{{ $fi.FsTag }}."+key, chain.Operator, value)
+					ref.Query = ref.Query.WherePath(firestore.FieldPath{{ $bracketsStart }}"{{ $fi.FsTag }}", key{{ $bracketsEnd }}, chain.Operator, value)
 				}
 			}
 {{- 		else if eq $IsSlice true }}
