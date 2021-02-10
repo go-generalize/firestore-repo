@@ -229,6 +229,25 @@ func (g *generator) setFuncMap() template.FuncMap {
 		"PluralForm": func(word string) string {
 			return plural.Convert(word)
 		},
+		"IndexerInfo": func(fieldInfo *FieldInfo) (comment string) {
+			if fieldInfo.IndexerTag == "" {
+				return
+			}
+			comment += fmt.Sprintf("// The value of the `indexer` tag = `indexer:\"%s\"`", fieldInfo.IndexerTag)
+			tmp := "// "
+			for _, index := range fieldInfo.Indexes {
+				if !index.Use {
+					continue
+				}
+				tmp += index.Method + "/"
+			}
+			if len(tmp) > 3 {
+				tmp = strings.TrimSuffix(tmp, "/")
+				tmp += " is valid."
+				comment += "\n\t\t\t" + tmp
+			}
+			return
+		},
 		"GetFunc": func() string {
 			raw := fmt.Sprintf(
 				"Get(ctx context.Context, %s %s, opts ...GetOption) (*%s, error)",
