@@ -1389,8 +1389,6 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 				ret.CreatedAt.Unix(), ret.UpdatedAt.Unix())
 		}
 
-		fmt.Println(ret.CreatedAt)
-		fmt.Println(ret.UpdatedAt)
 		if ret.UpdatedAt.Before(ret.CreatedAt) {
 			tr.Fatalf("unexpected UpdatedAt > CreatedAt: %t (expected: %t)", ret.UpdatedAt.Before(ret.CreatedAt), ret.UpdatedAt.After(ret.CreatedAt))
 		}
