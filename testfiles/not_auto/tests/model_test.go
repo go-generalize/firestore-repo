@@ -57,6 +57,19 @@ func compareTask(t *testing.T, expected, actual *model.Task) {
 	}
 }
 
+type uniqueError struct{}
+
+func newUniqueError() model.UniqueRepositoryMiddleware {
+	return &uniqueError{}
+}
+
+func (e *uniqueError) WrapError(_ context.Context, err error, uniques []*model.Unique) error {
+	for _, unique := range uniques {
+		fmt.Printf("*unique: %+v\n", *unique)
+	}
+	return err
+}
+
 func TestFirestore(t *testing.T) {
 	client := initFirestoreClient(t)
 
@@ -70,6 +83,8 @@ func TestFirestore(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
+
+	ctx = context.WithValue(ctx, model.UniqueMiddlewareKey{}, newUniqueError())
 
 	now := time.Unix(0, time.Now().UnixNano()).UTC()
 	desc := "Hello, World!"
