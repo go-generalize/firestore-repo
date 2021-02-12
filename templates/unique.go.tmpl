@@ -228,7 +228,13 @@ func (repo *uniqueRepository) makeRollbackFunc(rbInsert, rbDelete []Unique) Roll
 	return func(ctx context.Context) error {
 		if err := repo.firestoreClient.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
 			for _, unique := range rbInsert {
-				if err := repo.insert(tx, &unique); err != nil {
+				// escape: scopelint
+				if err := repo.insert(tx, &Unique{
+					ID:         unique.ID,
+					Collection: unique.Collection,
+					Data:       unique.Data,
+					Value:      unique.Value,
+				}); err != nil {
 					return xerrors.Errorf("failed to insert(Tx): %w", err)
 				}
 			}
