@@ -28,6 +28,8 @@ type UniqueRepositoryMiddleware interface {
 	WrapError(ctx context.Context, err error, uniques []*Unique) error
 }
 
+type RollbackFunc func(context.Context) error
+
 type uniqueRepository struct {
 	collectionName   string
 	targetCollection string
@@ -106,10 +108,13 @@ func (repo *uniqueRepository) getUniqueItems(value interface{}) ([]*Unique, bool
 	return uniques, len(uniques) > 0
 }
 
-func (repo *uniqueRepository) UniqueCheck(ctx context.Context, old, subject interface{}) error {
+func (repo *uniqueRepository) UniqueCheck(ctx context.Context, old, subject interface{}) (RollbackFunc, error) {
 	if subject == nil {
-		return xerrors.New("nil is not allowed")
+		return nil, xerrors.New("nil is not allowed")
 	}
+
+	rbInsert := make([]Unique, 0)
+	rbDelete := make([]Unique, 0)
 
 	if err := repo.firestoreClient.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) (err error) {
 		sustain := make(map[Unique]struct{}, 0)
@@ -186,6 +191,7 @@ func (repo *uniqueRepository) UniqueCheck(ctx context.Context, old, subject inte
 		// NOTE(54m): Delete unique items
 		for u := range deleteTarget {
 			delete(sustain, u)
+			rbInsert = append(rbInsert, u)
 			if err = repo.deleteByID(tx, u.ID); err != nil {
 				return xerrors.Errorf("failed to delete(Tx): %w", err)
 			}
@@ -193,6 +199,7 @@ func (repo *uniqueRepository) UniqueCheck(ctx context.Context, old, subject inte
 
 		// NOTE(54m): Insert unique item
 		for _, u := range surveyTarget {
+			rbDelete = append(rbDelete, *u)
 			if err = repo.insert(tx, u); err != nil {
 				return xerrors.Errorf("failed to insert(Tx): %w", err)
 			}
@@ -200,10 +207,31 @@ func (repo *uniqueRepository) UniqueCheck(ctx context.Context, old, subject inte
 
 		return
 	}); err != nil {
-		return xerrors.Errorf("could not run transaction: %w", err)
+		return nil, xerrors.Errorf("could not run transaction: %w", err)
 	}
 
-	return nil
+	return repo.makeRollbackFunc(rbInsert, rbDelete), nil
+}
+
+func (repo *uniqueRepository) makeRollbackFunc(rbInsert, rbDelete []Unique) RollbackFunc {
+	return func(ctx context.Context) error {
+		if err := repo.firestoreClient.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
+			for _, unique := range rbInsert {
+				if err := repo.insert(tx, &unique); err != nil {
+					return xerrors.Errorf("failed to insert(Tx): %w", err)
+				}
+			}
+			for _, unique := range rbDelete {
+				if err := repo.deleteByID(tx, unique.ID); err != nil {
+					return xerrors.Errorf("failed to delete(Tx): %w", err)
+				}
+			}
+			return nil
+		}); err != nil {
+			return xerrors.Errorf("could not run rollback(unique): %w", err)
+		}
+		return nil
+	}
 }
 
 func (repo *uniqueRepository) getCollection() *firestore.CollectionRef {
