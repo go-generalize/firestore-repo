@@ -372,14 +372,19 @@ func (repo *{{ .RepositoryStructName }}) {{ GetMultiFunc }} {
 func (repo *{{ .RepositoryStructName }}) {{ InsertMultiFunc }} {
 	var rbs []RollbackFunc
 	defer func() {
+		if er == nil {
+			return
+		}
 		if len(rbs) == 0 {
 			return
 		}
+		errs := make([]error, 0)
 		for _, rb := range rbs {
-			if err := rb(ctx); er != nil {
-				er = xerrors.Errorf("unique check error %+v, original error: %w", err, er)
+			if err := rb(ctx); err != nil {
+				errs = append(errs, err)
 			}
 		}
+		er = xerrors.Errorf("unique check error %+v, original error: %w", errs, er)
 	}()
 
 	{{ PluralForm .KeyValueName }} := make([]{{ .KeyFieldType }}, 0, len(subjects))
@@ -432,14 +437,19 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiFunc }} {
 func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiFunc }} {
 	var rbs []RollbackFunc
 	defer func() {
+		if er == nil {
+			return
+		}
 		if len(rbs) == 0 {
 			return
 		}
+		errs := make([]error, 0)
 		for _, rb := range rbs {
-			if err := rb(ctx); er != nil {
-				er = xerrors.Errorf("unique check error %+v, original error: %w", err, er)
+			if err := rb(ctx); err != nil {
+				errs = append(errs, err)
 			}
 		}
+		er = xerrors.Errorf("unique check error %+v, original error: %w", errs, er)
 	}()
 
 	batches := make([]*firestore.WriteBatch, 0)
@@ -672,14 +682,19 @@ func (repo *{{ .RepositoryStructName }}) {{ GetMultiWithTxFunc }} {
 func (repo *{{ .RepositoryStructName }}) {{ InsertMultiWithTxFunc }} {
 	var rbs []RollbackFunc
 	defer func() {
+		if er == nil {
+			return
+		}
 		if len(rbs) == 0 {
 			return
 		}
+		errs := make([]error, 0)
 		for _, rb := range rbs {
-			if err := rb(ctx); er != nil {
-				er = xerrors.Errorf("unique check error %+v, original error: %w", err, er)
+			if err := rb(ctx); err != nil {
+				errs = append(errs, err)
 			}
 		}
+		er = xerrors.Errorf("unique check error %+v, original error: %w", errs, er)
 	}()
 {{ if not .AutomaticGeneration }}
 	for i := range subjects {
@@ -715,14 +730,19 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiWithTxFunc }} {
 func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiWithTxFunc }} {
 	var rbs []RollbackFunc
 	defer func() {
+		if er == nil {
+			return
+		}
 		if len(rbs) == 0 {
 			return
 		}
+		errs := make([]error, 0)
 		for _, rb := range rbs {
-			if err := rb(ctx); er != nil {
-				er = xerrors.Errorf("unique check error %+v, original error: %w", err, er)
+			if err := rb(ctx); err != nil {
+				errs = append(errs, err)
 			}
 		}
+		er = xerrors.Errorf("unique check error %+v, original error: %w", errs, er)
 	}()
 
 	for i := range subjects {
