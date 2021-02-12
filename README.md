@@ -79,5 +79,5 @@ if err != nil {
 ```
 
 ## License
-- Under the [MIT](./LICENSE) License
+- Under the [MIT License](./LICENSE)
 - Copyright (C) 2020 go-generalize
