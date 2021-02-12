@@ -276,7 +276,7 @@ func (g *generator) setFuncMap() template.FuncMap {
 			return raw
 		},
 		"InsertFunc": func() string {
-			return fmt.Sprintf("Insert(ctx context.Context, subject *%s) (%s, error)", g.StructName, g.KeyFieldType)
+			return fmt.Sprintf("Insert(ctx context.Context, subject *%s) (_ %s, err error)", g.StructName, g.KeyFieldType)
 		},
 		"UpdateFunc": func() string {
 			return fmt.Sprintf("Update(ctx context.Context, subject *%s) error", g.StructName)
@@ -305,7 +305,7 @@ func (g *generator) setFuncMap() template.FuncMap {
 			return raw
 		},
 		"InsertMultiFunc": func() string {
-			return fmt.Sprintf("InsertMulti(ctx context.Context, subjects []*%s) ([]%s, error)", g.StructName, g.KeyFieldType)
+			return fmt.Sprintf("InsertMulti(ctx context.Context, subjects []*%s) (_ []%s, er error)", g.StructName, g.KeyFieldType)
 		},
 		"UpdateMultiFunc": func() string {
 			return fmt.Sprintf("UpdateMulti(ctx context.Context, subjects []*%s) error", g.StructName)
@@ -341,7 +341,7 @@ func (g *generator) setFuncMap() template.FuncMap {
 		},
 		"InsertWithTxFunc": func() string {
 			return fmt.Sprintf(
-				"InsertWithTx(ctx context.Context, tx *firestore.Transaction, subject *%s) (%s, error)",
+				"InsertWithTx(ctx context.Context, tx *firestore.Transaction, subject *%s) (_ %s, err error)",
 				g.StructName, g.KeyFieldType,
 			)
 		},
@@ -379,7 +379,7 @@ func (g *generator) setFuncMap() template.FuncMap {
 		},
 		"InsertMultiWithTxFunc": func() string {
 			return fmt.Sprintf(
-				"InsertMultiWithTx(ctx context.Context, tx *firestore.Transaction, subjects []*%s) ([]string, error)",
+				"InsertMultiWithTx(ctx context.Context, tx *firestore.Transaction, subjects []*%s) (_ []string, er error)",
 				g.StructName,
 			)
 		},
