@@ -102,6 +102,10 @@ func traverse(pkg *ast.Package, fs *token.FileSet, structName string) error {
 					continue
 				}
 
+				if cont.Contains(reservedStructs, name) {
+					log.Fatalf("%s is a reserved struct", name)
+				}
+
 				// structの定義
 				structType, ok := typeSpec.Type.(*ast.StructType)
 				if !ok {
