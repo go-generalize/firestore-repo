@@ -98,28 +98,33 @@ func (repo *{{ .RepositoryStructName }}) setMeta(subject *{{ .StructName }}, isI
 	subject.Version++
 }
 {{ end }}
-func (repo *{{ .RepositoryStructName }}) beforeInsert(ctx context.Context, subject *{{ .StructName }}) error {
-	repo.uniqueRepository.setMiddleware(ctx)
+func (repo *{{ .RepositoryStructName }}) beforeInsert(ctx context.Context, subject *{{ .StructName }}) (RollbackFunc, error) {
 {{- if .MetaFields }}
 	if subject.Version != 0 {
-		return xerrors.Errorf("insert data must be Version == 0: %+v", subject)
+		return nil, xerrors.Errorf("insert data must be Version == 0: %+v", subject)
 	}
 	if subject.DeletedAt != nil {
-		return xerrors.Errorf("insert data must be DeletedAt == nil: %+v", subject)
+		return nil, xerrors.Errorf("insert data must be DeletedAt == nil: %+v", subject)
 	}
 	repo.setMeta(subject, true)
 {{- end }}
+	repo.uniqueRepository.setMiddleware(ctx)
+	rb, err := repo.uniqueRepository.UniqueCheck(ctx, nil, subject)
+	if err != nil {
+		return nil, xerrors.Errorf("unique.middleware error: %w", err)
+	}
 
 	for _, m := range repo.middleware {
 		c, err := m.BeforeInsert(ctx, subject)
 		if err != nil {
-			return xerrors.Errorf("beforeInsert.middleware error: %w", err)
+			return nil, xerrors.Errorf("beforeInsert.middleware error(uniqueRB=%t): %w", rb(ctx) == nil, err)
 		}
 		if !c {
 			continue
 		}
 	}
-	return nil
+
+	return rb, nil
 }
 
 func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, subject *{{ .StructName }}) error {
@@ -259,11 +264,19 @@ func (repo *{{ .RepositoryStructName }}) {{ GetWithDocFunc }} {
 
 // Insert 処理中の {{ .StructName }} の登録処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ InsertFunc }} {
-	if err := repo.beforeInsert(ctx, subject); err != nil {
+	rb, err := repo.beforeInsert(ctx, subject)
+	if err != nil {
 		return "", xerrors.Errorf("before insert error: %w", err)
 	}
+	defer func() {
+		if err != nil {
+			if er := rb(ctx); er != nil {
+				err = xerrors.Errorf("unique check error %+v, original error: %w", er, err)
+			}
+		}
+	}()
 {{ if eq .EnableIndexes true}}
-	if err := repo.saveIndexes(subject); err != nil {
+	if err = repo.saveIndexes(subject); err != nil {
 		return "", xerrors.Errorf("failed to saveIndexes: %w", err)
 	}
 {{ end }}
@@ -343,6 +356,18 @@ func (repo *{{ .RepositoryStructName }}) {{ GetMultiFunc }} {
 
 // InsertMulti 処理中の {{ .StructName }} の一括挿入処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ InsertMultiFunc }} {
+	var rbs []RollbackFunc
+	defer func() {
+		if len(rbs) == 0 {
+			return
+		}
+		for _, rb := range rbs {
+			if err := rb(ctx); er != nil {
+				er = xerrors.Errorf("unique check error %+v, original error: %w", err, er)
+			}
+		}
+	}()
+
 	{{ PluralForm .KeyValueName }} := make([]{{ .KeyFieldType }}, 0, len(subjects))
 	batches := make([]*firestore.WriteBatch, 0)
 	batch := repo.firestoreClient.Batch()
@@ -360,9 +385,11 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiFunc }} {
 			}
 		}
 
-		if err := repo.beforeInsert(ctx, subject); err != nil {
+		rb, err := repo.beforeInsert(ctx, subject)
+		if err != nil {
 			return nil, xerrors.Errorf("before insert error: %w", err)
 		}
+		rbs = append(rbs, rb)
 {{ if eq .EnableIndexes true}}
 		if err := repo.saveIndexes(subjects[i]); err != nil {
 			return nil, xerrors.Errorf("failed to saveIndexes: %w", err)
@@ -509,9 +536,17 @@ func (repo *{{ .RepositoryStructName }}) {{ GetWithDocWithTxFunc }} {
 
 // InsertWithTx トランザクション中の {{ .StructName }} の登録処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ InsertWithTxFunc }} {
-	if err := repo.beforeInsert(ctx, subject); err != nil {
+	rb, err := repo.beforeInsert(ctx, subject)
+	if err != nil {
 		return "", xerrors.Errorf("before insert error: %w", err)
 	}
+	defer func() {
+		if err != nil {
+			if er := rb(ctx); er != nil {
+				err = xerrors.Errorf("unique check error %+v, original error: %w", er, err)
+			}
+		}
+	}()
 {{- if not .AutomaticGeneration }}
 
 	if _, err := tx.Get(new(firestore.DocumentRef)); err == nil {
@@ -599,20 +634,32 @@ func (repo *{{ .RepositoryStructName }}) {{ GetMultiWithTxFunc }} {
 
 // InsertMultiWithTx トランザクション中の {{ .StructName }} の一括挿入処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ InsertMultiWithTxFunc }} {
-{{- if not .AutomaticGeneration }}
+	var rbs []RollbackFunc
+	defer func() {
+		if len(rbs) == 0 {
+			return
+		}
+		for _, rb := range rbs {
+			if err := rb(ctx); er != nil {
+				er = xerrors.Errorf("unique check error %+v, original error: %w", err, er)
+			}
+		}
+	}()
+{{ if not .AutomaticGeneration }}
 	for i := range subjects {
 		if _, err := tx.Get(new(firestore.DocumentRef)); err == nil {
 			return nil, xerrors.Errorf("already exists(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
 	}
-
-{{- end }}
+{{ end }}
 	{{ PluralForm .KeyValueName }} := make([]string, len(subjects))
 
 	for i := range subjects {
-		if err := repo.beforeInsert(ctx, subjects[i]); err != nil {
-			return nil, xerrors.Errorf("before insert error(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
+		rb, err := repo.beforeInsert(ctx, subjects[i])
+		if err != nil {
+			return nil, xerrors.Errorf("before insert error: %w", err)
 		}
+		rbs = append(rbs, rb)
 {{ if eq .EnableIndexes true}}
 		if err := repo.saveIndexes(subjects[i]); err != nil {
 			return nil, xerrors.Errorf("failed to saveIndexes: %w", err)
