@@ -23,12 +23,14 @@ func initFirestoreClient(t *testing.T) *firestore.Client {
 		os.Setenv("FIRESTORE_EMULATOR_HOST", "localhost:8000")
 	}
 
-	os.Setenv("FIRESTORE_PROJECT_ID", "project-id-in-google")
+	if os.Getenv("FIRESTORE_PROJECT_ID") == "" {
+		os.Setenv("FIRESTORE_PROJECT_ID", "project-id-in-google2")
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	client, err := firestore.NewClient(ctx, "testing2")
+	client, err := firestore.NewClient(ctx, os.Getenv("FIRESTORE_PROJECT_ID"))
 
 	if err != nil {
 		t.Fatalf("failed to initialize firestore client: %+v", err)
