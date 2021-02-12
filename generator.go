@@ -187,6 +187,16 @@ func (g *generator) generateQueryChainer(writer io.Writer) {
 	}
 }
 
+func (g *generator) generateUnique(writer io.Writer) {
+	contents := getFileContents("unique")
+
+	t := template.Must(template.New("TemplateUnique").Parse(contents))
+
+	if err := t.Execute(writer, g); err != nil {
+		log.Printf("failed to execute template: %+v", err)
+	}
+}
+
 func (g *generator) metaJudgment() string {
 	opts := "_"
 	if len(g.MetaFields) > 0 {
