@@ -127,29 +127,35 @@ func (repo *{{ .RepositoryStructName }}) beforeInsert(ctx context.Context, subje
 	return rb, nil
 }
 
-func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, subject *{{ .StructName }}) error {
-	repo.uniqueRepository.setMiddleware(ctx)
+func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, subject *{{ .StructName }}) (RollbackFunc, error) {
 {{- if .MetaFields }}
 	if old.Version > subject.Version {
-		return xerrors.Errorf("The data in the database is newer: (db version: %d, target version: %d) %+v",
-			old.Version, subject.Version, subject)
+		return nil, xerrors.Errorf(
+			"The data in the database is newer: (db version: %d, target version: %d) %+v",
+			old.Version, subject.Version, subject,
+		)
 	}
 	if subject.DeletedAt != nil {
-		return xerrors.Errorf("update data must be DeletedAt == nil: %+v", subject)
+		return nil, xerrors.Errorf("update data must be DeletedAt == nil: %+v", subject)
 	}
 	repo.setMeta(subject, false)
 {{- end }}
+	repo.uniqueRepository.setMiddleware(ctx)
+	rb, err := repo.uniqueRepository.UniqueCheck(ctx, old, subject)
+	if err != nil {
+		return nil, xerrors.Errorf("unique.middleware error: %w", err)
+	}
 
 	for _, m := range repo.middleware {
 		c, err := m.BeforeUpdate(ctx, old, subject)
 		if err != nil {
-			return xerrors.Errorf("beforeUpdate.middleware error: %w", err)
+			return nil, xerrors.Errorf("beforeUpdate.middleware error: %w", err)
 		}
 		if !c {
 			continue
 		}
 	}
-	return nil
+	return rb, nil
 }
 
 func (repo *{{ .RepositoryStructName }}) before{{ DeleteFunc }} {
@@ -295,9 +301,17 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateFunc }} {
 		return xerrors.Errorf("error in Get method: %w", err)
 	}
 
-	if err = repo.beforeUpdate(ctx, old, subject); err != nil {
+	rb, err := repo.beforeUpdate(ctx, old, subject)
+	if err != nil {
 		return xerrors.Errorf("before update error: %w", err)
 	}
+	defer func() {
+		if err != nil {
+			if er := rb(ctx); er != nil {
+				err = xerrors.Errorf("unique check error %+v, original error: %w", er, err)
+			}
+		}
+	}()
 {{ if eq .EnableIndexes true}}
 	if err := repo.saveIndexes(subject); err != nil {
 		return xerrors.Errorf("failed to saveIndexes: %w", err)
@@ -387,7 +401,7 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiFunc }} {
 
 		rb, err := repo.beforeInsert(ctx, subject)
 		if err != nil {
-			return nil, xerrors.Errorf("before insert error: %w", err)
+			return nil, xerrors.Errorf("before insert error(%d) [%v]: %w", i, subject.{{ .KeyFieldName }}, err)
 		}
 		rbs = append(rbs, rb)
 {{ if eq .EnableIndexes true}}
@@ -416,6 +430,18 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiFunc }} {
 
 // UpdateMulti 処理中の {{ .StructName }} の一括更新処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiFunc }} {
+	var rbs []RollbackFunc
+	defer func() {
+		if len(rbs) == 0 {
+			return
+		}
+		for _, rb := range rbs {
+			if err := rb(ctx); er != nil {
+				er = xerrors.Errorf("unique check error %+v, original error: %w", err, er)
+			}
+		}
+	}()
+
 	batches := make([]*firestore.WriteBatch, 0)
 	batch := repo.firestoreClient.Batch()
 	collect := repo.GetCollection()
@@ -435,9 +461,11 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiFunc }} {
 			return xerrors.Errorf("error in DataTo method: %w", err)
 		}
 
-		if err = repo.beforeUpdate(ctx, old, subject); err != nil {
-			return xerrors.Errorf("before update error: %w", err)
+		rb, err := repo.beforeUpdate(ctx, old, subject)
+		if err != nil {
+			return xerrors.Errorf("before update error(%d) [%v]: %w", i, subject.{{ .KeyFieldName }}, err)
 		}
+		rbs = append(rbs, rb)
 {{ if eq .EnableIndexes true}}
 		if err := repo.saveIndexes(subjects[i]); err != nil {
 			return xerrors.Errorf("failed to saveIndexes: %w", err)
@@ -573,9 +601,17 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateWithTxFunc }} {
 		return xerrors.Errorf("error in Get method: %w", err)
 	}
 
-	if err = repo.beforeUpdate(ctx, old, subject); err != nil {
+	rb, err := repo.beforeUpdate(ctx, old, subject)
+	if err != nil {
 		return xerrors.Errorf("before update error: %w", err)
 	}
+	defer func() {
+		if err != nil {
+			if er := rb(ctx); er != nil {
+				err = xerrors.Errorf("unique check error %+v, original error: %w", er, err)
+			}
+		}
+	}()
 {{ if eq .EnableIndexes true}}
 	if err := repo.saveIndexes(subject); err != nil {
 		return xerrors.Errorf("failed to saveIndexes: %w", err)
@@ -657,7 +693,7 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiWithTxFunc }} {
 	for i := range subjects {
 		rb, err := repo.beforeInsert(ctx, subjects[i])
 		if err != nil {
-			return nil, xerrors.Errorf("before insert error: %w", err)
+			return nil, xerrors.Errorf("before insert error(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
 		rbs = append(rbs, rb)
 {{ if eq .EnableIndexes true}}
@@ -677,6 +713,18 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiWithTxFunc }} {
 
 // UpdateMultiWithTx トランザクション中の {{ .StructName }} の一括挿入処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiWithTxFunc }} {
+	var rbs []RollbackFunc
+	defer func() {
+		if len(rbs) == 0 {
+			return
+		}
+		for _, rb := range rbs {
+			if err := rb(ctx); er != nil {
+				er = xerrors.Errorf("unique check error %+v, original error: %w", err, er)
+			}
+		}
+	}()
+
 	for i := range subjects {
 		doc := repo.GetDocRef(subjects[i].{{ .KeyFieldName }})
 		old, err := repo.get(tx, doc)
@@ -687,9 +735,11 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiWithTxFunc }} {
 			return xerrors.Errorf("error in get method(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
 
-		if err = repo.beforeUpdate(ctx, old, subjects[i]); err != nil {
+		rb, err := repo.beforeUpdate(ctx, old, subjects[i])
+		if err != nil {
 			return xerrors.Errorf("before update error(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
+		rbs = append(rbs, rb)
 	}
 
 	for i := range subjects {
