@@ -279,7 +279,7 @@ func (g *generator) setFuncMap() template.FuncMap {
 			return fmt.Sprintf("Insert(ctx context.Context, subject *%s) (_ %s, err error)", g.StructName, g.KeyFieldType)
 		},
 		"UpdateFunc": func() string {
-			return fmt.Sprintf("Update(ctx context.Context, subject *%s) error", g.StructName)
+			return fmt.Sprintf("Update(ctx context.Context, subject *%s) (err error)", g.StructName)
 		},
 		"StrictUpdateFunc": func() string {
 			return fmt.Sprintf(
@@ -308,7 +308,7 @@ func (g *generator) setFuncMap() template.FuncMap {
 			return fmt.Sprintf("InsertMulti(ctx context.Context, subjects []*%s) (_ []%s, er error)", g.StructName, g.KeyFieldType)
 		},
 		"UpdateMultiFunc": func() string {
-			return fmt.Sprintf("UpdateMulti(ctx context.Context, subjects []*%s) error", g.StructName)
+			return fmt.Sprintf("UpdateMulti(ctx context.Context, subjects []*%s) (er error)", g.StructName)
 		},
 		"DeleteMultiFunc": func() string {
 			return fmt.Sprintf("DeleteMulti(ctx context.Context, subjects []*%s, opts ...DeleteOption) error", g.StructName)
@@ -346,7 +346,7 @@ func (g *generator) setFuncMap() template.FuncMap {
 			)
 		},
 		"UpdateWithTxFunc": func() string {
-			return fmt.Sprintf("UpdateWithTx(ctx context.Context, tx *firestore.Transaction, subject *%s) error", g.StructName)
+			return fmt.Sprintf("UpdateWithTx(ctx context.Context, tx *firestore.Transaction, subject *%s) (err error)", g.StructName)
 		},
 		"StrictUpdateWithTxFunc": func() string {
 			return fmt.Sprintf(
@@ -384,7 +384,7 @@ func (g *generator) setFuncMap() template.FuncMap {
 			)
 		},
 		"UpdateMultiWithTxFunc": func() string {
-			return fmt.Sprintf("UpdateMultiWithTx(ctx context.Context, tx *firestore.Transaction, subjects []*%s) error", g.StructName)
+			return fmt.Sprintf("UpdateMultiWithTx(ctx context.Context, tx *firestore.Transaction, subjects []*%s) (er error)", g.StructName)
 		},
 		"DeleteMultiWithTxFunc": func() string {
 			return fmt.Sprintf("DeleteMultiWithTx(ctx context.Context, tx *firestore.Transaction, subjects []*%s, opts ...DeleteOption) error", g.StructName)
