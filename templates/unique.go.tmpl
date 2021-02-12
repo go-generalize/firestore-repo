@@ -176,6 +176,7 @@ func (repo *uniqueRepository) UniqueCheck(ctx context.Context, old, subject inte
 				surveyTarget = append(surveyTarget, u)
 			}
 		}
+
 		// NOTE(54m): Check unique items
 		{
 			uniques := make([]*Unique, 0)
