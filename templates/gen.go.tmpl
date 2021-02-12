@@ -574,7 +574,7 @@ func (repo *{{ .RepositoryStructName }}) {{ GetWithDocWithTxFunc }} {
 
 // InsertWithTx トランザクション中の {{ .StructName }} の登録処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ InsertWithTxFunc }} {
-	rb, err := repo.beforeInsert(ctx, subject)
+	rb, err := repo.beforeInsert(context.WithValue(ctx, transactionInProgressKey{}, 1), subject)
 	if err != nil {
 		return "", xerrors.Errorf("before insert error: %w", err)
 	}
@@ -611,7 +611,7 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateWithTxFunc }} {
 		return xerrors.Errorf("error in Get method: %w", err)
 	}
 
-	rb, err := repo.beforeUpdate(ctx, old, subject)
+	rb, err := repo.beforeUpdate(context.WithValue(ctx, transactionInProgressKey{}, 1), old, subject)
 	if err != nil {
 		return xerrors.Errorf("before update error: %w", err)
 	}
@@ -706,7 +706,7 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiWithTxFunc }} {
 	{{ PluralForm .KeyValueName }} := make([]string, len(subjects))
 
 	for i := range subjects {
-		rb, err := repo.beforeInsert(ctx, subjects[i])
+		rb, err := repo.beforeInsert(context.WithValue(ctx, transactionInProgressKey{}, 1), subjects[i])
 		if err != nil {
 			return nil, xerrors.Errorf("before insert error(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
@@ -755,7 +755,7 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiWithTxFunc }} {
 			return xerrors.Errorf("error in get method(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
 
-		rb, err := repo.beforeUpdate(ctx, old, subjects[i])
+		rb, err := repo.beforeUpdate(context.WithValue(ctx, transactionInProgressKey{}, 1), old, subjects[i])
 		if err != nil {
 			return xerrors.Errorf("before update error(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
