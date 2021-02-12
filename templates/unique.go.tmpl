@@ -119,6 +119,8 @@ func (repo *uniqueRepository) getUniqueItems(value interface{}) ([]*Unique, bool
 func (repo *uniqueRepository) UniqueCheck(ctx context.Context, old, subject interface{}) (RollbackFunc, error) {
 	if subject == nil {
 		return nil, xerrors.New("nil is not allowed")
+	} else if ctx.Value(transactionInProgressKey{}) != nil {
+		ctx = context.Background()
 	}
 
 	rbInsert := make([]Unique, 0)
