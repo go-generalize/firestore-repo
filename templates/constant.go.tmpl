@@ -38,4 +38,7 @@ var (
 	ErrUniqueConstraint = xerrors.New("unique constraint error")
 )
 
-type UniqueMiddlewareKey struct{}
+type (
+	UniqueMiddlewareKey      struct{}
+	transactionInProgressKey struct{}
+)
