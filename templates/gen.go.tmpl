@@ -344,13 +344,6 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiFunc }} {
 	collect := repo.GetCollection()
 
 	for i, subject := range subjects {
-{{- if .MetaFields }}
-		err := repo.beforeInsert(ctx, subject)
-		if err != nil {
-			return nil, xerrors.Errorf("before insert error: %w", err)
-		}
-
-{{- end }}
 		var ref *firestore.DocumentRef
 		if subject.{{ .KeyFieldName }} == "" {
 			ref = collect.NewDoc()
@@ -360,6 +353,10 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiFunc }} {
 			if s, err := ref.Get(ctx); err == nil {
 				return nil, xerrors.Errorf("already exists [%v]: %#v", subject.{{ .KeyFieldName }}, s)
 			}
+		}
+
+		if err := repo.beforeInsert(ctx, subject); err != nil {
+			return nil, xerrors.Errorf("before insert error: %w", err)
 		}
 {{ if eq .EnableIndexes true}}
 		if err := repo.saveIndexes(subjects[i]); err != nil {
