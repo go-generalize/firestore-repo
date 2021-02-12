@@ -109,7 +109,7 @@ func (repo *{{ .RepositoryStructName }}) beforeInsert(ctx context.Context, subje
 	repo.setMeta(subject, true)
 {{- end }}
 	repo.uniqueRepository.setMiddleware(ctx)
-	rb, err := repo.uniqueRepository.UniqueCheck(ctx, nil, subject)
+	rb, err := repo.uniqueRepository.CheckUnique(ctx, nil, subject)
 	if err != nil {
 		return nil, xerrors.Errorf("unique.middleware error: %w", err)
 	}
@@ -141,7 +141,7 @@ func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, 
 	repo.setMeta(subject, false)
 {{- end }}
 	repo.uniqueRepository.setMiddleware(ctx)
-	rb, err := repo.uniqueRepository.UniqueCheck(ctx, old, subject)
+	rb, err := repo.uniqueRepository.CheckUnique(ctx, old, subject)
 	if err != nil {
 		return nil, xerrors.Errorf("unique.middleware error: %w", err)
 	}
