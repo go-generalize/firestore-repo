@@ -37,12 +37,20 @@ type uniqueRepository struct {
 	middleware       []UniqueRepositoryMiddleware
 }
 
-func newUniqueRepository(firestoreClient *firestore.Client, collection string, middleware ...UniqueRepositoryMiddleware) *uniqueRepository {
+func newUniqueRepository(firestoreClient *firestore.Client, collection string) *uniqueRepository {
 	return &uniqueRepository{
 		collectionName:   "Unique",
 		targetCollection: collection,
 		firestoreClient:  firestoreClient,
-		middleware:       middleware,
+	}
+}
+
+func (repo *uniqueRepository) setMiddleware(ctx context.Context) {
+	if len(repo.middleware) > 0 {
+		return
+	}
+	if m, ok := ctx.Value(UniqueMiddlewareKey{}).(UniqueRepositoryMiddleware); ok {
+		repo.middleware = append(repo.middleware, m)
 	}
 }
 
