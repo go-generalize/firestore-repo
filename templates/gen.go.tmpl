@@ -108,7 +108,8 @@ func (repo *{{ .RepositoryStructName }}) beforeInsert(ctx context.Context, subje
 		return xerrors.Errorf("insert data must be DeletedAt == nil: %+v", subject)
 	}
 	repo.setMeta(subject, true)
-{{ end }}
+{{- end }}
+
 	for _, m := range repo.middleware {
 		c, err := m.BeforeInsert(ctx, subject)
 		if err != nil {
@@ -132,7 +133,8 @@ func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, 
 		return xerrors.Errorf("update data must be DeletedAt == nil: %+v", subject)
 	}
 	repo.setMeta(subject, false)
-{{ end }}
+{{- end }}
+
 	for _, m := range repo.middleware {
 		c, err := m.BeforeUpdate(ctx, old, subject)
 		if err != nil {
@@ -149,7 +151,8 @@ func (repo *{{ .RepositoryStructName }}) before{{ DeleteFunc }} {
 	repo.uniqueRepository.setMiddleware(ctx)
 {{- if .MetaFields }}
 	repo.setMeta(subject, false)
-{{ end }}
+{{- end }}
+
 	for _, m := range repo.middleware {
 		c, err := m.BeforeDelete(ctx, subject, opts...)
 		if err != nil {
@@ -176,8 +179,7 @@ func (repo *{{ .RepositoryStructName }}) GetCollectionName() string {
 func (repo *{{ .RepositoryStructName }}) GetDocRef({{ .KeyValueName }} string) *firestore.DocumentRef {
 	return repo.GetCollection().Doc({{ .KeyValueName }})
 }
-{{- if .EnableIndexes }}
-
+{{ if .EnableIndexes }}
 func (repo *{{ .RepositoryStructName }}) saveIndexes(subject *{{ .StructName }}) error {
 	idx := xim.NewIndexes(&xim.Config{
 		IgnoreCase:         true,
@@ -203,8 +205,8 @@ func (repo *{{ .RepositoryStructName }}) saveIndexes(subject *{{ .StructName }})
 
 	return nil
 }
-{{- end }}
-{{ $MetaName := .OmitMetaName }}
+{{ end }}
+{{- $MetaName := .OmitMetaName }}
 // {{ .StructName }}ListReq List取得時に渡すリクエスト
 // └─ bool/int(64)|float64 は stringの独自型で渡す(BoolCriteria | NumericCriteria)
 type {{ .StructName }}ListReq struct {
@@ -301,8 +303,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteFunc }} {
 	if err := repo.beforeDelete(ctx, subject, opts...); err != nil {
 		return xerrors.Errorf("before delete error: %w", err)
 	}
-{{-  if .MetaFields }}
-
+{{ if .MetaFields }}
 	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 		t := time.Now()
 		subject.DeletedAt = &t
@@ -311,8 +312,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteFunc }} {
 		}
 		return nil
 	}
-{{- end }}
-
+{{ end }}
 	return repo.deleteBy{{ .KeyFieldName }}(ctx, subject.{{ .KeyFieldName }})
 }
 
@@ -517,7 +517,7 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertWithTxFunc }} {
 	if _, err := tx.Get(new(firestore.DocumentRef)); err == nil {
 		return "", ErrAlreadyExists
 	}
-{{ end }}
+{{- end }}
 {{ if eq .EnableIndexes true}}
 	if err := repo.saveIndexes(subject); err != nil {
 		return "", xerrors.Errorf("failed to saveIndexes: %w", err)
@@ -559,8 +559,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteWithTxFunc }} {
 	if err := repo.beforeDelete(ctx, subject, opts...); err != nil {
 		return xerrors.Errorf("before delete error: %w", err)
 	}
-{{- if .MetaFields }}
-
+{{ if .MetaFields }}
 	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 		t := time.Now()
 		subject.DeletedAt = &t
@@ -569,8 +568,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteWithTxFunc }} {
 		}
 		return nil
 	}
-{{- end }}
-
+{{ end }}
 	return repo.deleteBy{{ .KeyFieldName }}(tx, subject.{{ .KeyFieldName }})
 }
 
@@ -688,13 +686,11 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiWithTxFunc }} {
 		}
 {{- end }}
 	}
-{{- if .MetaFields }}
-
+{{ if .MetaFields }}
 	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 		return nil
 	}
-{{- end }}
-
+{{ end }}
 	for i := range subjects {
 		if err := repo.deleteBy{{ .KeyFieldName }}(tx, subjects[i].{{ .KeyFieldName }}); err != nil {
 			return xerrors.Errorf("error in delete method(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
@@ -732,13 +728,11 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByWithTxFunc }} {
 		}
 {{- end }}
 	}
-{{- if .MetaFields }}
-
+{{ if .MetaFields }}
 	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 		return nil
 	}
-{{- end }}
-
+{{ end }}
 	for i := range {{ PluralForm .KeyValueName }} {
 		if err := repo.deleteBy{{ .KeyFieldName }}(tx, {{ PluralForm .KeyValueName }}[i]); err != nil {
 			return xerrors.Errorf("error in delete method(%d) [%v]: %w", i, {{ PluralForm .KeyValueName }}[i], err)
@@ -985,14 +979,13 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 
 	if q == nil {
 		ref := repo.GetCollection()
-{{- if .EnableIndexes }}
-
+{{ if .EnableIndexes }}
 		filters := xim.NewFilters(&xim.Config{
 			IgnoreCase:         true,
 			SaveNoFiltersIndex: true,
 		})
-{{- end }}
-{{ $Meta := .MetaFields }}
+{{ end }}
+{{- $Meta := .MetaFields }}
 {{- $EnableIndexes := .EnableIndexes }}
 {{- $RepositoryStructName := .RepositoryStructName }}
 {{- range $fi := .FieldInfos }}
@@ -1071,8 +1064,7 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 			ref.Query = ref.Query.Where("DeletedAt", OpTypeEqual, nil)
 		}
 {{- end }}
-{{- if .EnableIndexes }}
-
+{{ if .EnableIndexes }}
 		build, err := filters.Build()
 		if err != nil {
 			return nil, xerrors.Errorf("failed to filter build: %w", err)
