@@ -27,6 +27,9 @@ var (
 		typeInt64Map,
 		typeFloat64Map,
 	}
+	reservedStructs = []string{
+		"Unique",
+	}
 )
 
 func getFileContents(name string) string {
