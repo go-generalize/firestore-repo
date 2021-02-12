@@ -70,19 +70,21 @@ type {{ $middlewareName }} interface {
 }
 
 type {{ .RepositoryStructName }} struct {
-	collectionName  string
-	firestoreClient *firestore.Client{{ if eq .IsSubCollection true }}
-	parentDocument  *firestore.DocumentRef{{ end }}
-	middleware      []{{ $middlewareName }}
+	collectionName   string
+	firestoreClient  *firestore.Client{{ if eq .IsSubCollection true }}
+	parentDocument   *firestore.DocumentRef{{ end }}
+	middleware       []{{ $middlewareName }}
+	uniqueRepository *uniqueRepository
 }
 
 // New{{ .RepositoryInterfaceName }} constructor
 func New{{ .RepositoryInterfaceName }}(firestoreClient *firestore.Client{{ if eq .IsSubCollection true }}, parentDocument *firestore.DocumentRef{{ end }}, middleware ...{{ $middlewareName }}) {{ .RepositoryInterfaceName }} {
 	return &{{ .RepositoryStructName }}{
-		collectionName:  "{{ .StructName }}",
-		firestoreClient: firestoreClient,{{ if eq .IsSubCollection true }}
-		parentDocument:  parentDocument,{{ end }}
-		middleware:      middleware,
+		collectionName:   "{{ .StructName }}",
+		firestoreClient:  firestoreClient,{{ if eq .IsSubCollection true }}
+		parentDocument:   parentDocument,{{ end }}
+		middleware:       middleware,
+		uniqueRepository: newUniqueRepository(firestoreClient, "{{ .StructName }}"),
 	}
 }
 {{ if .MetaFields }}
@@ -97,6 +99,7 @@ func (repo *{{ .RepositoryStructName }}) setMeta(subject *{{ .StructName }}, isI
 }
 {{ end }}
 func (repo *{{ .RepositoryStructName }}) beforeInsert(ctx context.Context, subject *{{ .StructName }}) error {
+	repo.uniqueRepository.setMiddleware(ctx)
 {{- if .MetaFields }}
 	if subject.Version != 0 {
 		return xerrors.Errorf("insert data must be Version == 0: %+v", subject)
@@ -119,6 +122,7 @@ func (repo *{{ .RepositoryStructName }}) beforeInsert(ctx context.Context, subje
 }
 
 func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, subject *{{ .StructName }}) error {
+	repo.uniqueRepository.setMiddleware(ctx)
 {{- if .MetaFields }}
 	if old.Version > subject.Version {
 		return xerrors.Errorf("The data in the database is newer: (db version: %d, target version: %d) %+v",
@@ -142,6 +146,7 @@ func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, 
 }
 
 func (repo *{{ .RepositoryStructName }}) before{{ DeleteFunc }} {
+	repo.uniqueRepository.setMiddleware(ctx)
 {{- if .MetaFields }}
 	repo.setMeta(subject, false)
 {{ end }}
