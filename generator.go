@@ -39,6 +39,7 @@ type FieldInfo struct {
 	FsTag      string
 	Field      string
 	FieldType  string
+	IsUnique   bool
 	Space      string
 	IndexerTag string
 	Indexes    []*IndexesInfo
