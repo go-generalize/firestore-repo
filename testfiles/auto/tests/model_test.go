@@ -1120,7 +1120,8 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 	ids := make([]string, 0)
 	defer func() {
 		defer cancel()
-		if err := lockRepo.DeleteMultiByIDs(ctx, ids); err != nil {
+		mode := model.DeleteOption{Mode: model.DeleteModeHard}
+		if err := lockRepo.DeleteMultiByIDs(ctx, ids, mode); err != nil {
 			t.Fatal(err)
 		}
 	}()
