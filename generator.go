@@ -288,12 +288,12 @@ func (g *generator) setFuncMap() template.FuncMap {
 			)
 		},
 		"DeleteFunc": func() string {
-			return fmt.Sprintf("Delete(ctx context.Context, subject *%s, opts ...DeleteOption) error", g.StructName)
+			return fmt.Sprintf("Delete(ctx context.Context, subject *%s, opts ...DeleteOption) (err error)", g.StructName)
 		},
 		"DeleteByFunc": func() string {
 			raw := fmt.Sprintf(
-				"DeleteBy%s(ctx context.Context, %s %s, %s ...DeleteOption) error",
-				g.KeyFieldName, g.KeyValueName, g.KeyFieldType, g.metaJudgment(),
+				"DeleteBy%s(ctx context.Context, %s %s, opts ...DeleteOption) (err error)",
+				g.KeyFieldName, g.KeyValueName, g.KeyFieldType,
 			)
 			return raw
 		},
@@ -311,11 +311,11 @@ func (g *generator) setFuncMap() template.FuncMap {
 			return fmt.Sprintf("UpdateMulti(ctx context.Context, subjects []*%s) (er error)", g.StructName)
 		},
 		"DeleteMultiFunc": func() string {
-			return fmt.Sprintf("DeleteMulti(ctx context.Context, subjects []*%s, opts ...DeleteOption) error", g.StructName)
+			return fmt.Sprintf("DeleteMulti(ctx context.Context, subjects []*%s, opts ...DeleteOption) (er error)", g.StructName)
 		},
 		"DeleteMultiByFunc": func() string {
 			raw := fmt.Sprintf(
-				"DeleteMultiBy%s(ctx context.Context, %s []%s, opts ...DeleteOption) error",
+				"DeleteMultiBy%s(ctx context.Context, %s []%s, opts ...DeleteOption) (er error)",
 				plural.Convert(g.KeyFieldName), plural.Convert(g.KeyValueName), g.KeyFieldType,
 			)
 			return raw
@@ -356,14 +356,14 @@ func (g *generator) setFuncMap() template.FuncMap {
 		},
 		"DeleteWithTxFunc": func() string {
 			return fmt.Sprintf(
-				"DeleteWithTx(ctx context.Context, tx *firestore.Transaction, subject *%s, opts ...DeleteOption) error",
+				"DeleteWithTx(ctx context.Context, tx *firestore.Transaction, subject *%s, opts ...DeleteOption) (err error)",
 				g.StructName,
 			)
 		},
 		"DeleteByWithTxFunc": func() string {
 			return fmt.Sprintf(
-				"DeleteBy%sWithTx(tx *firestore.Transaction, %s %s, %s ...DeleteOption) error",
-				g.KeyFieldName, g.KeyValueName, g.KeyFieldType, g.metaJudgment(),
+				"DeleteBy%sWithTx(ctx context.Context, tx *firestore.Transaction, %s %s, opts ...DeleteOption) (err error)",
+				g.KeyFieldName, g.KeyValueName, g.KeyFieldType,
 			)
 		},
 		"ListWithTxFunc": func() string {
@@ -387,11 +387,11 @@ func (g *generator) setFuncMap() template.FuncMap {
 			return fmt.Sprintf("UpdateMultiWithTx(ctx context.Context, tx *firestore.Transaction, subjects []*%s) (er error)", g.StructName)
 		},
 		"DeleteMultiWithTxFunc": func() string {
-			return fmt.Sprintf("DeleteMultiWithTx(ctx context.Context, tx *firestore.Transaction, subjects []*%s, opts ...DeleteOption) error", g.StructName)
+			return fmt.Sprintf("DeleteMultiWithTx(ctx context.Context, tx *firestore.Transaction, subjects []*%s, opts ...DeleteOption) (er error)", g.StructName)
 		},
 		"DeleteMultiByWithTxFunc": func() string {
 			raw := fmt.Sprintf(
-				"DeleteMultiBy%sWithTx(ctx context.Context, tx *firestore.Transaction, %s []%s, opts ...DeleteOption) error",
+				"DeleteMultiBy%sWithTx(ctx context.Context, tx *firestore.Transaction, %s []%s, opts ...DeleteOption) (er error)",
 				plural.Convert(g.KeyFieldName), plural.Convert(g.KeyValueName), g.KeyFieldType,
 			)
 			return raw
