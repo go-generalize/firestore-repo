@@ -243,7 +243,7 @@ func TestFirestore(t *testing.T) {
 			desc1002 := fmt.Sprintf("%s%d", desc, 1002)
 
 			updateParam := &model.TaskUpdateParam{
-				Desc:       desc1002,
+				Desc2:      desc1002,
 				Created:    firestore.ServerTimestamp,
 				Done:       false,
 				Count:      firestore.Increment(1),
@@ -260,7 +260,7 @@ func TestFirestore(t *testing.T) {
 				ttr.Fatalf("%+v", err)
 			}
 
-			if tsk.Desc != desc1002 {
+			if tsk.Desc2 != desc1002 {
 				ttr.Fatalf("unexpected Desc: %s (expected: %s)", tsk.Desc, desc1002)
 			}
 
@@ -391,7 +391,7 @@ func TestFirestoreTransaction_Single(t *testing.T) {
 			}
 
 			updateParam := &model.TaskUpdateParam{
-				Desc:       desc1002,
+				Desc2:      desc1002,
 				Created:    firestore.ServerTimestamp,
 				Done:       false,
 				Count:      firestore.Increment(1),
@@ -413,7 +413,7 @@ func TestFirestoreTransaction_Single(t *testing.T) {
 			tr.Fatalf("%+v", err)
 		}
 
-		if tsk.Desc != desc1002 {
+		if tsk.Desc2 != desc1002 {
 			tr.Fatalf("unexpected Desc: %s (expected: %s)", tsk.Desc, desc1002)
 		}
 
