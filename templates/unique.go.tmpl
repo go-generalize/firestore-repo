@@ -273,6 +273,9 @@ func (repo *uniqueRepository) DeleteUnique(ctx context.Context, subject interfac
 
 func (repo *uniqueRepository) makeRollbackFunc(rbInsert, rbDelete []Unique) RollbackFunc {
 	return func(ctx context.Context) error {
+		if ctx.Value(transactionInProgressKey{}) != nil {
+			ctx = context.Background()
+		}
 		if err := repo.firestoreClient.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
 			for _, unique := range rbInsert {
 				// escape: scopelint
