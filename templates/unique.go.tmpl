@@ -141,8 +141,8 @@ func (repo *uniqueRepository) CheckUnique(ctx context.Context, old, subject inte
 				break
 			}
 
-			for _, u := range items {
-				u, err = repo.get(tx, u.ID)
+			for _, unique := range items {
+				u, err := repo.get(tx, unique.ID)
 				if err != nil {
 					if xerrors.Is(err, ErrNotFound) {
 						continue
@@ -182,8 +182,8 @@ func (repo *uniqueRepository) CheckUnique(ctx context.Context, old, subject inte
 		// NOTE(54m): Check unique items
 		{
 			uniques := make([]*Unique, 0)
-			for _, u := range surveyTarget {
-				u, err = repo.get(tx, u.ID)
+			for _, unique := range surveyTarget {
+				u, err := repo.get(tx, unique.ID)
 				if err != nil {
 					if xerrors.Is(err, ErrNotFound) {
 						continue
@@ -203,7 +203,7 @@ func (repo *uniqueRepository) CheckUnique(ctx context.Context, old, subject inte
 		for u := range deleteTarget {
 			delete(sustain, u)
 			rbInsert = append(rbInsert, u)
-			if err = repo.deleteByID(tx, u.ID); err != nil {
+			if err := repo.deleteByID(tx, u.ID); err != nil {
 				return xerrors.Errorf("failed to delete(Tx): %w", err)
 			}
 		}
@@ -211,12 +211,12 @@ func (repo *uniqueRepository) CheckUnique(ctx context.Context, old, subject inte
 		// NOTE(54m): Insert unique item
 		for _, u := range surveyTarget {
 			rbDelete = append(rbDelete, *u)
-			if err = repo.insert(tx, u); err != nil {
+			if err := repo.insert(tx, u); err != nil {
 				return xerrors.Errorf("failed to insert(Tx): %w", err)
 			}
 		}
 
-		return
+		return nil
 	}); err != nil {
 		return nil, xerrors.Errorf("could not run transaction: %w", err)
 	}
@@ -233,7 +233,7 @@ func (repo *uniqueRepository) DeleteUnique(ctx context.Context, subject interfac
 
 	rbInsert := make([]Unique, 0)
 
-	if err := repo.firestoreClient.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) (err error) {
+	if err := repo.firestoreClient.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
 		deleteTarget := make(map[Unique]struct{}, 0)
 
 		items, ok := repo.getUniqueItems(subject)
@@ -241,8 +241,8 @@ func (repo *uniqueRepository) DeleteUnique(ctx context.Context, subject interfac
 			return nil
 		}
 
-		for _, u := range items {
-			u, err = repo.get(tx, u.ID)
+		for _, unique := range items {
+			u, err := repo.get(tx, unique.ID)
 			if err != nil {
 				if xerrors.Is(err, ErrNotFound) {
 					continue
@@ -258,12 +258,12 @@ func (repo *uniqueRepository) DeleteUnique(ctx context.Context, subject interfac
 		// NOTE(54m): Delete unique items
 		for u := range deleteTarget {
 			rbInsert = append(rbInsert, u)
-			if err = repo.deleteByID(tx, u.ID); err != nil {
+			if err := repo.deleteByID(tx, u.ID); err != nil {
 				return xerrors.Errorf("failed to delete(Tx): %w", err)
 			}
 		}
 
-		return
+		return nil
 	}); err != nil {
 		return nil, xerrors.Errorf("could not run transaction: %w", err)
 	}
