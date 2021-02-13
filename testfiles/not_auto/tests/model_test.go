@@ -69,7 +69,7 @@ func (e *uniqueError) WrapError(_ context.Context, err error, uniques []*model.U
 	for _, unique := range uniques {
 		fmt.Printf("*unique: %+v\n", *unique)
 	}
-	return err
+	return xerrors.Errorf("WrapError: %w", err)
 }
 
 func TestFirestore(t *testing.T) {
@@ -282,6 +282,26 @@ func TestFirestore(t *testing.T) {
 
 			if tsk.Proportion != 11.22345 {
 				ttr.Fatalf("unexpected Proportion: %g (expected: %g)", tsk.Proportion, 11.22345)
+			}
+		})
+
+		tr.Run("UniqueConstraints", func(ttrr *testing.T) {
+			tk := &model.Task{
+				Identity:   "Single",
+				Desc:       fmt.Sprintf("%s%d", desc, 1001),
+				Created:    now,
+				Done:       true,
+				Done2:      false,
+				Count:      11,
+				Count64:    11,
+				Proportion: 11.12345,
+				NameList:   []string{"a", "b", "c"},
+				Flag:       model.Flag(true),
+			}
+			if _, err := taskRepo.Insert(ctx, tk); err == nil {
+				tr.Fatalf("unexpected err != nil")
+			} else if !xerrors.Is(err, model.ErrUniqueConstraint) {
+				tr.Fatalf("unexpected err == ErrUniqueConstraint")
 			}
 		})
 	})
