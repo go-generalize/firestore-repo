@@ -496,7 +496,7 @@ func TestFirestoreTransaction_Multi(t *testing.T) {
 		for i := int64(1); i <= 10; i++ {
 			tk := &model.Task{
 				Identity:   ids[i-1],
-				Desc:       fmt.Sprintf("%s%d", desc, i+1),
+				Desc:       fmt.Sprintf("%s%d", desc, i+10),
 				Created:    now,
 				Done:       false,
 				Done2:      true,
