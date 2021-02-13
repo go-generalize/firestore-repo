@@ -162,6 +162,11 @@ func TestFirestore(t *testing.T) {
 			ids2 := make([]string, 0, 3)
 			doc := taskRepo.GetDocRef(id)
 			subRepo := model.NewSubTaskRepository(client, doc)
+			defer func() {
+				if err = subRepo.DeleteMultiByIDs(ctx, ids2); err != nil {
+					tr.Fatalf("%+v", err)
+				}
+			}()
 			st := &model.SubTask{IsSubCollection: true}
 			id, err = subRepo.Insert(ctx, st)
 			if err != nil {
@@ -218,10 +223,6 @@ func TestFirestore(t *testing.T) {
 					tr2.Fatal("not match")
 				}
 			})
-
-			if err = subRepo.DeleteMultiByIDs(ctx, ids2); err != nil {
-				tr.Fatalf("%+v", err)
-			}
 		})
 
 		tk.Count++
