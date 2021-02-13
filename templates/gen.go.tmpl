@@ -242,7 +242,7 @@ type {{ .StructName }}ListReq struct {
 // {{ .StructName }}UpdateParam - 厳格な更新をするためのパラメータ
 type {{ .StructName }}UpdateParam struct {
 {{- range .FieldInfos }}
-{{- 	if ne $MetaName .Field }}
+{{- 	if and (eq .IsUnique false) (ne $MetaName .Field) }}
 	{{ .Field }}{{ .Space }} interface{}
 {{- 	end }}
 {{- end }}
