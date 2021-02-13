@@ -455,6 +455,34 @@ func TestFirestoreTransaction_Single(t *testing.T) {
 			tr.Fatalf("unexpected Proportion: %g (expected: %g)", tsk.Proportion, 11.22345)
 		}
 	})
+
+	t.Run("UniqueConstraints", func(tr *testing.T) {
+		if err := client.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
+			tk := &model.Task{
+				Identity:   "identity",
+				Desc:       fmt.Sprintf("%s01", desc),
+				Created:    now,
+				Done:       true,
+				Done2:      false,
+				Count:      10,
+				Count64:    11,
+				NameList:   []string{"a", "b", "c"},
+				Proportion: 0.12345 + 11,
+				Geo:        latLng,
+				Flag:       true,
+			}
+
+			if _, err := taskRepo.InsertWithTx(cx, tx, tk); err != nil {
+				return err
+			}
+
+			return nil
+		}); err == nil {
+			tr.Fatalf("unexpected err != nil")
+		} else if !xerrors.Is(err, model.ErrUniqueConstraint) {
+			tr.Fatalf("unexpected err == ErrUniqueConstraint")
+		}
+	})
 }
 
 func TestFirestoreTransaction_Multi(t *testing.T) {
@@ -509,8 +537,38 @@ func TestFirestoreTransaction_Multi(t *testing.T) {
 		}
 	})
 
-	tks2 := make([]*model.Task, 0)
+	t.Run("UniqueConstraints", func(tr *testing.T) {
+		tks2 := make([]*model.Task, 10)
+		for i := int64(1); i <= 10; i++ {
+			tks2[i-1] = &model.Task{
+				Identity:   ids[i-1],
+				Desc:       fmt.Sprintf("%s%d", desc, i+1),
+				Created:    now,
+				Done:       false,
+				Done2:      true,
+				Count:      int(i),
+				Count64:    i,
+				NameList:   []string{"a", "b", "c"},
+				Proportion: 0.12345 + float64(i),
+				Geo:        latLng,
+				Flag:       true,
+			}
+		}
+
+		if err := client.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
+			if err := taskRepo.UpdateMultiWithTx(cx, tx, tks2); err != nil {
+				return err
+			}
+			return nil
+		}); err == nil {
+			tr.Fatalf("unexpected err != nil")
+		} else if !xerrors.Is(err, model.ErrUniqueConstraint) {
+			tr.Fatalf("unexpected err == ErrUniqueConstraint")
+		}
+	})
+
 	t.Run("UpdateMulti", func(tr *testing.T) {
+		tks2 := make([]*model.Task, 0)
 		for i := int64(1); i <= 10; i++ {
 			tk := &model.Task{
 				Identity:   ids[i-1],
