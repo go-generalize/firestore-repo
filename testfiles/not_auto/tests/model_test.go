@@ -65,10 +65,8 @@ func newUniqueError() model.UniqueRepositoryMiddleware {
 	return &uniqueError{}
 }
 
-func (e *uniqueError) WrapError(_ context.Context, err error, uniques []*model.Unique) error {
-	for _, unique := range uniques {
-		fmt.Printf("*unique: %+v\n", *unique)
-	}
+func (e *uniqueError) WrapError(_ context.Context, err error, _ []*model.Unique) error {
+	// processing
 	return xerrors.Errorf("WrapError: %w", err)
 }
 
