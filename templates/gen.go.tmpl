@@ -580,8 +580,12 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiFunc }} {
 func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByFunc }} {
 	subjects := make([]*{{ .StructName }}, len({{ PluralForm .KeyValueName }}))
 
+	opt := GetOption{}
+	if len(opts) > 0 {
+		opt.IncludeSoftDeleted = opts[0].Mode == DeleteModeHard
+	}
 	for i, {{ .KeyValueName }} := range {{ PluralForm .KeyValueName }} {
-		subject, err := repo.Get(ctx, {{ .KeyValueName }})
+		subject, err := repo.Get(ctx, {{ .KeyValueName }}, opt)
 		if err != nil {
 			return xerrors.Errorf("error in Get method: %w", err)
 		}
@@ -851,9 +855,16 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiWithTxFunc }} {
 {{ if .MetaFields }}
 	t := time.Now()
 {{- end }}
+	var isHardDeleteMode bool
+	if len(opts) > 0 {
+		isHardDeleteMode = opts[0].Mode == DeleteModeHard
+	}
+	opt := GetOption{
+		IncludeSoftDeleted: isHardDeleteMode,
+	}
 	for i := range subjects {
 		dr := repo.GetDocRef(subjects[i].{{ .KeyFieldName }})
-		if _, err := repo.get(tx, dr); err != nil {
+		if _, err := repo.get(tx, dr, opt); err != nil {
 			if status.Code(err) == codes.NotFound {
 				return xerrors.Errorf("not found(%d) [%v]", i, subjects[i].{{ .KeyFieldName }})
 			}
@@ -867,7 +878,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiWithTxFunc }} {
 		rbs = append(rbs, rb)
 {{- if .MetaFields }}
 
-		if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
+		if !isHardDeleteMode {
 			subjects[i].DeletedAt = &t
 			if err := repo.update(tx, subjects[i]); err != nil {
 				return xerrors.Errorf("error in update method(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
