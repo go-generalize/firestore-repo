@@ -13,6 +13,7 @@ import (
 type Task struct {
 	Identity   string                 `firestore:"-" firestore_key:""`
 	Desc       string                 `firestore:"description" unique:""`
+	Desc2      string                 `firestore:"desc2"`
 	Created    time.Time              `firestore:"created"`
 	Done       bool                   `firestore:"done"`
 	Done2      bool                   `firestore:"done2"`
