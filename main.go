@@ -237,6 +237,9 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 				FieldType: typeName,
 				Indexes:   make([]*IndexesInfo, 0),
 			}
+			if _, err = tags.Get("unique"); err == nil {
+				fieldInfo.IsUnique = true
+			}
 			if fieldInfo, err = appendIndexer(tags, fieldInfo, dupMap); err != nil {
 				log.Fatalf("%s: %v", pos, err)
 			}
