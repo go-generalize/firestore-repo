@@ -238,6 +238,9 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 				Indexes:   make([]*IndexesInfo, 0),
 			}
 			if _, err = tags.Get("unique"); err == nil {
+				if typeName != typeString {
+					log.Fatalf("%s: The only field type that uses the `unique` tag is a string", pos)
+				}
 				fieldInfo.IsUnique = true
 			}
 			if fieldInfo, err = appendIndexer(tags, fieldInfo, dupMap); err != nil {
