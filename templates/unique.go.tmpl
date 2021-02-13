@@ -224,6 +224,53 @@ func (repo *uniqueRepository) CheckUnique(ctx context.Context, old, subject inte
 	return repo.makeRollbackFunc(rbInsert, rbDelete), nil
 }
 
+func (repo *uniqueRepository) DeleteUnique(ctx context.Context, subject interface{}) (RollbackFunc, error) {
+	if subject == nil {
+		return nil, xerrors.New("nil is not allowed")
+	} else if ctx.Value(transactionInProgressKey{}) != nil {
+		ctx = context.Background()
+	}
+
+	rbInsert := make([]Unique, 0)
+
+	if err := repo.firestoreClient.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) (err error) {
+		deleteTarget := make(map[Unique]struct{}, 0)
+
+		items, ok := repo.getUniqueItems(subject)
+		if !ok {
+			return nil
+		}
+
+		for _, u := range items {
+			u, err = repo.get(tx, u.ID)
+			if err != nil {
+				if xerrors.Is(err, ErrNotFound) {
+					continue
+				}
+				return xerrors.Errorf("failed to get: %w", err)
+			}
+
+			if _, ok := deleteTarget[*u]; !ok {
+				deleteTarget[*u] = struct{}{}
+			}
+		}
+
+		// NOTE(54m): Delete unique items
+		for u := range deleteTarget {
+			rbInsert = append(rbInsert, u)
+			if err = repo.deleteByID(tx, u.ID); err != nil {
+				return xerrors.Errorf("failed to delete(Tx): %w", err)
+			}
+		}
+
+		return
+	}); err != nil {
+		return nil, xerrors.Errorf("could not run transaction: %w", err)
+	}
+
+	return repo.makeRollbackFunc(rbInsert, []Unique{}), nil
+}
+
 func (repo *uniqueRepository) makeRollbackFunc(rbInsert, rbDelete []Unique) RollbackFunc {
 	return func(ctx context.Context) error {
 		if err := repo.firestoreClient.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
