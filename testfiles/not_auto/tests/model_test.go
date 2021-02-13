@@ -297,9 +297,9 @@ func TestFirestore(t *testing.T) {
 				Flag:       model.Flag(true),
 			}
 			if _, err := taskRepo.Insert(ctx, tk); err == nil {
-				tr.Fatalf("unexpected err != nil")
+				ttrr.Fatalf("unexpected err != nil")
 			} else if !xerrors.Is(err, model.ErrUniqueConstraint) {
-				tr.Fatalf("unexpected err == ErrUniqueConstraint")
+				ttrr.Fatalf("unexpected err == ErrUniqueConstraint")
 			}
 		})
 	})
