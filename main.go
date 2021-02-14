@@ -102,6 +102,10 @@ func traverse(pkg *ast.Package, fs *token.FileSet, structName string) error {
 					continue
 				}
 
+				if cont.Contains(reservedStructs, name) {
+					log.Fatalf("%s is a reserved struct", name)
+				}
+
 				// structの定義
 				structType, ok := typeSpec.Type.(*ast.StructType)
 				if !ok {
@@ -233,6 +237,12 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 				FieldType: typeName,
 				Indexes:   make([]*IndexesInfo, 0),
 			}
+			if _, err = tags.Get("unique"); err == nil {
+				if typeName != typeString {
+					log.Fatalf("%s: The only field type that uses the `unique` tag is a string", pos)
+				}
+				fieldInfo.IsUnique = true
+			}
 			if fieldInfo, err = appendIndexer(tags, fieldInfo, dupMap); err != nil {
 				log.Fatalf("%s: %v", pos, err)
 			}
@@ -309,6 +319,15 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		}
 		defer fp.Close()
 		gen.generateQueryChainer(fp)
+	}
+
+	{
+		fp, err := os.Create("unique_gen.go")
+		if err != nil {
+			panic(err)
+		}
+		defer fp.Close()
+		gen.generateUnique(fp)
 	}
 
 	return nil

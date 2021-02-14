@@ -23,12 +23,14 @@ func initFirestoreClient(t *testing.T) *firestore.Client {
 		os.Setenv("FIRESTORE_EMULATOR_HOST", "localhost:8000")
 	}
 
-	os.Setenv("FIRESTORE_PROJECT_ID", "project-id-in-google")
+	if os.Getenv("FIRESTORE_PROJECT_ID") == "" {
+		os.Setenv("FIRESTORE_PROJECT_ID", "project-id-in-google2")
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	client, err := firestore.NewClient(ctx, "testing2")
+	client, err := firestore.NewClient(ctx, os.Getenv("FIRESTORE_PROJECT_ID"))
 
 	if err != nil {
 		t.Fatalf("failed to initialize firestore client: %+v", err)
@@ -57,6 +59,17 @@ func compareTask(t *testing.T, expected, actual *model.Task) {
 	}
 }
 
+type uniqueError struct{}
+
+func newUniqueError() model.UniqueRepositoryMiddleware {
+	return &uniqueError{}
+}
+
+func (e *uniqueError) WrapError(_ context.Context, err error, _ []*model.Unique) error {
+	// processing
+	return xerrors.Errorf("WrapError: %w", err)
+}
+
 func TestFirestore(t *testing.T) {
 	client := initFirestoreClient(t)
 
@@ -70,6 +83,8 @@ func TestFirestore(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
+
+	ctx = context.WithValue(ctx, model.UniqueMiddlewareKey{}, newUniqueError())
 
 	now := time.Unix(0, time.Now().UnixNano()).UTC()
 	desc := "Hello, World!"
@@ -145,6 +160,11 @@ func TestFirestore(t *testing.T) {
 			ids2 := make([]string, 0, 3)
 			doc := taskRepo.GetDocRef(id)
 			subRepo := model.NewSubTaskRepository(client, doc)
+			defer func() {
+				if err = subRepo.DeleteMultiByIDs(ctx, ids2); err != nil {
+					tr.Fatalf("%+v", err)
+				}
+			}()
 			st := &model.SubTask{IsSubCollection: true}
 			id, err = subRepo.Insert(ctx, st)
 			if err != nil {
@@ -201,10 +221,6 @@ func TestFirestore(t *testing.T) {
 					tr2.Fatal("not match")
 				}
 			})
-
-			if err = subRepo.DeleteMultiByIDs(ctx, ids2); err != nil {
-				tr.Fatalf("%+v", err)
-			}
 		})
 
 		tk.Count++
@@ -225,7 +241,7 @@ func TestFirestore(t *testing.T) {
 			desc1002 := fmt.Sprintf("%s%d", desc, 1002)
 
 			updateParam := &model.TaskUpdateParam{
-				Desc:       desc1002,
+				Desc2:      desc1002,
 				Created:    firestore.ServerTimestamp,
 				Done:       false,
 				Count:      firestore.Increment(1),
@@ -242,7 +258,7 @@ func TestFirestore(t *testing.T) {
 				ttr.Fatalf("%+v", err)
 			}
 
-			if tsk.Desc != desc1002 {
+			if tsk.Desc2 != desc1002 {
 				ttr.Fatalf("unexpected Desc: %s (expected: %s)", tsk.Desc, desc1002)
 			}
 
@@ -264,6 +280,26 @@ func TestFirestore(t *testing.T) {
 
 			if tsk.Proportion != 11.22345 {
 				ttr.Fatalf("unexpected Proportion: %g (expected: %g)", tsk.Proportion, 11.22345)
+			}
+		})
+
+		tr.Run("UniqueConstraints", func(ttrr *testing.T) {
+			tk := &model.Task{
+				Identity:   "Single",
+				Desc:       fmt.Sprintf("%s%d", desc, 1001),
+				Created:    now,
+				Done:       true,
+				Done2:      false,
+				Count:      11,
+				Count64:    11,
+				Proportion: 11.12345,
+				NameList:   []string{"a", "b", "c"},
+				Flag:       model.Flag(true),
+			}
+			if _, err := taskRepo.Insert(ctx, tk); err == nil {
+				ttrr.Fatalf("unexpected err != nil")
+			} else if !xerrors.Is(err, model.ErrUniqueConstraint) {
+				ttrr.Fatalf("unexpected err == ErrUniqueConstraint")
 			}
 		})
 	})
@@ -373,7 +409,7 @@ func TestFirestoreTransaction_Single(t *testing.T) {
 			}
 
 			updateParam := &model.TaskUpdateParam{
-				Desc:       desc1002,
+				Desc2:      desc1002,
 				Created:    firestore.ServerTimestamp,
 				Done:       false,
 				Count:      firestore.Increment(1),
@@ -395,7 +431,7 @@ func TestFirestoreTransaction_Single(t *testing.T) {
 			tr.Fatalf("%+v", err)
 		}
 
-		if tsk.Desc != desc1002 {
+		if tsk.Desc2 != desc1002 {
 			tr.Fatalf("unexpected Desc: %s (expected: %s)", tsk.Desc, desc1002)
 		}
 
@@ -417,6 +453,34 @@ func TestFirestoreTransaction_Single(t *testing.T) {
 
 		if tsk.Proportion != 11.22345 {
 			tr.Fatalf("unexpected Proportion: %g (expected: %g)", tsk.Proportion, 11.22345)
+		}
+	})
+
+	t.Run("UniqueConstraints", func(tr *testing.T) {
+		if err := client.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
+			tk := &model.Task{
+				Identity:   "identity",
+				Desc:       fmt.Sprintf("%s01", desc),
+				Created:    now,
+				Done:       true,
+				Done2:      false,
+				Count:      10,
+				Count64:    11,
+				NameList:   []string{"a", "b", "c"},
+				Proportion: 0.12345 + 11,
+				Geo:        latLng,
+				Flag:       true,
+			}
+
+			if _, err := taskRepo.InsertWithTx(cx, tx, tk); err != nil {
+				return err
+			}
+
+			return nil
+		}); err == nil {
+			tr.Fatalf("unexpected err != nil")
+		} else if !xerrors.Is(err, model.ErrUniqueConstraint) {
+			tr.Fatalf("unexpected err == ErrUniqueConstraint")
 		}
 	})
 }
@@ -473,12 +537,42 @@ func TestFirestoreTransaction_Multi(t *testing.T) {
 		}
 	})
 
-	tks2 := make([]*model.Task, 0)
+	t.Run("UniqueConstraints", func(tr *testing.T) {
+		tks2 := make([]*model.Task, 10)
+		for i := int64(1); i <= 10; i++ {
+			tks2[i-1] = &model.Task{
+				Identity:   ids[i-1],
+				Desc:       fmt.Sprintf("%s%d", desc, i+1),
+				Created:    now,
+				Done:       false,
+				Done2:      true,
+				Count:      int(i),
+				Count64:    i,
+				NameList:   []string{"a", "b", "c"},
+				Proportion: 0.12345 + float64(i),
+				Geo:        latLng,
+				Flag:       true,
+			}
+		}
+
+		if err := client.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
+			if err := taskRepo.UpdateMultiWithTx(cx, tx, tks2); err != nil {
+				return err
+			}
+			return nil
+		}); err == nil {
+			tr.Fatalf("unexpected err != nil")
+		} else if !xerrors.Is(err, model.ErrUniqueConstraint) {
+			tr.Fatalf("unexpected err == ErrUniqueConstraint")
+		}
+	})
+
 	t.Run("UpdateMulti", func(tr *testing.T) {
+		tks2 := make([]*model.Task, 0)
 		for i := int64(1); i <= 10; i++ {
 			tk := &model.Task{
 				Identity:   ids[i-1],
-				Desc:       fmt.Sprintf("%s%d", desc, i+1),
+				Desc:       fmt.Sprintf("%s%d", desc, i+10),
 				Created:    now,
 				Done:       false,
 				Done2:      true,

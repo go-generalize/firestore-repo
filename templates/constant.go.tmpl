@@ -32,7 +32,13 @@ const (
 )
 
 var (
-	ErrAlreadyExists  = xerrors.New("already exists")
-	ErrAlreadyDeleted = xerrors.New("already been deleted")
-	ErrNotFound       = xerrors.New("not found")
+	ErrAlreadyExists    = xerrors.New("already exists")
+	ErrAlreadyDeleted   = xerrors.New("already been deleted")
+	ErrNotFound         = xerrors.New("not found")
+	ErrUniqueConstraint = xerrors.New("unique constraint error")
+)
+
+type (
+	UniqueMiddlewareKey      struct{}
+	transactionInProgressKey struct{}
 )

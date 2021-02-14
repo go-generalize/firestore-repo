@@ -70,19 +70,21 @@ type {{ $middlewareName }} interface {
 }
 
 type {{ .RepositoryStructName }} struct {
-	collectionName  string
-	firestoreClient *firestore.Client{{ if eq .IsSubCollection true }}
-	parentDocument  *firestore.DocumentRef{{ end }}
-	middleware      []{{ $middlewareName }}
+	collectionName   string
+	firestoreClient  *firestore.Client{{ if eq .IsSubCollection true }}
+	parentDocument   *firestore.DocumentRef{{ end }}
+	middleware       []{{ $middlewareName }}
+	uniqueRepository *uniqueRepository
 }
 
 // New{{ .RepositoryInterfaceName }} constructor
 func New{{ .RepositoryInterfaceName }}(firestoreClient *firestore.Client{{ if eq .IsSubCollection true }}, parentDocument *firestore.DocumentRef{{ end }}, middleware ...{{ $middlewareName }}) {{ .RepositoryInterfaceName }} {
 	return &{{ .RepositoryStructName }}{
-		collectionName:  "{{ .StructName }}",
-		firestoreClient: firestoreClient,{{ if eq .IsSubCollection true }}
-		parentDocument:  parentDocument,{{ end }}
-		middleware:      middleware,
+		collectionName:   "{{ .StructName }}",
+		firestoreClient:  firestoreClient,{{ if eq .IsSubCollection true }}
+		parentDocument:   parentDocument,{{ end }}
+		middleware:       middleware,
+		uniqueRepository: newUniqueRepository(firestoreClient, "{{ .StructName }}"),
 	}
 }
 {{ if .MetaFields }}
@@ -96,65 +98,86 @@ func (repo *{{ .RepositoryStructName }}) setMeta(subject *{{ .StructName }}, isI
 	subject.Version++
 }
 {{ end }}
-func (repo *{{ .RepositoryStructName }}) beforeInsert(ctx context.Context, subject *{{ .StructName }}) error {
+func (repo *{{ .RepositoryStructName }}) beforeInsert(ctx context.Context, subject *{{ .StructName }}) (RollbackFunc, error) {
 {{- if .MetaFields }}
 	if subject.Version != 0 {
-		return xerrors.Errorf("insert data must be Version == 0: %+v", subject)
+		return nil, xerrors.Errorf("insert data must be Version == 0: %+v", subject)
 	}
 	if subject.DeletedAt != nil {
-		return xerrors.Errorf("insert data must be DeletedAt == nil: %+v", subject)
+		return nil, xerrors.Errorf("insert data must be DeletedAt == nil: %+v", subject)
 	}
 	repo.setMeta(subject, true)
-{{ end }}
+{{- end }}
+	repo.uniqueRepository.setMiddleware(ctx)
+	rb, err := repo.uniqueRepository.CheckUnique(ctx, nil, subject)
+	if err != nil {
+		return nil, xerrors.Errorf("unique.middleware error: %w", err)
+	}
+
 	for _, m := range repo.middleware {
 		c, err := m.BeforeInsert(ctx, subject)
 		if err != nil {
-			return xerrors.Errorf("beforeInsert.middleware error: %w", err)
+			return nil, xerrors.Errorf("beforeInsert.middleware error(uniqueRB=%t): %w", rb(ctx) == nil, err)
 		}
 		if !c {
 			continue
 		}
 	}
-	return nil
+
+	return rb, nil
 }
 
-func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, subject *{{ .StructName }}) error {
+func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, subject *{{ .StructName }}) (RollbackFunc, error) {
 {{- if .MetaFields }}
 	if old.Version > subject.Version {
-		return xerrors.Errorf("The data in the database is newer: (db version: %d, target version: %d) %+v",
-			old.Version, subject.Version, subject)
+		return nil, xerrors.Errorf(
+			"The data in the database is newer: (db version: %d, target version: %d) %+v",
+			old.Version, subject.Version, subject,
+		)
 	}
 	if subject.DeletedAt != nil {
-		return xerrors.Errorf("update data must be DeletedAt == nil: %+v", subject)
+		return nil, xerrors.Errorf("update data must be DeletedAt == nil: %+v", subject)
 	}
 	repo.setMeta(subject, false)
-{{ end }}
+{{- end }}
+	repo.uniqueRepository.setMiddleware(ctx)
+	rb, err := repo.uniqueRepository.CheckUnique(ctx, old, subject)
+	if err != nil {
+		return nil, xerrors.Errorf("unique.middleware error: %w", err)
+	}
+
 	for _, m := range repo.middleware {
 		c, err := m.BeforeUpdate(ctx, old, subject)
 		if err != nil {
-			return xerrors.Errorf("beforeUpdate.middleware error: %w", err)
+			return nil, xerrors.Errorf("beforeUpdate.middleware error: %w", err)
 		}
 		if !c {
 			continue
 		}
 	}
-	return nil
+	return rb, nil
 }
 
-func (repo *{{ .RepositoryStructName }}) before{{ DeleteFunc }} {
+func (repo *{{ .RepositoryStructName }}) beforeDelete(ctx context.Context, subject *{{ .StructName }}, opts ...DeleteOption) (RollbackFunc, error) {
 {{- if .MetaFields }}
 	repo.setMeta(subject, false)
-{{ end }}
+{{- end }}
+	repo.uniqueRepository.setMiddleware(ctx)
+	rb, err := repo.uniqueRepository.DeleteUnique(ctx, subject)
+	if err != nil {
+		return nil, xerrors.Errorf("unique.middleware error: %w", err)
+	}
+
 	for _, m := range repo.middleware {
 		c, err := m.BeforeDelete(ctx, subject, opts...)
 		if err != nil {
-			return xerrors.Errorf("beforeDelete.middleware error: %w", err)
+			return nil, xerrors.Errorf("beforeDelete.middleware error: %w", err)
 		}
 		if !c {
 			continue
 		}
 	}
-	return nil
+	return rb, nil
 }
 
 // GetCollection *firestore.CollectionRef getter
@@ -171,8 +194,7 @@ func (repo *{{ .RepositoryStructName }}) GetCollectionName() string {
 func (repo *{{ .RepositoryStructName }}) GetDocRef({{ .KeyValueName }} string) *firestore.DocumentRef {
 	return repo.GetCollection().Doc({{ .KeyValueName }})
 }
-{{- if .EnableIndexes }}
-
+{{ if .EnableIndexes }}
 func (repo *{{ .RepositoryStructName }}) saveIndexes(subject *{{ .StructName }}) error {
 	idx := xim.NewIndexes(&xim.Config{
 		IgnoreCase:         true,
@@ -198,8 +220,8 @@ func (repo *{{ .RepositoryStructName }}) saveIndexes(subject *{{ .StructName }})
 
 	return nil
 }
-{{- end }}
-{{ $MetaName := .OmitMetaName }}
+{{ end }}
+{{- $MetaName := .OmitMetaName }}
 // {{ .StructName }}ListReq List取得時に渡すリクエスト
 // └─ bool/int(64)|float64 は stringの独自型で渡す(BoolCriteria | NumericCriteria)
 type {{ .StructName }}ListReq struct {
@@ -220,7 +242,7 @@ type {{ .StructName }}ListReq struct {
 // {{ .StructName }}UpdateParam - 厳格な更新をするためのパラメータ
 type {{ .StructName }}UpdateParam struct {
 {{- range .FieldInfos }}
-{{- 	if ne $MetaName .Field }}
+{{- 	if and (eq .IsUnique false) (ne $MetaName .Field) }}
 	{{ .Field }}{{ .Space }} interface{}
 {{- 	end }}
 {{- end }}
@@ -252,11 +274,19 @@ func (repo *{{ .RepositoryStructName }}) {{ GetWithDocFunc }} {
 
 // Insert 処理中の {{ .StructName }} の登録処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ InsertFunc }} {
-	if err := repo.beforeInsert(ctx, subject); err != nil {
+	rb, err := repo.beforeInsert(ctx, subject)
+	if err != nil {
 		return "", xerrors.Errorf("before insert error: %w", err)
 	}
+	defer func() {
+		if err != nil {
+			if er := rb(ctx); er != nil {
+				err = xerrors.Errorf("unique check error %+v, original error: %w", er, err)
+			}
+		}
+	}()
 {{ if eq .EnableIndexes true}}
-	if err := repo.saveIndexes(subject); err != nil {
+	if err = repo.saveIndexes(subject); err != nil {
 		return "", xerrors.Errorf("failed to saveIndexes: %w", err)
 	}
 {{ end }}
@@ -275,9 +305,17 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateFunc }} {
 		return xerrors.Errorf("error in Get method: %w", err)
 	}
 
-	if err = repo.beforeUpdate(ctx, old, subject); err != nil {
+	rb, err := repo.beforeUpdate(ctx, old, subject)
+	if err != nil {
 		return xerrors.Errorf("before update error: %w", err)
 	}
+	defer func() {
+		if err != nil {
+			if er := rb(ctx); er != nil {
+				err = xerrors.Errorf("unique check error %+v, original error: %w", er, err)
+			}
+		}
+	}()
 {{ if eq .EnableIndexes true}}
 	if err := repo.saveIndexes(subject); err != nil {
 		return xerrors.Errorf("failed to saveIndexes: %w", err)
@@ -293,11 +331,7 @@ func (repo *{{ .RepositoryStructName }}) {{ StrictUpdateFunc }} {
 
 // Delete 処理中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteFunc }} {
-	if err := repo.beforeDelete(ctx, subject, opts...); err != nil {
-		return xerrors.Errorf("before delete error: %w", err)
-	}
-{{-  if .MetaFields }}
-
+{{- if .MetaFields }}
 	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 		t := time.Now()
 		subject.DeletedAt = &t
@@ -306,29 +340,39 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteFunc }} {
 		}
 		return nil
 	}
-{{- end }}
+{{ end }}
+	rb, err := repo.beforeDelete(ctx, subject, opts...)
+	if err != nil {
+		return xerrors.Errorf("before delete error: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			if er := rb(ctx); er != nil {
+				err = xerrors.Errorf("unique delete error %+v, original error: %w", er, err)
+			}
+		}
+	}()
 
 	return repo.deleteBy{{ .KeyFieldName }}(ctx, subject.{{ .KeyFieldName }})
 }
 
 // DeleteBy{{ .KeyFieldName }} 処理中の {{ .StructName }} の {{ .KeyFieldName }}から削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteByFunc }} {
-{{- if .MetaFields }}
+	subject, err := repo.Get(ctx, {{ .KeyValueName }})
+	if err != nil {
+		return xerrors.Errorf("error in Get method: %w", err)
+	}
+{{ if .MetaFields }}
 	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 		t := time.Now()
-		subject, err := repo.Get(ctx, {{ .KeyValueName }})
-		if err != nil {
-			return xerrors.Errorf("error in GetWithTx method: %w", err)
-		}
 		subject.DeletedAt = &t
 		if err := repo.update(ctx, subject); err != nil {
 			return xerrors.Errorf("error in update method: %w", err)
 		}
 		return nil
 	}
-
-{{- end }}
-	return repo.deleteBy{{ .KeyFieldName }}(ctx, {{ .KeyValueName }})
+{{ end }}
+	return repo.Delete(ctx, subject, opts...)
 }
 
 // GetMulti 処理中の {{ .StructName }} の一括取得処理一切の責任を持ち、これを行う
@@ -338,19 +382,29 @@ func (repo *{{ .RepositoryStructName }}) {{ GetMultiFunc }} {
 
 // InsertMulti 処理中の {{ .StructName }} の一括挿入処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ InsertMultiFunc }} {
+	var rbs []RollbackFunc
+	defer func() {
+		if er == nil {
+			return
+		}
+		if len(rbs) == 0 {
+			return
+		}
+		errs := make([]error, 0)
+		for _, rb := range rbs {
+			if err := rb(ctx); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		er = xerrors.Errorf("unique check error %+v, original error: %w", errs, er)
+	}()
+
 	{{ PluralForm .KeyValueName }} := make([]{{ .KeyFieldType }}, 0, len(subjects))
 	batches := make([]*firestore.WriteBatch, 0)
 	batch := repo.firestoreClient.Batch()
 	collect := repo.GetCollection()
 
 	for i, subject := range subjects {
-{{- if .MetaFields }}
-		err := repo.beforeInsert(ctx, subject)
-		if err != nil {
-			return nil, xerrors.Errorf("before insert error: %w", err)
-		}
-
-{{- end }}
 		var ref *firestore.DocumentRef
 		if subject.{{ .KeyFieldName }} == "" {
 			ref = collect.NewDoc()
@@ -361,6 +415,12 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiFunc }} {
 				return nil, xerrors.Errorf("already exists [%v]: %#v", subject.{{ .KeyFieldName }}, s)
 			}
 		}
+
+		rb, err := repo.beforeInsert(ctx, subject)
+		if err != nil {
+			return nil, xerrors.Errorf("before insert error(%d) [%v]: %w", i, subject.{{ .KeyFieldName }}, err)
+		}
+		rbs = append(rbs, rb)
 {{ if eq .EnableIndexes true}}
 		if err := repo.saveIndexes(subjects[i]); err != nil {
 			return nil, xerrors.Errorf("failed to saveIndexes: %w", err)
@@ -387,6 +447,23 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiFunc }} {
 
 // UpdateMulti 処理中の {{ .StructName }} の一括更新処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiFunc }} {
+	var rbs []RollbackFunc
+	defer func() {
+		if er == nil {
+			return
+		}
+		if len(rbs) == 0 {
+			return
+		}
+		errs := make([]error, 0)
+		for _, rb := range rbs {
+			if err := rb(ctx); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		er = xerrors.Errorf("unique check error %+v, original error: %w", errs, er)
+	}()
+
 	batches := make([]*firestore.WriteBatch, 0)
 	batch := repo.firestoreClient.Batch()
 	collect := repo.GetCollection()
@@ -406,9 +483,11 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiFunc }} {
 			return xerrors.Errorf("error in DataTo method: %w", err)
 		}
 
-		if err = repo.beforeUpdate(ctx, old, subject); err != nil {
-			return xerrors.Errorf("before update error: %w", err)
+		rb, err := repo.beforeUpdate(ctx, old, subject)
+		if err != nil {
+			return xerrors.Errorf("before update error(%d) [%v]: %w", i, subject.{{ .KeyFieldName }}, err)
 		}
+		rbs = append(rbs, rb)
 {{ if eq .EnableIndexes true}}
 		if err := repo.saveIndexes(subjects[i]); err != nil {
 			return xerrors.Errorf("failed to saveIndexes: %w", err)
@@ -434,6 +513,23 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiFunc }} {
 
 // DeleteMulti 処理中の {{ .StructName }} の一括削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiFunc }} {
+	var rbs []RollbackFunc
+	defer func() {
+		if er == nil {
+			return
+		}
+		if len(rbs) == 0 {
+			return
+		}
+		errs := make([]error, 0)
+		for _, rb := range rbs {
+			if err := rb(ctx); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		er = xerrors.Errorf("unique delete error %+v, original error: %w", errs, er)
+	}()
+
 	batches := make([]*firestore.WriteBatch, 0)
 	batch := repo.firestoreClient.Batch()
 	collect := repo.GetCollection()
@@ -447,11 +543,12 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiFunc }} {
 			return xerrors.Errorf("error in Get method [%v]: %w", subject.{{ .KeyFieldName }}, err)
 		}
 
-		if err := repo.beforeDelete(ctx, subject, opts...); err != nil {
-			return xerrors.Errorf("before delete error: %w", err)
+		rb, err := repo.beforeDelete(ctx, subject, opts...)
+		if err != nil {
+			return xerrors.Errorf("before delete error(%d) [%v]: %w", i, subject.{{ .KeyFieldName }}, err)
 		}
-{{- if .MetaFields }}
-
+		rbs = append(rbs, rb)
+{{ if .MetaFields }}
 		if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 			t := time.Now()
 			subject.DeletedAt = &t
@@ -459,7 +556,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiFunc }} {
 		} else {
 			batch.Delete(ref)
 		}
-{{- else }}
+{{ else }}
 		batch.Delete(ref)
 {{ end }}
 		i++
@@ -481,10 +578,18 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiFunc }} {
 
 // DeleteMultiBy{{ PluralForm .KeyFieldName }} 処理中の {{ .StructName }} の {{ .KeyFieldName }}群を元に一括削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByFunc }} {
-	subjects := make([]*{{ .StructName }}, 0, len({{ PluralForm .KeyValueName }}))
+	subjects := make([]*{{ .StructName }}, len({{ PluralForm .KeyValueName }}))
 
-	for _, {{ .KeyValueName }} := range {{ PluralForm .KeyValueName }} {
-		subjects = append(subjects, &{{ .StructName }}{ {{- .KeyFieldName }}: {{ .KeyValueName }}})
+	opt := GetOption{}
+	if len(opts) > 0 {
+		opt.IncludeSoftDeleted = opts[0].Mode == DeleteModeHard
+	}
+	for i, {{ .KeyValueName }} := range {{ PluralForm .KeyValueName }} {
+		subject, err := repo.Get(ctx, {{ .KeyValueName }}, opt)
+		if err != nil {
+			return xerrors.Errorf("error in Get method: %w", err)
+		}
+		subjects[i] = subject
 	}
 
 	return repo.DeleteMulti(ctx, subjects, opts...)
@@ -507,15 +612,23 @@ func (repo *{{ .RepositoryStructName }}) {{ GetWithDocWithTxFunc }} {
 
 // InsertWithTx トランザクション中の {{ .StructName }} の登録処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ InsertWithTxFunc }} {
-	if err := repo.beforeInsert(ctx, subject); err != nil {
+	rb, err := repo.beforeInsert(context.WithValue(ctx, transactionInProgressKey{}, 1), subject)
+	if err != nil {
 		return "", xerrors.Errorf("before insert error: %w", err)
 	}
+	defer func() {
+		if err != nil {
+			if er := rb(ctx); er != nil {
+				err = xerrors.Errorf("unique check error %+v, original error: %w", er, err)
+			}
+		}
+	}()
 {{- if not .AutomaticGeneration }}
 
 	if _, err := tx.Get(new(firestore.DocumentRef)); err == nil {
 		return "", ErrAlreadyExists
 	}
-{{ end }}
+{{- end }}
 {{ if eq .EnableIndexes true}}
 	if err := repo.saveIndexes(subject); err != nil {
 		return "", xerrors.Errorf("failed to saveIndexes: %w", err)
@@ -536,9 +649,17 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateWithTxFunc }} {
 		return xerrors.Errorf("error in Get method: %w", err)
 	}
 
-	if err = repo.beforeUpdate(ctx, old, subject); err != nil {
+	rb, err := repo.beforeUpdate(context.WithValue(ctx, transactionInProgressKey{}, 1), old, subject)
+	if err != nil {
 		return xerrors.Errorf("before update error: %w", err)
 	}
+	defer func() {
+		if err != nil {
+			if er := rb(ctx); er != nil {
+				err = xerrors.Errorf("unique check error %+v, original error: %w", er, err)
+			}
+		}
+	}()
 {{ if eq .EnableIndexes true}}
 	if err := repo.saveIndexes(subject); err != nil {
 		return xerrors.Errorf("failed to saveIndexes: %w", err)
@@ -554,11 +675,7 @@ func (repo *{{ .RepositoryStructName }}) {{ StrictUpdateWithTxFunc }} {
 
 // DeleteWithTx トランザクション中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteWithTxFunc }} {
-	if err := repo.beforeDelete(ctx, subject, opts...); err != nil {
-		return xerrors.Errorf("before delete error: %w", err)
-	}
 {{- if .MetaFields }}
-
 	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 		t := time.Now()
 		subject.DeletedAt = &t
@@ -567,28 +684,50 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteWithTxFunc }} {
 		}
 		return nil
 	}
-{{- end }}
+{{ end }}
+	rb, err := repo.beforeDelete(ctx, subject, opts...)
+	if err != nil {
+		return xerrors.Errorf("before delete error: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			if er := rb(ctx); er != nil {
+				err = xerrors.Errorf("unique check error %+v, original error: %w", er, err)
+			}
+		}
+	}()
 
 	return repo.deleteBy{{ .KeyFieldName }}(tx, subject.{{ .KeyFieldName }})
 }
 
 // DeleteBy{{ .KeyFieldName }}WithTx トランザクション中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteByWithTxFunc }} {
-{{- if .MetaFields }}
+	subject, err := repo.GetWithTx(tx, {{ .KeyValueName }})
+	if err != nil {
+		return xerrors.Errorf("error in GetWithTx method: %w", err)
+	}
+{{ if .MetaFields }}
 	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 		t := time.Now()
-		subject, err := repo.GetWithTx(tx, {{ .KeyValueName }})
-		if err != nil {
-			return xerrors.Errorf("error in GetWithTx method: %w", err)
-		}
 		subject.DeletedAt = &t
 		if err := repo.update(tx, subject); err != nil {
 			return xerrors.Errorf("error in update method: %w", err)
 		}
 		return nil
 	}
+{{ end }}
+	rb, err := repo.beforeDelete(ctx, subject, opts...)
+	if err != nil {
+		return xerrors.Errorf("before delete error: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			if er := rb(ctx); er != nil {
+				err = xerrors.Errorf("unique delete error %+v, original error: %w", er, err)
+			}
+		}
+	}()
 
-{{- end }}
 	return repo.deleteBy{{ .KeyFieldName }}(tx, {{ .KeyValueName }})
 }
 
@@ -599,20 +738,38 @@ func (repo *{{ .RepositoryStructName }}) {{ GetMultiWithTxFunc }} {
 
 // InsertMultiWithTx トランザクション中の {{ .StructName }} の一括挿入処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ InsertMultiWithTxFunc }} {
-{{- if not .AutomaticGeneration }}
+	ctx = context.WithValue(ctx, transactionInProgressKey{}, 1)
+	var rbs []RollbackFunc
+	defer func() {
+		if er == nil {
+			return
+		}
+		if len(rbs) == 0 {
+			return
+		}
+		errs := make([]error, 0)
+		for _, rb := range rbs {
+			if err := rb(ctx); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		er = xerrors.Errorf("unique check error %+v, original error: %w", errs, er)
+	}()
+{{ if not .AutomaticGeneration }}
 	for i := range subjects {
 		if _, err := tx.Get(new(firestore.DocumentRef)); err == nil {
 			return nil, xerrors.Errorf("already exists(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
 	}
-
-{{- end }}
+{{ end }}
 	{{ PluralForm .KeyValueName }} := make([]string, len(subjects))
 
 	for i := range subjects {
-		if err := repo.beforeInsert(ctx, subjects[i]); err != nil {
+		rb, err := repo.beforeInsert(ctx, subjects[i])
+		if err != nil {
 			return nil, xerrors.Errorf("before insert error(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
+		rbs = append(rbs, rb)
 {{ if eq .EnableIndexes true}}
 		if err := repo.saveIndexes(subjects[i]); err != nil {
 			return nil, xerrors.Errorf("failed to saveIndexes: %w", err)
@@ -630,6 +787,24 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiWithTxFunc }} {
 
 // UpdateMultiWithTx トランザクション中の {{ .StructName }} の一括挿入処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiWithTxFunc }} {
+	ctx = context.WithValue(ctx, transactionInProgressKey{}, 1)
+	var rbs []RollbackFunc
+	defer func() {
+		if er == nil {
+			return
+		}
+		if len(rbs) == 0 {
+			return
+		}
+		errs := make([]error, 0)
+		for _, rb := range rbs {
+			if err := rb(ctx); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		er = xerrors.Errorf("unique check error %+v, original error: %w", errs, er)
+	}()
+
 	for i := range subjects {
 		doc := repo.GetDocRef(subjects[i].{{ .KeyFieldName }})
 		old, err := repo.get(tx, doc)
@@ -640,9 +815,11 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiWithTxFunc }} {
 			return xerrors.Errorf("error in get method(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
 
-		if err = repo.beforeUpdate(ctx, old, subjects[i]); err != nil {
+		rb, err := repo.beforeUpdate(ctx, old, subjects[i])
+		if err != nil {
 			return xerrors.Errorf("before update error(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
+		rbs = append(rbs, rb)
 	}
 
 	for i := range subjects {
@@ -661,24 +838,49 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiWithTxFunc }} {
 
 // DeleteMultiWithTx トランザクション中の {{ .StructName }} の一括削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiWithTxFunc }} {
-{{- if .MetaFields }}
+	var rbs []RollbackFunc
+	defer func() {
+		if er == nil {
+			return
+		}
+		if len(rbs) == 0 {
+			return
+		}
+		errs := make([]error, 0)
+		for _, rb := range rbs {
+			if err := rb(ctx); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		er = xerrors.Errorf("unique delete error %+v, original error: %w", errs, er)
+	}()
+{{ if .MetaFields }}
 	t := time.Now()
 {{- end }}
+	var isHardDeleteMode bool
+	if len(opts) > 0 {
+		isHardDeleteMode = opts[0].Mode == DeleteModeHard
+	}
+	opt := GetOption{
+		IncludeSoftDeleted: isHardDeleteMode,
+	}
 	for i := range subjects {
 		dr := repo.GetDocRef(subjects[i].{{ .KeyFieldName }})
-		if _, err := repo.get(tx, dr); err != nil {
+		if _, err := repo.get(tx, dr, opt); err != nil {
 			if status.Code(err) == codes.NotFound {
 				return xerrors.Errorf("not found(%d) [%v]", i, subjects[i].{{ .KeyFieldName }})
 			}
 			return xerrors.Errorf("error in get method(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
 
-		if err := repo.beforeDelete(ctx, subjects[i], opts...); err != nil {
+		rb, err := repo.beforeDelete(ctx, subjects[i], opts...)
+		if err != nil {
 			return xerrors.Errorf("before delete error(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
+		rbs = append(rbs, rb)
 {{- if .MetaFields }}
 
-		if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
+		if !isHardDeleteMode {
 			subjects[i].DeletedAt = &t
 			if err := repo.update(tx, subjects[i]); err != nil {
 				return xerrors.Errorf("error in update method(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
@@ -686,13 +888,11 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiWithTxFunc }} {
 		}
 {{- end }}
 	}
-{{- if .MetaFields }}
-
+{{ if .MetaFields }}
 	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 		return nil
 	}
-{{- end }}
-
+{{ end }}
 	for i := range subjects {
 		if err := repo.deleteBy{{ .KeyFieldName }}(tx, subjects[i].{{ .KeyFieldName }}); err != nil {
 			return xerrors.Errorf("error in delete method(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
@@ -704,7 +904,23 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiWithTxFunc }} {
 
 // DeleteMultiBy{{ .KeyFieldName }}WithTx トランザクション中の {{ .StructName }} の一括削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByWithTxFunc }} {
-{{- if .MetaFields }}
+	var rbs []RollbackFunc
+	defer func() {
+		if er == nil {
+			return
+		}
+		if len(rbs) == 0 {
+			return
+		}
+		errs := make([]error, 0)
+		for _, rb := range rbs {
+			if err := rb(ctx); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		er = xerrors.Errorf("unique delete error %+v, original error: %w", errs, er)
+	}()
+{{ if .MetaFields }}
 	t := time.Now()
 {{- end }}
 	for i := range {{ PluralForm .KeyValueName }} {
@@ -717,9 +933,11 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByWithTxFunc }} {
 			return xerrors.Errorf("error in get method(%d) [%v]: %w", i, {{ PluralForm .KeyValueName }}[i], err)
 		}
 
-		if err := repo.beforeDelete(ctx, subject, opts...); err != nil {
-			return xerrors.Errorf("before delete error(%d) [%v]: %w", i, {{ PluralForm .KeyValueName }}[i], err)
+		rb, err := repo.beforeDelete(ctx, subject, opts...)
+		if err != nil {
+			return xerrors.Errorf("before delete error(%d) [%v]: %w", i, subject.{{ .KeyFieldName }}, err)
 		}
+		rbs = append(rbs, rb)
 {{- if .MetaFields }}
 
 		if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
@@ -730,13 +948,11 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByWithTxFunc }} {
 		}
 {{- end }}
 	}
-{{- if .MetaFields }}
-
+{{ if .MetaFields }}
 	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 		return nil
 	}
-{{- end }}
-
+{{ end }}
 	for i := range {{ PluralForm .KeyValueName }} {
 		if err := repo.deleteBy{{ .KeyFieldName }}(tx, {{ PluralForm .KeyValueName }}[i]); err != nil {
 			return xerrors.Errorf("error in delete method(%d) [%v]: %w", i, {{ PluralForm .KeyValueName }}[i], err)
@@ -983,14 +1199,13 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 
 	if q == nil {
 		ref := repo.GetCollection()
-{{- if .EnableIndexes }}
-
+{{ if .EnableIndexes }}
 		filters := xim.NewFilters(&xim.Config{
 			IgnoreCase:         true,
 			SaveNoFiltersIndex: true,
 		})
-{{- end }}
-{{ $Meta := .MetaFields }}
+{{ end }}
+{{- $Meta := .MetaFields }}
 {{- $EnableIndexes := .EnableIndexes }}
 {{- $RepositoryStructName := .RepositoryStructName }}
 {{- range $fi := .FieldInfos }}
@@ -1069,8 +1284,7 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 			ref.Query = ref.Query.Where("DeletedAt", OpTypeEqual, nil)
 		}
 {{- end }}
-{{- if .EnableIndexes }}
-
+{{ if .EnableIndexes }}
 		build, err := filters.Build()
 		if err != nil {
 			return nil, xerrors.Errorf("failed to filter build: %w", err)
