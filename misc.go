@@ -45,31 +45,34 @@ func getFileContents(name string) string {
 }
 
 func uppercaseExtraction(name string, dupMap map[string]int) (lower string) {
-	for _, x := range name {
-		if 65 <= x && x <= 90 {
-			lower += string(x + 32)
+	defer func() {
+		if _, ok := dupMap[lower]; ok {
+			lower = fmt.Sprintf("%s%d", lower, dupMap[lower])
+		}
+	}()
+	for i, x := range name {
+		switch {
+		case 65 <= x && x <= 90:
+			x += 32
+			fallthrough
+		case 97 <= x && x <= 122:
+			if i == 0 {
+				lower += string(x)
+			}
+			if _, ok := dupMap[lower]; !ok {
+				dupMap[lower] = 1
+				return
+			}
+
+			if dupMap[lower] >= 9 && len(name) > i+1 {
+				lower += string(name[i+1])
+				continue
+			}
+			dupMap[lower]++
+			return
 		}
 	}
-	if _, ok := dupMap[lower]; !ok {
-		dupMap[lower] = 1
-	} else {
-		dupMap[lower]++
-		lower = fmt.Sprintf("%s%d", lower, dupMap[lower])
-	}
 	return
-}
-
-func appendIndexesInfo(fieldInfo *FieldInfo, dupMap map[string]int) {
-	idx := &IndexesInfo{
-		ConstName: fieldLabel + fieldInfo.Field,
-		Label:     uppercaseExtraction(fieldInfo.Field, dupMap),
-		Method:    "Add",
-	}
-	idx.Comment = fmt.Sprintf("%s %s", idx.ConstName, fieldInfo.Field)
-	if fieldInfo.FieldType != typeString {
-		idx.Method += "Something"
-	}
-	fieldInfo.Indexes = append(fieldInfo.Indexes, idx)
 }
 
 func getTypeName(typ ast.Expr) string {

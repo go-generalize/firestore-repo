@@ -9,6 +9,7 @@ import (
 	"text/template"
 
 	_ "github.com/go-generalize/firestore-repo/statik"
+	"github.com/go-utils/cont"
 	"github.com/go-utils/plural"
 	"github.com/iancoleman/strcase"
 	"github.com/rakyll/statik/fs"
@@ -29,14 +30,18 @@ type IndexesInfo struct {
 	ConstName string
 	Label     string
 	Method    string
+	Use       bool
+	Space1    string
+	Space2    string
 }
 
 type FieldInfo struct {
-	FsTag     string
-	Field     string
-	FieldType string
-	Space     string
-	Indexes   []*IndexesInfo
+	FsTag      string
+	Field      string
+	FieldType  string
+	Space      string
+	IndexerTag string
+	Indexes    []*IndexesInfo
 }
 
 type generator struct {
@@ -99,6 +104,26 @@ func (g *generator) insertSpace() {
 	}
 }
 
+func (g *generator) insertSpaceForLabel() {
+	var max1, max2 int
+	for _, x := range g.FieldInfos {
+		for _, index := range x.Indexes {
+			if size := len(index.ConstName); size > max1 {
+				max1 = size
+			}
+			if size := len(index.Label); size > max2 {
+				max2 = size
+			}
+		}
+	}
+	for _, x := range g.FieldInfos {
+		for _, index := range x.Indexes {
+			index.Space1 = strings.Repeat(" ", max1-len(index.ConstName))
+			index.Space2 = strings.Repeat(" ", max2-len(index.Label))
+		}
+	}
+}
+
 func (g *generator) generate(writer io.Writer) {
 	g.setting()
 	funcMap := g.setFuncMap()
@@ -112,6 +137,7 @@ func (g *generator) generate(writer io.Writer) {
 }
 
 func (g *generator) generateLabel(writer io.Writer) {
+	g.insertSpaceForLabel()
 	contents := getFileContents("label")
 
 	t := template.Must(template.New("TemplateLabel").Parse(contents))
@@ -192,6 +218,9 @@ func (g *generator) setFuncMap() template.FuncMap {
 			}
 			return fn
 		},
+		"HasSuffix": func(s, suffix string) bool {
+			return strings.HasSuffix(s, suffix)
+		},
 		"HasSlice": func(types string) bool {
 			return strings.HasPrefix(types, "[]")
 		},
@@ -200,6 +229,27 @@ func (g *generator) setFuncMap() template.FuncMap {
 		},
 		"PluralForm": func(word string) string {
 			return plural.Convert(word)
+		},
+		"IndexerInfo": func(fieldInfo *FieldInfo) (comment string) {
+			if fieldInfo.IndexerTag == "" {
+				return
+			}
+			comment += fmt.Sprintf(`// The value of the "indexer" tag = "%s"`, fieldInfo.IndexerTag)
+			items := make([]string, 0)
+			for _, index := range fieldInfo.Indexes {
+				if !index.Use {
+					continue
+				}
+				if !cont.Contains(items, index.Method) {
+					items = append(items, index.Method)
+				}
+			}
+			if len(items) > 3 {
+				comment += "\n\t\t\t// "
+				comment += strings.Join(items, "/")
+				comment += " is valid."
+			}
+			return
 		},
 		"GetFunc": func() string {
 			raw := fmt.Sprintf(

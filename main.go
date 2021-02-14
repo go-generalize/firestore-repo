@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"unicode"
 
@@ -118,7 +119,7 @@ func traverse(pkg *ast.Package, fs *token.FileSet, structName string) error {
 
 func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) error {
 	dupMap := make(map[string]int)
-	fieldLabel = gen.StructName + queryLabel
+	fieldLabel = gen.StructName + indexLabel
 
 	metaList := make(map[string]*Field)
 	metaFieldName := ""
@@ -191,7 +192,9 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 				FieldType: typeName,
 				Indexes:   make([]*IndexesInfo, 0),
 			}
-			appendIndexesInfo(fieldInfo, dupMap)
+			if _, err := appendIndexer(nil, fieldInfo, dupMap); err != nil {
+				log.Fatalf("%s: %v", pos, err)
+			}
 			gen.FieldInfos = append(gen.FieldInfos, fieldInfo)
 			continue
 		}
@@ -204,7 +207,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 			)
 			continue
 		}
-		if name == "Indexes" {
+		if name == "Indexes" && typeName == typeBoolMap {
 			gen.EnableIndexes = true
 			fieldInfo := &FieldInfo{
 				FsTag:     name,
@@ -330,54 +333,68 @@ func keyFieldHandler(gen *generator, tags *structtag.Tags, name, typeName string
 	return nil
 }
 
-func appendIndexer(tags *structtag.Tags, fieldInfo *FieldInfo, dupMap map[string]int) (*FieldInfo, error) {
-	if tag, err := fireStoreTagCheck(tags); err != nil {
-		return nil, err
-	} else if tag != "" {
-		fieldInfo.FsTag = tag
-	}
-	if idr, err := tags.Get("indexer"); err != nil || fieldInfo.FieldType != typeString {
-		appendIndexesInfo(fieldInfo, dupMap)
-	} else {
-		filters := strings.Split(idr.Value(), ",")
-		dupIdr := make(map[string]struct{})
-		for _, fil := range filters {
-			idx := &IndexesInfo{
-				ConstName: fieldLabel + fieldInfo.Field,
-				Label:     uppercaseExtraction(fieldInfo.Field, dupMap),
-				Method:    "Add",
-			}
-			var dupFlag string
-			switch fil {
-			case "p", "prefix": // 前方一致 (AddPrefix)
-				idx.Method += prefix
-				idx.ConstName += prefix
-				idx.Comment = fmt.Sprintf("%s %s前方一致", idx.ConstName, fieldInfo.Field)
-				dupFlag = "p"
-			case "s", "suffix": /* TODO 後方一致
-				idx.Method += Suffix
-				idx.ConstName += Suffix
-				idx.Comment = fmt.Sprintf("%s %s後方一致", idx.ConstName, name)
-				dup = "s"*/
-			case "e", "equal": // 完全一致 (Add) Default
-				idx.Comment = fmt.Sprintf("%s %s", idx.ConstName, fieldInfo.Field)
-				dupIdr["equal"] = struct{}{}
-				dupFlag = "e"
-			case "l", "like": // 部分一致
-				idx.Method += biunigrams
-				idx.ConstName += "Like"
-				idx.Comment = fmt.Sprintf("%s %s部分一致", idx.ConstName, fieldInfo.Field)
-				dupFlag = "l"
-			default:
-				continue
-			}
-			if _, ok := dupIdr[dupFlag]; ok {
-				continue
-			}
-			dupIdr[dupFlag] = struct{}{}
-			fieldInfo.Indexes = append(fieldInfo.Indexes, idx)
+func isUseIndexer(filters []string, p1, p2 string) bool {
+	for _, filter := range filters {
+		switch filter {
+		case p1, p2:
+			return true
 		}
 	}
+	return false
+}
+
+func appendIndexer(tags *structtag.Tags, fieldInfo *FieldInfo, dupMap map[string]int) (*FieldInfo, error) {
+	filters := make([]string, 0)
+	if tags != nil {
+		if tag, err := fireStoreTagCheck(tags); err != nil {
+			return nil, err
+		} else if tag != "" {
+			fieldInfo.FsTag = tag
+		}
+		idr, err := tags.Get("indexer")
+		if err == nil {
+			fieldInfo.IndexerTag = idr.Value()
+			filters = strings.Split(idr.Value(), ",")
+		}
+	}
+	patterns := [4]string{
+		prefix, suffix, like, equal,
+	}
+	for i := range patterns {
+		idx := &IndexesInfo{
+			ConstName: fieldLabel + fieldInfo.Field + patterns[i],
+			Label:     uppercaseExtraction(fieldInfo.Field, dupMap),
+			Method:    "Add",
+		}
+		if fieldInfo.FieldType != typeString {
+			idx.Use = isUseIndexer(filters, "e", equal)
+			idx.Method += "Something"
+			fieldInfo.Indexes = append(fieldInfo.Indexes, idx)
+			idx.Comment = fmt.Sprintf("perfect-match of %s", fieldInfo.Field)
+			continue
+		}
+		switch patterns[i] {
+		case prefix:
+			idx.Use = isUseIndexer(filters, "p", prefix)
+			idx.Method += prefix
+			idx.Comment = fmt.Sprintf("prefix-match of %s", fieldInfo.Field)
+		case suffix:
+			idx.Use = isUseIndexer(filters, "s", suffix)
+			idx.Method += suffix
+			idx.Comment = fmt.Sprintf("suffix-match of %s", fieldInfo.Field)
+		case like:
+			idx.Use = isUseIndexer(filters, "l", like)
+			idx.Method += biunigrams
+			idx.Comment = fmt.Sprintf("like-match of %s", fieldInfo.Field)
+		case equal:
+			idx.Use = isUseIndexer(filters, "e", equal)
+			idx.Comment = fmt.Sprintf("perfect-match of %s", fieldInfo.Field)
+		}
+		fieldInfo.Indexes = append(fieldInfo.Indexes, idx)
+	}
+	sort.Slice(fieldInfo.Indexes, func(i, j int) bool {
+		return fieldInfo.Indexes[i].Method < fieldInfo.Indexes[j].Method
+	})
 	return fieldInfo, nil
 }
 

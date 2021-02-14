@@ -9,11 +9,16 @@ import (
 {{- end }}
 
 	"cloud.google.com/go/firestore"
+{{- if .EnableIndexes }}
+	"github.com/go-utils/xim"
+{{- end }}
 	"golang.org/x/xerrors"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+{{- $bracketsStart := "{" }}
+{{- $bracketsEnd := "}" }}
 {{ $generate := "go:generate" }}
 //{{ $generate }} mockgen -source {{ .GeneratedFileName }}.go -destination mock/mock_{{ .GeneratedFileName }}/mock_{{ .GeneratedFileName }}.go
 
@@ -166,6 +171,34 @@ func (repo *{{ .RepositoryStructName }}) GetCollectionName() string {
 func (repo *{{ .RepositoryStructName }}) GetDocRef({{ .KeyValueName }} string) *firestore.DocumentRef {
 	return repo.GetCollection().Doc({{ .KeyValueName }})
 }
+{{- if .EnableIndexes }}
+
+func (repo *{{ .RepositoryStructName }}) saveIndexes(subject *{{ .StructName }}) error {
+	idx := xim.NewIndexes(&xim.Config{
+		IgnoreCase:         true,
+		SaveNoFiltersIndex: true,
+	})
+	{{ $bracketsStart}}
+{{- range $fi := .FieldInfos }}
+{{- 	range $index := $fi.Indexes }}
+{{- 		if eq $index.Use true }}
+		idx.{{ if HasSuffix $index.Method "fix" }}{{ PluralForm $index.Method }}{{ else }}{{ $index.Method }}{{ end }}({{ $index.ConstName }}, subject.{{ $fi.Field }})
+{{- 		end }}
+{{- 	end }}
+{{- end }}
+	{{ $bracketsEnd}}
+	indexes, err := idx.Build()
+	if err != nil {
+		return xerrors.Errorf("failed to index build: %w", err)
+	} else if len(indexes) == 0 {
+		return nil
+	}
+
+	subject.Indexes = indexes
+
+	return nil
+}
+{{- end }}
 {{ $MetaName := .OmitMetaName }}
 // {{ .StructName }}ListReq List取得時に渡すリクエスト
 // └─ bool/int(64)|float64 は stringの独自型で渡す(BoolCriteria | NumericCriteria)
@@ -222,6 +255,11 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertFunc }} {
 	if err := repo.beforeInsert(ctx, subject); err != nil {
 		return "", xerrors.Errorf("before insert error: %w", err)
 	}
+{{ if eq .EnableIndexes true}}
+	if err := repo.saveIndexes(subject); err != nil {
+		return "", xerrors.Errorf("failed to saveIndexes: %w", err)
+	}
+{{ end }}
 	return repo.insert(ctx, subject)
 }
 
@@ -240,7 +278,11 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateFunc }} {
 	if err = repo.beforeUpdate(ctx, old, subject); err != nil {
 		return xerrors.Errorf("before update error: %w", err)
 	}
-
+{{ if eq .EnableIndexes true}}
+	if err := repo.saveIndexes(subject); err != nil {
+		return xerrors.Errorf("failed to saveIndexes: %w", err)
+	}
+{{ end }}
 	return repo.update(ctx, subject)
 }
 
@@ -319,6 +361,11 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiFunc }} {
 				return nil, xerrors.Errorf("already exists [%v]: %#v", subject.{{ .KeyFieldName }}, s)
 			}
 		}
+{{ if eq .EnableIndexes true}}
+		if err := repo.saveIndexes(subjects[i]); err != nil {
+			return nil, xerrors.Errorf("failed to saveIndexes: %w", err)
+		}
+{{ end }}
 		batch.Set(ref, subject)
 		{{ PluralForm .KeyValueName }} = append({{ PluralForm .KeyValueName }}, ref.ID)
 		i++
@@ -362,7 +409,11 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiFunc }} {
 		if err = repo.beforeUpdate(ctx, old, subject); err != nil {
 			return xerrors.Errorf("before update error: %w", err)
 		}
-
+{{ if eq .EnableIndexes true}}
+		if err := repo.saveIndexes(subjects[i]); err != nil {
+			return xerrors.Errorf("failed to saveIndexes: %w", err)
+		}
+{{ end }}
 		batch.Set(ref, subject)
 		i++
 		if (i%500) == 0 && len(subjects) != i {
@@ -465,6 +516,11 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertWithTxFunc }} {
 		return "", ErrAlreadyExists
 	}
 {{ end }}
+{{ if eq .EnableIndexes true}}
+	if err := repo.saveIndexes(subject); err != nil {
+		return "", xerrors.Errorf("failed to saveIndexes: %w", err)
+	}
+{{ end }}
 	return repo.insert(tx, subject)
 }
 
@@ -483,7 +539,11 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateWithTxFunc }} {
 	if err = repo.beforeUpdate(ctx, old, subject); err != nil {
 		return xerrors.Errorf("before update error: %w", err)
 	}
-
+{{ if eq .EnableIndexes true}}
+	if err := repo.saveIndexes(subject); err != nil {
+		return xerrors.Errorf("failed to saveIndexes: %w", err)
+	}
+{{ end }}
 	return repo.update(tx, subject)
 }
 
@@ -553,6 +613,11 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiWithTxFunc }} {
 		if err := repo.beforeInsert(ctx, subjects[i]); err != nil {
 			return nil, xerrors.Errorf("before insert error(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
+{{ if eq .EnableIndexes true}}
+		if err := repo.saveIndexes(subjects[i]); err != nil {
+			return nil, xerrors.Errorf("failed to saveIndexes: %w", err)
+		}
+{{ end }}
 		{{ .KeyValueName }}, err := repo.insert(tx, subjects[i])
 		if err != nil {
 			return nil, xerrors.Errorf("error in insert method(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
@@ -581,6 +646,11 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiWithTxFunc }} {
 	}
 
 	for i := range subjects {
+{{- if eq .EnableIndexes true}}
+		if err := repo.saveIndexes(subjects[i]); err != nil {
+			return xerrors.Errorf("failed to saveIndexes: %w", err)
+		}
+{{- end }}
 		if err := repo.update(tx, subjects[i]); err != nil {
 			return xerrors.Errorf("error in update method(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
@@ -913,18 +983,26 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 
 	if q == nil {
 		ref := repo.GetCollection()
+{{- if .EnableIndexes }}
+
+		filters := xim.NewFilters(&xim.Config{
+			IgnoreCase:         true,
+			SaveNoFiltersIndex: true,
+		})
+{{- end }}
 {{ $Meta := .MetaFields }}
+{{- $EnableIndexes := .EnableIndexes }}
 {{- $RepositoryStructName := .RepositoryStructName }}
 {{- range $fi := .FieldInfos }}
-{{- if eq $MetaName $fi.Field }}
-{{- 	range $key, $value := $Meta }}
+{{- 	if eq $MetaName $fi.Field }}
+{{- 		range $key, $value := $Meta }}
 		if req.{{ $key }} != nil {
 			for _, chain := range req.{{ $key }}.QueryGroup {
 				ref.Query = ref.Query.Where({{ $RepositoryStructName }}Meta["{{ $key }}"], chain.Operator, chain.Value)
 			}
 		}
-{{- 	end }}
-{{- else }}
+{{- 		end }}
+{{- 	else }}
 {{- 	$IsSlice := HasSlice $fi.FieldType }}
 {{- 	$IsMap := HasMap $fi.FieldType }}
 		if req.{{ $fi.Field }} != nil {
@@ -935,7 +1013,7 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 					continue
 				}
 				for key, value := range items {
-					ref.Query = ref.Query.Where("{{ $fi.FsTag }}."+key, chain.Operator, value)
+					ref.Query = ref.Query.WherePath(firestore.FieldPath{{ $bracketsStart }}"{{ $fi.FsTag }}", key{{ $bracketsEnd }}, chain.Operator, value)
 				}
 			}
 {{- 		else if eq $IsSlice true }}
@@ -946,6 +1024,40 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
 				ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
 			}
+{{- 			if and (eq $EnableIndexes true ) (ne ( len $fi.Indexes ) 0) }}
+			value, ok := req.{{ $fi.Field }}.Filter.Value.(string)
+{{- 				$indexerInfo := IndexerInfo $fi }}
+{{- 				if ne $indexerInfo "" }}
+			{{ print $indexerInfo }}
+{{- 				end }}
+			for _, filter := range req.{{ $fi.Field }}.Filter.FilterTypes {
+				switch filter {
+{{- 				$EqualLabel := "" }}
+{{- 				range $filters := $fi.Indexes }}
+{{- 					if eq (HasSuffix $filters.ConstName "Equal") true }}
+							{{- $EqualLabel = $filters.ConstName }}
+{{- 					end }}
+{{- 					if and (ne $filters.Method "AddSomething" ) (eq $filters.Use true) }}
+{{- 						if ne $filters.Method "Add" }}
+				case {{ if eq $filters.Method "AddPrefix" }}FilterTypeAddPrefix{{ else if eq $filters.Method "AddSuffix" }}FilterTypeAddSuffix{{ else if eq $filters.Method "AddBiunigrams" }}FilterTypeAddBiunigrams{{ end }}:
+					if ok {
+						filters.{{ $filters.Method }}({{ $filters.ConstName }}, value)
+					}
+{{- 						end }}
+{{- 					end }}
+{{- 				end }}
+				// Treat `Add` or otherwise as `Equal`.
+				case FilterTypeAdd:
+					fallthrough
+				default:
+					if !ok {
+						filters.AddSomething({{ $EqualLabel }}, req.{{ $fi.Field }}.Filter.Value)
+						continue
+					}
+					filters.Add({{ $EqualLabel }}, value)
+				}
+			}
+{{- 			end }}
 {{- 		end }}
 		}
 {{- 	end }}
@@ -957,7 +1069,16 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 			ref.Query = ref.Query.Where("DeletedAt", OpTypeEqual, nil)
 		}
 {{- end }}
+{{- if .EnableIndexes }}
 
+		build, err := filters.Build()
+		if err != nil {
+			return nil, xerrors.Errorf("failed to filter build: %w", err)
+		}
+		for key := range build {
+			ref.Query = ref.Query.WherePath(firestore.FieldPath{{ $bracketsStart }}"{{ .FieldInfoForIndexes.FsTag }}", key{{ $bracketsEnd}}, OpTypeEqual, true)
+		}
+{{ end }}
 		query = ref.Query
 	}
 

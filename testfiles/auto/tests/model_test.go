@@ -683,6 +683,125 @@ func TestFirestoreQuery(t *testing.T) {
 			}
 		})
 	})
+
+	t.Run("Indexes", func(tr *testing.T) {
+		tr.Run("Equal", func(ttr *testing.T) {
+			req := &model.TaskListReq{
+				Desc: model.NewQueryChainer().Filters("Hello, World!1"),
+			}
+
+			tasks, err := taskRepo.List(ctx, req, nil)
+			if err != nil {
+				ttr.Fatalf("%+v", err)
+			}
+
+			if len(tasks) != 1 {
+				ttr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 1)
+			}
+		})
+		tr.Run("Prefix", func(ttr *testing.T) {
+			chainer := model.NewQueryChainer
+			req := &model.TaskListReq{
+				Desc: chainer().Filters("Hel", model.FilterTypeAddPrefix),
+				Done: chainer().Equal(true),
+			}
+
+			tasks, err := taskRepo.List(ctx, req, nil)
+			if err != nil {
+				ttr.Fatalf("%+v", err)
+			}
+
+			if len(tasks) != 10 {
+				ttr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 10)
+			}
+		})
+		tr.Run("Suffix", func(ttr *testing.T) {
+			req := &model.TaskListReq{
+				Desc: model.NewQueryChainer().Filters("10", model.FilterTypeAddSuffix),
+			}
+
+			tasks, err := taskRepo.List(ctx, req, nil)
+			if err != nil {
+				ttr.Fatalf("%+v", err)
+			}
+
+			if len(tasks) != 1 {
+				ttr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 1)
+			}
+		})
+		tr.Run("Biunigrams", func(ttr *testing.T) {
+			ttr.Run("1", func(ttrr *testing.T) {
+				req := &model.TaskListReq{
+					Desc: model.NewQueryChainer().Filters("o, Wor", model.FilterTypeAddBiunigrams),
+				}
+
+				tasks, err := taskRepo.List(ctx, req, nil)
+				if err != nil {
+					ttrr.Fatalf("%+v", err)
+				}
+
+				if len(tasks) != 10 {
+					ttrr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 10)
+				}
+			})
+			ttr.Run("2", func(ttrr *testing.T) {
+				req := &model.TaskListReq{
+					Desc: model.NewQueryChainer().Filters("!1", model.FilterTypeAddBiunigrams),
+				}
+
+				tasks, err := taskRepo.List(ctx, req, nil)
+				if err != nil {
+					ttr.Fatalf("%+v", err)
+				}
+
+				if len(tasks) != 2 {
+					ttr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 2)
+				}
+			})
+			ttr.Run("3", func(ttrr *testing.T) {
+				req := &model.TaskListReq{
+					Desc: model.NewQueryChainer().Filters("Hello, W", model.FilterTypeAddBiunigrams),
+				}
+
+				tasks, err := taskRepo.List(ctx, req, nil)
+				if err != nil {
+					ttr.Fatalf("%+v", err)
+				}
+
+				if len(tasks) != 10 {
+					ttr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 10)
+				}
+			})
+			ttr.Run("NG", func(ttrr *testing.T) {
+				req := &model.TaskListReq{
+					Desc: model.NewQueryChainer().Filters("Hello,W", model.FilterTypeAddBiunigrams),
+				}
+
+				tasks, err := taskRepo.List(ctx, req, nil)
+				if err != nil {
+					ttr.Fatalf("%+v", err)
+				}
+
+				if len(tasks) != 0 {
+					ttr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 0)
+				}
+			})
+		})
+		tr.Run("Something", func(ttr *testing.T) {
+			req := &model.TaskListReq{
+				Proportion: model.NewQueryChainer().Filters(10.12345, model.FilterTypeAddSomething),
+			}
+
+			tasks, err := taskRepo.List(ctx, req, nil)
+			if err != nil {
+				ttr.Fatalf("%+v", err)
+			}
+
+			if len(tasks) != 1 {
+				ttr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 1)
+			}
+		})
+	})
 }
 
 func TestFirestoreError(t *testing.T) {
@@ -1236,6 +1355,10 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 
 		flag := map[string]float64{"test": 123.456}
 		hello := fmt.Sprintf("%s world", text)
+
+		t := time.NewTicker(1 * time.Millisecond)
+		defer t.Stop()
+		<-t.C
 
 		updateParam := &model.LockUpdateParam{
 			Text:      hello,

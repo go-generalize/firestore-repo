@@ -4,9 +4,8 @@ package {{ .PackageName }}
 
 const (
 {{- range $fi := .FieldInfos }}
-{{- range $idx := $fi.Indexes }}
-	// {{ $idx.Comment }}検索用ラベル
-	{{ $idx.ConstName }} = "{{ $idx.Label }}"
-{{- end }}
+{{- 	range $idx := $fi.Indexes }}
+	{{ $idx.ConstName }}{{ $idx.Space1 }} = "{{ $idx.Label }}"{{ $idx.Space2 }} // {{ $idx.Comment }}
+{{- 	end }}
 {{- end }}
 )

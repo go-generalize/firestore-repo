@@ -5,4 +5,7 @@ statik/
 # etc
 .idea/
 .DS_Store
-
+firebase.json
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
