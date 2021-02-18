@@ -17,9 +17,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-{{- if ne .ModelImportPath ""}}
+{{- if ne .ModelImportPath "" }}
 	model "{{.ModelImportPath}}"
-{{- end}}
+{{- end }}
 )
 {{- $bracketsStart := "{" }}
 {{- $bracketsEnd := "}" }}
