@@ -136,9 +136,15 @@ func (g *generator) insertSpaceForLabel() {
 func (g *generator) generate(writer io.Writer) {
 	g.setting()
 	funcMap := g.setFuncMap()
-	contents := getFileContents("gen")
 
-	t := template.Must(template.New("Template").Funcs(funcMap).Parse(contents))
+	t := template.Must(
+		template.New("Template").
+			Funcs(funcMap).
+			ParseFS(
+				generateCodeTemplate,
+				"templates/gen.go.tmpl",
+			),
+	)
 
 	if err := t.Execute(writer, g); err != nil {
 		log.Printf("failed to execute template: %+v", err)
@@ -147,9 +153,13 @@ func (g *generator) generate(writer io.Writer) {
 
 func (g *generator) generateLabel(writer io.Writer) {
 	g.insertSpaceForLabel()
-	contents := getFileContents("label")
 
-	t := template.Must(template.New("TemplateLabel").Parse(contents))
+	t := template.Must(
+		template.ParseFS(
+			generateCodeTemplate,
+			"templates/label.go.tmpl",
+		),
+	)
 
 	if err := t.Execute(writer, g); err != nil {
 		log.Printf("failed to execute template: %+v", err)
@@ -157,9 +167,12 @@ func (g *generator) generateLabel(writer io.Writer) {
 }
 
 func (g *generator) generateConstant(writer io.Writer) {
-	contents := getFileContents("constant")
-
-	t := template.Must(template.New("TemplateConstant").Parse(contents))
+	t := template.Must(
+		template.ParseFS(
+			generateCodeTemplate,
+			"templates/constant.go.tmpl",
+		),
+	)
 
 	if err := t.Execute(writer, g); err != nil {
 		log.Printf("failed to execute template: %+v", err)
@@ -167,9 +180,12 @@ func (g *generator) generateConstant(writer io.Writer) {
 }
 
 func (g *generator) generateMisc(writer io.Writer) {
-	contents := getFileContents("misc")
-
-	t := template.Must(template.New("TemplateMisc").Parse(contents))
+	t := template.Must(
+		template.ParseFS(
+			generateCodeTemplate,
+			"templates/misc.go.tmpl",
+		),
+	)
 
 	if err := t.Execute(writer, g); err != nil {
 		log.Printf("failed to execute template: %+v", err)
@@ -177,9 +193,12 @@ func (g *generator) generateMisc(writer io.Writer) {
 }
 
 func (g *generator) generateQueryBuilder(writer io.Writer) {
-	contents := getFileContents("query_builder")
-
-	t := template.Must(template.New("TemplateQueryBuilder").Parse(contents))
+	t := template.Must(
+		template.ParseFS(
+			generateCodeTemplate,
+			"templates/query_builder.go.tmpl",
+		),
+	)
 
 	if err := t.Execute(writer, g); err != nil {
 		log.Printf("failed to execute template: %+v", err)
@@ -187,9 +206,12 @@ func (g *generator) generateQueryBuilder(writer io.Writer) {
 }
 
 func (g *generator) generateQueryChainer(writer io.Writer) {
-	contents := getFileContents("query_chainer")
-
-	t := template.Must(template.New("TemplateQueryChainer").Parse(contents))
+	t := template.Must(
+		template.ParseFS(
+			generateCodeTemplate,
+			"templates/query_chainer.go.tmpl",
+		),
+	)
 
 	if err := t.Execute(writer, g); err != nil {
 		log.Printf("failed to execute template: %+v", err)
@@ -197,9 +219,12 @@ func (g *generator) generateQueryChainer(writer io.Writer) {
 }
 
 func (g *generator) generateUnique(writer io.Writer) {
-	contents := getFileContents("unique")
-
-	t := template.Must(template.New("TemplateUnique").Parse(contents))
+	t := template.Must(
+		template.ParseFS(
+			generateCodeTemplate,
+			"templates/unique.go.tmpl",
+		),
+	)
 
 	if err := t.Execute(writer, g); err != nil {
 		log.Printf("failed to execute template: %+v", err)
