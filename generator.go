@@ -5,31 +5,18 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"strings"
 	"text/template"
 
-	_ "github.com/go-generalize/firestore-repo/statik"
 	"github.com/go-utils/cont"
 	"github.com/go-utils/plural"
 	"github.com/iancoleman/strcase"
-	"github.com/rakyll/statik/fs"
 )
 
 var (
 	//go:embed templates/*
 	generateCodeTemplate embed.FS
 )
-
-var statikFS http.FileSystem
-
-func init() {
-	var err error
-	statikFS, err = fs.New()
-	if err != nil {
-		log.Fatal(err)
-	}
-}
 
 type IndexesInfo struct {
 	Comment   string
