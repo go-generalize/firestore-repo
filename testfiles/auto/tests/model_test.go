@@ -1253,6 +1253,5 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 		if ret.Version != 2 {
 			tr.Fatalf("unexpected Version: %d (expected: %d)", ret.Version, 2)
 		}
-
 	})
 }
