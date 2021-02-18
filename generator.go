@@ -124,6 +124,18 @@ func (g *generator) generate(writer io.Writer) {
 	g.setting()
 	funcMap := g.setFuncMap()
 
+	buf, err := generateCodeTemplate.ReadFile("templates/gen.go.tmpl")
+	if err != nil {
+		log.Fatalf("error in fs.ReadFile method: %+v", err)
+	}
+
+	t := template.Must(
+		template.New("Template").
+			Funcs(funcMap).
+			Parse(string(buf)),
+	)
+
+	/* TODO(54m): use when `go1.16` is modified
 	t := template.Must(
 		template.New("Template").
 			Funcs(funcMap).
@@ -131,7 +143,7 @@ func (g *generator) generate(writer io.Writer) {
 				generateCodeTemplate,
 				"templates/gen.go.tmpl",
 			),
-	)
+	)*/
 
 	if err := t.Execute(writer, g); err != nil {
 		log.Printf("failed to execute template: %+v", err)
