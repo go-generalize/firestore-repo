@@ -1333,7 +1333,7 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 	}()
 
 	if q == nil {
-{{ if .EnableIndexes }}
+{{- if .EnableIndexes }}
 		filters := xim.NewFilters(&xim.Config{
 			IgnoreCase:         true,
 			SaveNoFiltersIndex: true,
@@ -1411,14 +1411,14 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 		}
 {{- 	end }}
 {{- end }}
-
 {{- if .MetaFields }}
 {{ $metaPath := (index .MetaFields "DeletedAt").ParentPath }}
 		if !req.IncludeSoftDeleted {
 			query = query.Where("DeletedAt", OpTypeEqual, nil)
 		}
 {{- end }}
-{{ if .EnableIndexes }}
+{{- if .EnableIndexes }}
+
 		build, err := filters.Build()
 		if err != nil {
 			return nil, xerrors.Errorf("failed to filter build: %w", err)
@@ -1426,7 +1426,7 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 		for key := range build {
 			query = query.WherePath(firestore.FieldPath{{ $bracketsStart }}"{{ .FieldInfoForIndexes.FsTag }}", key{{ $bracketsEnd}}, OpTypeEqual, true)
 		}
-{{ end }}
+{{- end }}
 	}
 
 	return repo.runQuery(v, query)
