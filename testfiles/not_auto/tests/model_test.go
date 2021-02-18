@@ -176,9 +176,9 @@ func TestFirestore(t *testing.T) {
 				{IsSubCollection: true},
 				{IsSubCollection: false},
 			}
-			stsIDs, err := subRepo.InsertMulti(ctx, sts)
-			if err != nil {
-				tr.Fatalf("%+v", err)
+			stsIDs, er := subRepo.InsertMulti(ctx, sts)
+			if er != nil {
+				tr.Fatalf("%+v", er)
 			}
 			ids2 = append(ids2, stsIDs...)
 
@@ -205,18 +205,18 @@ func TestFirestore(t *testing.T) {
 
 			tr.Run("Reference", func(tr2 *testing.T) {
 				tk.Sub = subRepo.GetDocRef(sts[1].ID)
-				if err := taskRepo.Update(ctx, tk); err != nil {
+				if err = taskRepo.Update(ctx, tk); err != nil {
 					tr2.Fatalf("%+v", err)
 				}
 
-				tkr, err := taskRepo.Get(ctx, doc.ID)
-				if err != nil {
-					tr2.Fatalf("%+v", err)
+				tkr, er := taskRepo.Get(ctx, doc.ID)
+				if er != nil {
+					tr2.Fatalf("%+v", er)
 				}
 
-				sub, err := subRepo.GetWithDoc(ctx, tkr.Sub)
-				if err != nil {
-					tr2.Fatalf("%+v", err)
+				sub, er := subRepo.GetWithDoc(ctx, tkr.Sub)
+				if er != nil {
+					tr2.Fatalf("%+v", er)
 				}
 
 				if sub.ID != sts[1].ID {
@@ -224,9 +224,9 @@ func TestFirestore(t *testing.T) {
 				}
 
 				taskListReq := &model.TaskListReq{Sub: model.NewQueryChainer().Equal(tk.Sub)}
-				tks, err := taskRepo.List(ctx, taskListReq, nil)
-				if err != nil {
-					tr2.Fatalf("%+v", err)
+				tks, er := taskRepo.List(ctx, taskListReq, nil)
+				if er != nil {
+					tr2.Fatalf("%+v", er)
 				}
 				if len(tks) != 1 {
 					tr2.Fatal("not match")
@@ -235,7 +235,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		tk.Count++
-		if err := taskRepo.Update(ctx, tk); err != nil {
+		if err = taskRepo.Update(ctx, tk); err != nil {
 			tr.Fatalf("%+v", err)
 		}
 
@@ -941,13 +941,13 @@ func TestFirestoreError(t *testing.T) {
 		}
 
 		if err = client.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
-			id, err := taskRepo.InsertWithTx(cx, tx, new(model.Task))
-			if err != nil {
-				return err
+			id, er := taskRepo.InsertWithTx(cx, tx, new(model.Task))
+			if er != nil {
+				return er
 			}
 
-			if _, err = taskRepo.GetWithTx(tx, id); err != nil {
-				return err
+			if _, er = taskRepo.GetWithTx(tx, id); er != nil {
+				return er
 			}
 			return nil
 		}); err != nil && xerrors.Is(xerrors.Unwrap(err), errReadAfterWrite) {

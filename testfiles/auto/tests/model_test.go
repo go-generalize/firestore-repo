@@ -155,7 +155,7 @@ func TestFirestore(t *testing.T) {
 
 		tk.Count++
 		tk.Flag["4"] = 4.4
-		if err := taskRepo.Update(ctx, tk); err != nil {
+		if err = taskRepo.Update(ctx, tk); err != nil {
 			tr.Fatalf("%+v", err)
 		}
 
@@ -883,9 +883,9 @@ func TestFirestoreError(t *testing.T) {
 		}
 
 		if err = client.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
-			id, err := taskRepo.InsertWithTx(cx, tx, new(model.Task))
-			if err != nil {
-				return err
+			id, er := taskRepo.InsertWithTx(cx, tx, new(model.Task))
+			if er != nil {
+				return er
 			}
 
 			if _, err = taskRepo.GetWithTx(tx, id); err != nil {
