@@ -13,10 +13,8 @@ import (
 	"github.com/iancoleman/strcase"
 )
 
-var (
-	//go:embed templates/*
-	generateCodeTemplate embed.FS
-)
+//go:embed templates/*
+var generateCodeTemplate embed.FS
 
 type IndexesInfo struct {
 	Comment   string
