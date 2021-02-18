@@ -16,6 +16,8 @@ import (
 	"golang.org/x/xerrors"
 )
 
+var desc = "Hello, World!"
+
 func initFirestoreClient(t *testing.T) *firestore.Client {
 	t.Helper()
 
@@ -74,7 +76,6 @@ func TestFirestore(t *testing.T) {
 	}()
 
 	now := time.Unix(0, time.Now().UnixNano()).UTC()
-	desc := "Hello, World!"
 
 	t.Run("Multi", func(tr *testing.T) {
 		tks := make([]*model.Task, 0)
@@ -235,7 +236,6 @@ func TestFirestoreTransaction_Single(t *testing.T) {
 	}()
 
 	now := time.Unix(0, time.Now().UnixNano())
-	desc := "Hello, World!"
 
 	t.Run("Insert", func(tr *testing.T) {
 		err := client.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
@@ -388,7 +388,6 @@ func TestFirestoreTransaction_Multi(t *testing.T) {
 	}()
 
 	now := time.Unix(0, time.Now().UnixNano())
-	desc := "Hello, World!"
 
 	tks := make([]*model.Task, 0)
 	t.Run("InsertMulti", func(tr *testing.T) {
@@ -476,7 +475,6 @@ func TestFirestoreQuery(t *testing.T) {
 	}()
 
 	now := time.Unix(0, time.Now().UnixNano())
-	desc := "Hello, World!"
 
 	tks := make([]*model.Task, 0)
 	for i := 1; i <= 10; i++ {
@@ -821,7 +819,6 @@ func TestFirestoreError(t *testing.T) {
 	}()
 
 	now := time.Unix(0, time.Now().UnixNano())
-	desc := "Hello, World!"
 
 	t.Run("Prepare", func(tr *testing.T) {
 		tk := &model.Task{
@@ -907,7 +904,6 @@ func TestFirestoreOfTaskRepo(t *testing.T) {
 	defer cancel()
 
 	now := time.Unix(time.Now().Unix(), 0)
-	desc := "hello"
 
 	id, err := taskRepo.Insert(ctx, &model.Task{
 		Desc:    desc,

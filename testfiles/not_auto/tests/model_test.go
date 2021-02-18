@@ -16,6 +16,8 @@ import (
 	"google.golang.org/genproto/googleapis/type/latlng"
 )
 
+var desc = "Hello, World!"
+
 func initFirestoreClient(t *testing.T) *firestore.Client {
 	t.Helper()
 
@@ -87,7 +89,6 @@ func TestFirestore(t *testing.T) {
 	ctx = context.WithValue(ctx, model.UniqueMiddlewareKey{}, newUniqueError())
 
 	now := time.Unix(0, time.Now().UnixNano()).UTC()
-	desc := "Hello, World!"
 
 	t.Run("Multi", func(tr *testing.T) {
 		tks := make([]*model.Task, 0)
@@ -331,7 +332,6 @@ func TestFirestoreTransaction_Single(t *testing.T) {
 	}()
 
 	now := time.Unix(0, time.Now().UnixNano())
-	desc := "Hello, World!"
 	latLng := &latlng.LatLng{
 		Latitude:  35.678803,
 		Longitude: 139.756263,
@@ -511,7 +511,6 @@ func TestFirestoreTransaction_Multi(t *testing.T) {
 	}()
 
 	now := time.Unix(0, time.Now().UnixNano())
-	desc := "Hello, World!"
 	latLng := &latlng.LatLng{
 		Latitude:  35.678803,
 		Longitude: 139.756263,
@@ -627,7 +626,6 @@ func TestFirestoreQuery(t *testing.T) {
 	}()
 
 	now := time.Unix(0, time.Now().UnixNano())
-	desc := "Hello, World!"
 	latLng := &latlng.LatLng{
 		Latitude:  35.678803,
 		Longitude: 139.756263,
@@ -882,7 +880,6 @@ func TestFirestoreError(t *testing.T) {
 	}()
 
 	now := time.Unix(0, time.Now().UnixNano())
-	desc := "Hello, World!"
 
 	t.Run("Prepare", func(tr *testing.T) {
 		tk := &model.Task{
