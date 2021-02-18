@@ -192,6 +192,11 @@ func (repo *{{ .RepositoryStructName }}) beforeDelete(ctx context.Context, subje
 
 // GetCollection *firestore.CollectionRef getter
 func (repo *{{ .RepositoryStructName }}) GetCollection() *firestore.CollectionRef {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return nil
+	}
+{{- end }}
 	return repo.{{ if eq .IsSubCollection true }}parentDocument{{ else }}firestoreClient{{ end }}.Collection(repo.collectionName)
 }
 
@@ -202,6 +207,11 @@ func (repo *{{ .RepositoryStructName }}) GetCollectionName() string {
 
 // GetDocRef *firestore.DocumentRef getter
 func (repo *{{ .RepositoryStructName }}) GetDocRef({{ .KeyValueName }} string) *firestore.DocumentRef {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return nil
+	}
+{{- end }}
 	return repo.GetCollection().Doc({{ .KeyValueName }})
 }
 {{ if .EnableIndexes }}
