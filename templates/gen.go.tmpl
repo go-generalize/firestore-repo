@@ -166,6 +166,7 @@ func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, 
 			continue
 		}
 	}
+
 	return rb, nil
 }
 
@@ -188,6 +189,7 @@ func (repo *{{ .RepositoryStructName }}) beforeDelete(ctx context.Context, subje
 			continue
 		}
 	}
+
 	return rb, nil
 }
 
