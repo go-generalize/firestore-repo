@@ -1324,11 +1324,15 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 		if q != nil {
 			return *q
 		}
-		return firestore.Query{}
+{{- if eq .IsSubCollection true }}
+		if repo.collectionGroup != nil {
+			return repo.collectionGroup.Query
+		}
+{{- end }}
+		return repo.GetCollection().Query
 	}()
 
 	if q == nil {
-		ref := repo.GetCollection()
 {{ if .EnableIndexes }}
 		filters := xim.NewFilters(&xim.Config{
 			IgnoreCase:         true,
@@ -1343,7 +1347,7 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 {{- 		range $key, $value := $Meta }}
 		if req.{{ $key }} != nil {
 			for _, chain := range req.{{ $key }}.QueryGroup {
-				ref.Query = ref.Query.Where({{ $RepositoryStructName }}Meta["{{ $key }}"], chain.Operator, chain.Value)
+				query = query.Where({{ $RepositoryStructName }}Meta["{{ $key }}"], chain.Operator, chain.Value)
 			}
 		}
 {{- 		end }}
@@ -1358,16 +1362,16 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 					continue
 				}
 				for key, value := range items {
-					ref.Query = ref.Query.WherePath(firestore.FieldPath{{ $bracketsStart }}"{{ $fi.FsTag }}", key{{ $bracketsEnd }}, chain.Operator, value)
+					query = query.WherePath(firestore.FieldPath{{ $bracketsStart }}"{{ $fi.FsTag }}", key{{ $bracketsEnd }}, chain.Operator, value)
 				}
 			}
 {{- 		else if eq $IsSlice true }}
 			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
-				ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
+				query = query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
 			}
 {{- 		else }}
 			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
-				ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
+				query = query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
 			}
 {{- 			if and (eq $EnableIndexes true ) (ne ( len $fi.Indexes ) 0) }}
 			value, ok := req.{{ $fi.Field }}.Filter.Value.(string)
@@ -1411,7 +1415,7 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 {{- if .MetaFields }}
 {{ $metaPath := (index .MetaFields "DeletedAt").ParentPath }}
 		if !req.IncludeSoftDeleted {
-			ref.Query = ref.Query.Where("DeletedAt", OpTypeEqual, nil)
+			query = query.Where("DeletedAt", OpTypeEqual, nil)
 		}
 {{- end }}
 {{ if .EnableIndexes }}
@@ -1420,10 +1424,9 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 			return nil, xerrors.Errorf("failed to filter build: %w", err)
 		}
 		for key := range build {
-			ref.Query = ref.Query.WherePath(firestore.FieldPath{{ $bracketsStart }}"{{ .FieldInfoForIndexes.FsTag }}", key{{ $bracketsEnd}}, OpTypeEqual, true)
+			query = query.WherePath(firestore.FieldPath{{ $bracketsStart }}"{{ .FieldInfoForIndexes.FsTag }}", key{{ $bracketsEnd}}, OpTypeEqual, true)
 		}
 {{ end }}
-		query = ref.Query
 	}
 
 	return repo.runQuery(v, query)
