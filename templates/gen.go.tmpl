@@ -71,8 +71,11 @@ type {{ $middlewareName }} interface {
 
 type {{ .RepositoryStructName }} struct {
 	collectionName   string
-	firestoreClient  *firestore.Client{{ if eq .IsSubCollection true }}
-	parentDocument   *firestore.DocumentRef{{ end }}
+	firestoreClient  *firestore.Client
+{{- if eq .IsSubCollection true }}
+	parentDocument   *firestore.DocumentRef
+	collectionGroup  *firestore.CollectionGroupRef
+{{- end }}
 	middleware       []{{ $middlewareName }}
 	uniqueRepository *uniqueRepository
 }
