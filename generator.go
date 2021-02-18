@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"io"
 	"log"
@@ -13,6 +14,23 @@ import (
 	"github.com/go-utils/plural"
 	"github.com/iancoleman/strcase"
 	"github.com/rakyll/statik/fs"
+)
+
+var (
+	//go:embed templates/gen.go.tmpl
+	generateCodeTemplate embed.FS
+	//go:embed templates/label.go.tmpl
+	labelTemplate embed.FS
+	//go:embed templates/constant.go.tmpl
+	constantTemplate embed.FS
+	//go:embed templates/misc.go.tmpl
+	miscTemplate embed.FS
+	//go:embed templates/query_builder.go.tmpl
+	queryBuilderTemplate embed.FS
+	//go:embed templates/query_chainer.go.tmpl
+	queryChainerTemplate embed.FS
+	//go:embed templates/unique.go.tmpl
+	uniqueTemplate embed.FS
 )
 
 var statikFS http.FileSystem
