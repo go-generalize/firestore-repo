@@ -16,6 +16,9 @@ import (
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+{{- if ne .ModelImportPath ""}}
+	model "{{.ModelImportPath}}"
+{{- end}}
 )
 {{- $bracketsStart := "{" }}
 {{- $bracketsEnd := "}" }}
@@ -63,9 +66,9 @@ type {{ .RepositoryInterfaceName }} interface {
 {{ $middlewareName := printf "%sMiddleware" .RepositoryInterfaceName }}
 // {{ $middlewareName }} middleware of {{ .RepositoryInterfaceName }}
 type {{ $middlewareName }} interface {
-	BeforeInsert(ctx context.Context, subject *{{ .StructName }}) (bool, error)
-	BeforeUpdate(ctx context.Context, old, subject *{{ .StructName }}) (bool, error)
-	BeforeDelete(ctx context.Context, subject *{{ .StructName }}, opts ...DeleteOption) (bool, error)
+	BeforeInsert(ctx context.Context, subject *{{ .StructNameRef }}) (bool, error)
+	BeforeUpdate(ctx context.Context, old, subject *{{ .StructNameRef }}) (bool, error)
+	BeforeDelete(ctx context.Context, subject *{{ .StructNameRef }}, opts ...DeleteOption) (bool, error)
 	BeforeDeleteBy{{ .KeyFieldName }}(ctx context.Context, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, opts ...DeleteOption) (bool, error)
 }
 
@@ -99,7 +102,7 @@ func New{{ .StructName }}CollectionGroupRepository(firestoreClient *firestore.Cl
 	}
 }{{ end }}
 {{ if .MetaFields }}
-func (repo *{{ .RepositoryStructName }}) setMeta(subject *{{ .StructName }}, isInsert bool) {
+func (repo *{{ .RepositoryStructName }}) setMeta(subject *{{ .StructNameRef }}, isInsert bool) {
 	now := time.Now()
 
 	if isInsert {
@@ -109,7 +112,7 @@ func (repo *{{ .RepositoryStructName }}) setMeta(subject *{{ .StructName }}, isI
 	subject.Version++
 }
 {{ end }}
-func (repo *{{ .RepositoryStructName }}) beforeInsert(ctx context.Context, subject *{{ .StructName }}) (RollbackFunc, error) {
+func (repo *{{ .RepositoryStructName }}) beforeInsert(ctx context.Context, subject *{{ .StructNameRef }}) (RollbackFunc, error) {
 {{- if .MetaFields }}
 	if subject.Version != 0 {
 		return nil, xerrors.Errorf("insert data must be Version == 0: %+v", subject)
@@ -138,7 +141,7 @@ func (repo *{{ .RepositoryStructName }}) beforeInsert(ctx context.Context, subje
 	return rb, nil
 }
 
-func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, subject *{{ .StructName }}) (RollbackFunc, error) {
+func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, subject *{{ .StructNameRef }}) (RollbackFunc, error) {
 {{- if .MetaFields }}
 	if old.Version > subject.Version {
 		return nil, xerrors.Errorf(
@@ -170,7 +173,7 @@ func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, 
 	return rb, nil
 }
 
-func (repo *{{ .RepositoryStructName }}) beforeDelete(ctx context.Context, subject *{{ .StructName }}, opts ...DeleteOption) (RollbackFunc, error) {
+func (repo *{{ .RepositoryStructName }}) beforeDelete(ctx context.Context, subject *{{ .StructNameRef }}, opts ...DeleteOption) (RollbackFunc, error) {
 {{- if .MetaFields }}
 	repo.setMeta(subject, false)
 {{- end }}
@@ -218,7 +221,7 @@ func (repo *{{ .RepositoryStructName }}) GetDocRef({{ .KeyValueName }} string) *
 	return repo.GetCollection().Doc({{ .KeyValueName }})
 }
 {{ if .EnableIndexes }}
-func (repo *{{ .RepositoryStructName }}) saveIndexes(subject *{{ .StructName }}) error {
+func (repo *{{ .RepositoryStructName }}) saveIndexes(subject *{{ .StructNameRef }}) error {
 	idx := xim.NewIndexes(&xim.Config{
 		IgnoreCase:         true,
 		SaveNoFiltersIndex: true,
@@ -551,7 +554,7 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiFunc }} {
 			return xerrors.Errorf("error in Get method [%v]: %w", subject.{{ .KeyFieldName }}, err)
 		}
 
-		old := new({{ .StructName }})
+		old := new({{ .StructNameRef }})
 		if err = snapShot.DataTo(&old); err != nil {
 			return xerrors.Errorf("error in DataTo method: %w", err)
 		}
@@ -661,7 +664,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByFunc }} {
 		return ErrNotAvailableCG
 	}
 {{- end }}
-	subjects := make([]*{{ .StructName }}, len({{ PluralForm .KeyValueName }}))
+	subjects := make([]*{{ .StructNameRef }}, len({{ PluralForm .KeyValueName }}))
 
 	opt := GetOption{}
 	if len(opts) > 0 {
@@ -1105,7 +1108,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByWithTxFunc }} {
 	return nil
 }
 
-func (repo *{{ .RepositoryStructName }}) get(v interface{}, doc *firestore.DocumentRef, {{ MetaJudgment }} ...GetOption) (*{{ .StructName }}, error) {
+func (repo *{{ .RepositoryStructName }}) get(v interface{}, doc *firestore.DocumentRef, {{ MetaJudgment }} ...GetOption) (*{{ .StructNameRef }}, error) {
 	var (
 		snapShot *firestore.DocumentSnapshot
 		err      error
@@ -1127,7 +1130,7 @@ func (repo *{{ .RepositoryStructName }}) get(v interface{}, doc *firestore.Docum
 		return nil, xerrors.Errorf("error in Get method: %w", err)
 	}
 
-	subject := new({{ .StructName }})
+	subject := new({{ .StructNameRef }})
 	if err := snapShot.DataTo(&subject); err != nil {
 		return nil, xerrors.Errorf("error in DataTo method: %w", err)
 	}
@@ -1143,7 +1146,7 @@ func (repo *{{ .RepositoryStructName }}) get(v interface{}, doc *firestore.Docum
 	return subject, nil
 }
 
-func (repo *{{ .RepositoryStructName }}) getMulti(v interface{}, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, {{ MetaJudgment }} ...GetOption) ([]*{{ .StructName }}, error) {
+func (repo *{{ .RepositoryStructName }}) getMulti(v interface{}, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, {{ MetaJudgment }} ...GetOption) ([]*{{ .StructNameRef }}, error) {
 	var (
 		snapShots []*firestore.DocumentSnapshot
 		err       error
@@ -1169,9 +1172,9 @@ func (repo *{{ .RepositoryStructName }}) getMulti(v interface{}, {{ PluralForm .
 		return nil, xerrors.Errorf("error in GetAll method: %w", err)
 	}
 
-	subjects := make([]*{{ .StructName }}, 0, len({{ PluralForm .KeyValueName }}))
+	subjects := make([]*{{ .StructNameRef }}, 0, len({{ PluralForm .KeyValueName }}))
 	for _, snapShot := range snapShots {
-		subject := new({{ .StructName }})
+		subject := new({{ .StructNameRef }})
 		if err := snapShot.DataTo(&subject); err != nil {
 			return nil, xerrors.Errorf("error in DataTo method: %w", err)
 		}
@@ -1189,7 +1192,7 @@ func (repo *{{ .RepositoryStructName }}) getMulti(v interface{}, {{ PluralForm .
 	return subjects, nil
 }
 
-func (repo *{{ .RepositoryStructName }}) insert(v interface{}, subject *{{ .StructName }}) ({{ .KeyFieldType }}, error) {
+func (repo *{{ .RepositoryStructName }}) insert(v interface{}, subject *{{ .StructNameRef }}) ({{ .KeyFieldType }}, error) {
 	var (
 {{- if .AutomaticGeneration }}
 		dr  = repo.GetCollection().NewDoc()
@@ -1222,7 +1225,7 @@ func (repo *{{ .RepositoryStructName }}) insert(v interface{}, subject *{{ .Stru
 	return dr.ID, nil
 }
 
-func (repo *{{ .RepositoryStructName }}) update(v interface{}, subject *{{ .StructName }}) error {
+func (repo *{{ .RepositoryStructName }}) update(v interface{}, subject *{{ .StructNameRef }}) error {
 	var (
 		dr  = repo.GetDocRef(subject.{{ .KeyFieldName }})
 		err error
@@ -1250,7 +1253,7 @@ func (repo *{{ .RepositoryStructName }}) strictUpdate(v interface{}, id string, 
 		err error
 	)
 
-	updates := updater({{ .StructName }}{}, param)
+	updates := updater({{ .StructNameRef }}{}, param)
 
 	switch x := v.(type) {
 	case *firestore.Transaction:
@@ -1288,7 +1291,7 @@ func (repo *{{ .RepositoryStructName }}) deleteBy{{ .KeyFieldName }}(v interface
 	return nil
 }
 
-func (repo *{{ .RepositoryStructName }}) runQuery(v interface{}, query firestore.Query) ([]*{{ .StructName }}, error) {
+func (repo *{{ .RepositoryStructName }}) runQuery(v interface{}, query firestore.Query) ([]*{{ .StructNameRef }}, error) {
 	var iter *firestore.DocumentIterator
 
 	switch x := v.(type) {
@@ -1302,7 +1305,7 @@ func (repo *{{ .RepositoryStructName }}) runQuery(v interface{}, query firestore
 
 	defer iter.Stop()
 
-	subjects := make([]*{{ .StructName }}, 0)
+	subjects := make([]*{{ .StructNameRef }}, 0)
 
 	for {
 		doc, err := iter.Next()
@@ -1313,7 +1316,7 @@ func (repo *{{ .RepositoryStructName }}) runQuery(v interface{}, query firestore
 			return nil, xerrors.Errorf("error in Next method: %w", err)
 		}
 
-		subject := new({{ .StructName }})
+		subject := new({{ .StructNameRef }})
 
 		if err := doc.DataTo(&subject); err != nil {
 			return nil, xerrors.Errorf("error in DataTo method: %w", err)
@@ -1326,9 +1329,9 @@ func (repo *{{ .RepositoryStructName }}) runQuery(v interface{}, query firestore
 	return subjects, nil
 }
 {{ if .MetaFields }}
-var {{ .RepositoryStructName }}Meta = tagMap({{ .StructName }}{})
+var {{ .RepositoryStructName }}Meta = tagMap({{ .StructNameRef }}{})
 {{ end }}
-func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName }}ListReq, q *firestore.Query) ([]*{{ .StructName }}, error) {
+func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName }}ListReq, q *firestore.Query) ([]*{{ .StructNameRef }}, error) {
 	if (req == nil && q == nil) || (req != nil && q != nil) {
 		return nil, xerrors.New("either one should be nil")
 	}

@@ -5,9 +5,12 @@ import (
 	"go/ast"
 	"io/ioutil"
 	"log"
+	"os"
+	"path/filepath"
 	"regexp"
 
 	"github.com/go-utils/cont"
+	"golang.org/x/xerrors"
 )
 
 var (
@@ -160,4 +163,20 @@ func getTypeNameDetail(typ ast.Expr) string {
 	default:
 		return ""
 	}
+}
+
+func isCurrentDirectory(path string) (bool, error) {
+	abs, err := filepath.Abs(path)
+
+	if err != nil {
+		return false, xerrors.Errorf("failed to get absolute path for %s: %w", path, err)
+	}
+
+	wd, err := os.Getwd()
+
+	if err != nil {
+		return false, xerrors.Errorf("failed to get working directory: %w", err)
+	}
+
+	return filepath.Clean(abs) == filepath.Clean(wd), nil
 }

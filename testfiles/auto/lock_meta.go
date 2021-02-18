@@ -1,6 +1,7 @@
 package model
 
 //go:generate firestore-repo LockMeta
+//go:generate firestore-repo -o different_dir LockMeta
 
 // Lock ID自動生成あり
 type LockMeta struct {

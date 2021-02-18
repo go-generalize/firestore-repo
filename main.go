@@ -15,6 +15,7 @@ import (
 
 	"github.com/fatih/structtag"
 	"github.com/go-utils/cont"
+	"github.com/go-utils/gopackages"
 	"github.com/iancoleman/strcase"
 	"golang.org/x/xerrors"
 )
@@ -29,6 +30,7 @@ var (
 	isShowVersion   = flag.Bool("v", false, "print version")
 	isSubCollection = flag.Bool("sub-collection", false, "is SubCollection")
 	disableMeta     = flag.Bool("disable-meta", false, "Disable meta embed for Lock")
+	outputDir       = flag.String("o", "./", "Specify directory to generate code in")
 )
 
 func main() {
@@ -77,6 +79,24 @@ func traverse(pkg *ast.Package, fs *token.FileSet, structName string) error {
 		gen.IsSubCollection = true
 	}
 
+	isCurrentDir, err := isCurrentDirectory(*outputDir)
+
+	if err != nil {
+		return xerrors.Errorf("failed to call isCurrentDirectory: %w", err)
+	}
+
+	mod, err := gopackages.NewModule(".")
+
+	if err != nil {
+		return xerrors.Errorf("failed to initialize gopackages.Module: %w", err)
+	}
+
+	importPath, err := mod.GetImportPath(".")
+
+	if err != nil {
+		return xerrors.Errorf("failed to get import path for current directory: %w", err)
+	}
+
 	for name, file := range pkg.Files {
 		gen.FileName = strings.TrimSuffix(filepath.Base(name), ".go")
 		gen.GeneratedFileName = gen.FileName + "_gen"
@@ -112,6 +132,11 @@ func traverse(pkg *ast.Package, fs *token.FileSet, structName string) error {
 					continue
 				}
 				gen.StructName = name
+				gen.StructNameRef = name
+				if !isCurrentDir {
+					gen.StructNameRef = "model." + name
+					gen.ModelImportPath = importPath
+				}
 
 				return generate(gen, fs, structType)
 			}
@@ -266,7 +291,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 	}
 
 	{
-		fp, err := os.Create(gen.GeneratedFileName + ".go")
+		fp, err := os.Create(filepath.Join(*outputDir, gen.GeneratedFileName+".go"))
 		if err != nil {
 			panic(err)
 		}
@@ -277,7 +302,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 
 	if gen.EnableIndexes {
 		path := gen.FileName + "_label.go"
-		fp, err := os.Create(path)
+		fp, err := os.Create(filepath.Join(*outputDir, path))
 		if err != nil {
 			panic(err)
 		}
@@ -286,7 +311,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 	}
 
 	{
-		fp, err := os.Create("constant_gen.go")
+		fp, err := os.Create(filepath.Join(*outputDir, "constant_gen.go"))
 		if err != nil {
 			panic(err)
 		}
@@ -295,7 +320,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 	}
 
 	{
-		fp, err := os.Create("misc_gen.go")
+		fp, err := os.Create(filepath.Join(*outputDir, "misc_gen.go"))
 		if err != nil {
 			panic(err)
 		}
@@ -304,7 +329,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 	}
 
 	{
-		fp, err := os.Create("query_builder_gen.go")
+		fp, err := os.Create(filepath.Join(*outputDir, "query_builder_gen.go"))
 		if err != nil {
 			panic(err)
 		}
@@ -313,7 +338,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 	}
 
 	{
-		fp, err := os.Create("query_chain_gen.go")
+		fp, err := os.Create(filepath.Join(*outputDir, "query_chain_gen.go"))
 		if err != nil {
 			panic(err)
 		}
@@ -322,7 +347,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 	}
 
 	{
-		fp, err := os.Create("unique_gen.go")
+		fp, err := os.Create(filepath.Join(*outputDir, "unique_gen.go"))
 		if err != nil {
 			panic(err)
 		}
