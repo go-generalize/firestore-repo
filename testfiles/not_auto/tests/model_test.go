@@ -192,6 +192,17 @@ func TestFirestore(t *testing.T) {
 				tr.Fatal("not match")
 			}
 
+			tr.Run("CollectionGroup", func(ttrr *testing.T) {
+				sts, err = model.NewSubTaskCollectionGroupRepository(client).List(ctx, listReq, nil)
+				if err != nil {
+					tr.Fatalf("%+v", err)
+				}
+
+				if len(sts) != 2 {
+					tr.Fatal("not match")
+				}
+			})
+
 			tr.Run("Reference", func(tr2 *testing.T) {
 				tk.Sub = subRepo.GetDocRef(sts[1].ID)
 				if err := taskRepo.Update(ctx, tk); err != nil {
