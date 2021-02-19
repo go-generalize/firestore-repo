@@ -1,5 +1,5 @@
 // THIS FILE IS A GENERATED CODE. EDIT OK
-// generated version: 0.9.0
+// generated version: 0.9.1
 package examples
 
 const (
