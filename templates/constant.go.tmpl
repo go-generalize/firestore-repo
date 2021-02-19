@@ -36,6 +36,7 @@ var (
 	ErrAlreadyDeleted   = xerrors.New("already been deleted")
 	ErrNotFound         = xerrors.New("not found")
 	ErrUniqueConstraint = xerrors.New("unique constraint error")
+	ErrNotAvailableCG   = xerrors.New("not available in collection groups")
 )
 
 type (
