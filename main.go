@@ -301,8 +301,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 	}
 
 	if gen.EnableIndexes {
-		path := gen.FileName + "_label.go"
-		fp, err := os.Create(filepath.Join(*outputDir, path))
+		fp, err := os.Create(filepath.Join(*outputDir, gen.FileName+"_label_gen.go"))
 		if err != nil {
 			panic(err)
 		}
