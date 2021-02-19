@@ -286,7 +286,7 @@ func (repo *{{ .RepositoryStructName }}) {{ ListFunc }} {
 	return repo.list(ctx, req, q)
 }
 
-// Get - get `{{ .StructName }}` by `{{ .KeyValueName }}`
+// Get - get `{{ .StructName }}` by `{{ .StructName }}.{{ .KeyFieldName }}`
 func (repo *{{ .RepositoryStructName }}) {{ GetFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -411,7 +411,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteFunc }} {
 	return repo.deleteBy{{ .KeyFieldName }}(ctx, subject.{{ .KeyFieldName }})
 }
 
-// DeleteBy{{ .KeyFieldName }} - delete `{{ .StructName }}` by `{{ .KeyFieldName }}`
+// DeleteBy{{ .KeyFieldName }} - delete `{{ .StructName }}` by `{{ .StructName }}.{{ .KeyFieldName }}`
 func (repo *{{ .RepositoryStructName }}) {{ DeleteByFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -435,7 +435,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteByFunc }} {
 	return repo.Delete(ctx, subject, opts...)
 }
 
-// GetMulti - get `{{ .StructName }}` in bulk by `{{ PluralForm .KeyFieldName }}`
+// GetMulti - get `{{ .StructName }}` in bulk by array of `{{ .StructName }}.{{ .KeyFieldName }}`
 func (repo *{{ .RepositoryStructName }}) {{ GetMultiFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -656,7 +656,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiFunc }} {
 	return nil
 }
 
-// DeleteMultiBy{{ PluralForm .KeyFieldName }} - delete `{{ .StructName }}` in bulk by `{{ PluralForm .KeyFieldName }}`
+// DeleteMultiBy{{ PluralForm .KeyFieldName }} - delete `{{ .StructName }}` in bulk by array of `{{ .StructName }}.{{ .KeyFieldName }}`
 func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -684,7 +684,7 @@ func (repo *{{ .RepositoryStructName }}) {{ ListWithTxFunc }} {
 	return repo.list(tx, req, q)
 }
 
-// GetWithTx - get `{{ .StructName }}` by `{{ .KeyValueName }}` in transaction
+// GetWithTx - get `{{ .StructName }}` by `{{ .StructName }}.{{ .KeyFieldName }}` in transaction
 func (repo *{{ .RepositoryStructName }}) {{ GetWithTxFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -815,7 +815,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteWithTxFunc }} {
 	return repo.deleteBy{{ .KeyFieldName }}(tx, subject.{{ .KeyFieldName }})
 }
 
-// DeleteBy{{ .KeyFieldName }}WithTx - delete `{{ .StructName }}` by `{{ .KeyFieldName }}` in transaction
+// DeleteBy{{ .KeyFieldName }}WithTx - delete `{{ .StructName }}` by `{{ .StructName }}.{{ .KeyFieldName }}` in transaction
 func (repo *{{ .RepositoryStructName }}) {{ DeleteByWithTxFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -851,7 +851,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteByWithTxFunc }} {
 	return repo.deleteBy{{ .KeyFieldName }}(tx, {{ .KeyValueName }})
 }
 
-// GetMultiWithTx - get `{{ .StructName }}` in bulk by `{{ PluralForm .KeyFieldName }}` in transaction
+// GetMultiWithTx - get `{{ .StructName }}` in bulk by array of `{{ .StructName }}.{{ .KeyFieldName }}` in transaction
 func (repo *{{ .RepositoryStructName }}) {{ GetMultiWithTxFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -1042,7 +1042,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiWithTxFunc }} {
 	return nil
 }
 
-// DeleteMultiBy{{ .KeyFieldName }}WithTx - delete `{{ .StructName }}` in bulk by `{{ PluralForm .KeyFieldName }}` in transaction
+// DeleteMultiBy{{ .KeyFieldName }}WithTx - delete `{{ .StructName }}` in bulk by array of `{{ .StructName }}.{{ .KeyFieldName }}` in transaction
 func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByWithTxFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
