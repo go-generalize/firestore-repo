@@ -306,6 +306,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 			panic(err)
 		}
 		defer fp.Close()
+
 		gen.generateLabel(fp)
 	}
 
@@ -315,6 +316,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 			panic(err)
 		}
 		defer fp.Close()
+
 		gen.generateConstant(fp)
 	}
 
@@ -324,6 +326,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 			panic(err)
 		}
 		defer fp.Close()
+
 		gen.generateMisc(fp)
 	}
 
@@ -333,6 +336,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 			panic(err)
 		}
 		defer fp.Close()
+
 		gen.generateQueryBuilder(fp)
 	}
 
@@ -342,6 +346,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 			panic(err)
 		}
 		defer fp.Close()
+
 		gen.generateQueryChainer(fp)
 	}
 
@@ -351,6 +356,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 			panic(err)
 		}
 		defer fp.Close()
+
 		gen.generateUnique(fp)
 	}
 
