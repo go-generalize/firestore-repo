@@ -45,9 +45,9 @@ type TaskRepository interface {
 	UpdateMultiWithTx(ctx context.Context, tx *firestore.Transaction, subjects []*Task) (er error)
 	DeleteMultiWithTx(ctx context.Context, tx *firestore.Transaction, subjects []*Task, opts ...DeleteOption) (er error)
 	DeleteMultiByIDsWithTx(ctx context.Context, tx *firestore.Transaction, ids []string, opts ...DeleteOption) (er error)
-	// List
-	List(ctx context.Context, req *TaskListReq, q *firestore.Query) ([]*Task, error)
-	ListWithTx(tx *firestore.Transaction, req *TaskListReq, q *firestore.Query) ([]*Task, error)
+	// Search
+	Search(ctx context.Context, param *TaskSearchParam, q *firestore.Query) ([]*Task, error)
+	SearchWithTx(tx *firestore.Transaction, param *TaskSearchParam, q *firestore.Query) ([]*Task, error)
 	// misc
 	GetCollection() *firestore.CollectionRef
 	GetCollectionName() string
@@ -181,8 +181,8 @@ func (repo *taskRepository) saveIndexes(subject *Task) error {
 	return nil
 }
 
-// TaskListReq - params for search
-type TaskListReq struct {
+// TaskSearchParam - params for search
+type TaskSearchParam struct {
 	Desc       *QueryChainer
 	Created    *QueryChainer
 	Done       *QueryChainer
@@ -207,10 +207,10 @@ type TaskUpdateParam struct {
 	Flag       interface{}
 }
 
-// List - search documents
+// Search - search documents
 // The third argument is firestore.Query, basically you can pass nil
-func (repo *taskRepository) List(ctx context.Context, req *TaskListReq, q *firestore.Query) ([]*Task, error) {
-	return repo.list(ctx, req, q)
+func (repo *taskRepository) Search(ctx context.Context, param *TaskSearchParam, q *firestore.Query) ([]*Task, error) {
+	return repo.search(ctx, param, q)
 }
 
 // Get - get `Task` by `Task.ID`
@@ -520,8 +520,8 @@ func (repo *taskRepository) DeleteMultiByIDs(ctx context.Context, ids []string, 
 	return repo.DeleteMulti(ctx, subjects, opts...)
 }
 
-func (repo *taskRepository) ListWithTx(tx *firestore.Transaction, req *TaskListReq, q *firestore.Query) ([]*Task, error) {
-	return repo.list(tx, req, q)
+func (repo *taskRepository) SearchWithTx(tx *firestore.Transaction, param *TaskSearchParam, q *firestore.Query) ([]*Task, error) {
+	return repo.search(tx, param, q)
 }
 
 // GetWithTx - get `Task` by `Task.ID` in transaction
@@ -1025,8 +1025,8 @@ func (repo *taskRepository) runQuery(v interface{}, query firestore.Query) ([]*T
 }
 
 // BUG(54m): there may be potential bugs
-func (repo *taskRepository) list(v interface{}, req *TaskListReq, q *firestore.Query) ([]*Task, error) {
-	if (req == nil && q == nil) || (req != nil && q != nil) {
+func (repo *taskRepository) search(v interface{}, param *TaskSearchParam, q *firestore.Query) ([]*Task, error) {
+	if (param == nil && q == nil) || (param != nil && q != nil) {
 		return nil, xerrors.New("either one should be nil")
 	}
 
@@ -1043,14 +1043,14 @@ func (repo *taskRepository) list(v interface{}, req *TaskListReq, q *firestore.Q
 			SaveNoFiltersIndex: true,
 		})
 
-		if req.Desc != nil {
-			for _, chain := range req.Desc.QueryGroup {
+		if param.Desc != nil {
+			for _, chain := range param.Desc.QueryGroup {
 				query = query.Where("description", chain.Operator, chain.Value)
 			}
-			value, ok := req.Desc.Filter.Value.(string)
+			value, ok := param.Desc.Filter.Value.(string)
 			// The value of the "indexer" tag = "e,p,s,l"
 			// Add/AddBiunigrams/AddPrefix/AddSuffix is valid.
-			for _, filter := range req.Desc.Filter.FilterTypes {
+			for _, filter := range param.Desc.Filter.FilterTypes {
 				switch filter {
 				case FilterTypeAddBiunigrams:
 					if ok {
@@ -1069,135 +1069,135 @@ func (repo *taskRepository) list(v interface{}, req *TaskListReq, q *firestore.Q
 					fallthrough
 				default:
 					if !ok {
-						filters.AddSomething(TaskIndexLabelDescEqual, req.Desc.Filter.Value)
+						filters.AddSomething(TaskIndexLabelDescEqual, param.Desc.Filter.Value)
 						continue
 					}
 					filters.Add(TaskIndexLabelDescEqual, value)
 				}
 			}
 		}
-		if req.Created != nil {
-			for _, chain := range req.Created.QueryGroup {
+		if param.Created != nil {
+			for _, chain := range param.Created.QueryGroup {
 				query = query.Where("created", chain.Operator, chain.Value)
 			}
-			value, ok := req.Created.Filter.Value.(string)
-			for _, filter := range req.Created.Filter.FilterTypes {
+			value, ok := param.Created.Filter.Value.(string)
+			for _, filter := range param.Created.Filter.FilterTypes {
 				switch filter {
 				// Treat `Add` or otherwise as `Equal`.
 				case FilterTypeAdd:
 					fallthrough
 				default:
 					if !ok {
-						filters.AddSomething(TaskIndexLabelCreatedEqual, req.Created.Filter.Value)
+						filters.AddSomething(TaskIndexLabelCreatedEqual, param.Created.Filter.Value)
 						continue
 					}
 					filters.Add(TaskIndexLabelCreatedEqual, value)
 				}
 			}
 		}
-		if req.Done != nil {
-			for _, chain := range req.Done.QueryGroup {
+		if param.Done != nil {
+			for _, chain := range param.Done.QueryGroup {
 				query = query.Where("done", chain.Operator, chain.Value)
 			}
-			value, ok := req.Done.Filter.Value.(string)
-			for _, filter := range req.Done.Filter.FilterTypes {
+			value, ok := param.Done.Filter.Value.(string)
+			for _, filter := range param.Done.Filter.FilterTypes {
 				switch filter {
 				// Treat `Add` or otherwise as `Equal`.
 				case FilterTypeAdd:
 					fallthrough
 				default:
 					if !ok {
-						filters.AddSomething(TaskIndexLabelDoneEqual, req.Done.Filter.Value)
+						filters.AddSomething(TaskIndexLabelDoneEqual, param.Done.Filter.Value)
 						continue
 					}
 					filters.Add(TaskIndexLabelDoneEqual, value)
 				}
 			}
 		}
-		if req.Done2 != nil {
-			for _, chain := range req.Done2.QueryGroup {
+		if param.Done2 != nil {
+			for _, chain := range param.Done2.QueryGroup {
 				query = query.Where("done2", chain.Operator, chain.Value)
 			}
-			value, ok := req.Done2.Filter.Value.(string)
-			for _, filter := range req.Done2.Filter.FilterTypes {
+			value, ok := param.Done2.Filter.Value.(string)
+			for _, filter := range param.Done2.Filter.FilterTypes {
 				switch filter {
 				// Treat `Add` or otherwise as `Equal`.
 				case FilterTypeAdd:
 					fallthrough
 				default:
 					if !ok {
-						filters.AddSomething(TaskIndexLabelDone2Equal, req.Done2.Filter.Value)
+						filters.AddSomething(TaskIndexLabelDone2Equal, param.Done2.Filter.Value)
 						continue
 					}
 					filters.Add(TaskIndexLabelDone2Equal, value)
 				}
 			}
 		}
-		if req.Count != nil {
-			for _, chain := range req.Count.QueryGroup {
+		if param.Count != nil {
+			for _, chain := range param.Count.QueryGroup {
 				query = query.Where("count", chain.Operator, chain.Value)
 			}
-			value, ok := req.Count.Filter.Value.(string)
-			for _, filter := range req.Count.Filter.FilterTypes {
+			value, ok := param.Count.Filter.Value.(string)
+			for _, filter := range param.Count.Filter.FilterTypes {
 				switch filter {
 				// Treat `Add` or otherwise as `Equal`.
 				case FilterTypeAdd:
 					fallthrough
 				default:
 					if !ok {
-						filters.AddSomething(TaskIndexLabelCountEqual, req.Count.Filter.Value)
+						filters.AddSomething(TaskIndexLabelCountEqual, param.Count.Filter.Value)
 						continue
 					}
 					filters.Add(TaskIndexLabelCountEqual, value)
 				}
 			}
 		}
-		if req.Count64 != nil {
-			for _, chain := range req.Count64.QueryGroup {
+		if param.Count64 != nil {
+			for _, chain := range param.Count64.QueryGroup {
 				query = query.Where("count64", chain.Operator, chain.Value)
 			}
-			value, ok := req.Count64.Filter.Value.(string)
-			for _, filter := range req.Count64.Filter.FilterTypes {
+			value, ok := param.Count64.Filter.Value.(string)
+			for _, filter := range param.Count64.Filter.FilterTypes {
 				switch filter {
 				// Treat `Add` or otherwise as `Equal`.
 				case FilterTypeAdd:
 					fallthrough
 				default:
 					if !ok {
-						filters.AddSomething(TaskIndexLabelCount64Equal, req.Count64.Filter.Value)
+						filters.AddSomething(TaskIndexLabelCount64Equal, param.Count64.Filter.Value)
 						continue
 					}
 					filters.Add(TaskIndexLabelCount64Equal, value)
 				}
 			}
 		}
-		if req.NameList != nil {
-			for _, chain := range req.NameList.QueryGroup {
+		if param.NameList != nil {
+			for _, chain := range param.NameList.QueryGroup {
 				query = query.Where("nameList", chain.Operator, chain.Value)
 			}
 		}
-		if req.Proportion != nil {
-			for _, chain := range req.Proportion.QueryGroup {
+		if param.Proportion != nil {
+			for _, chain := range param.Proportion.QueryGroup {
 				query = query.Where("proportion", chain.Operator, chain.Value)
 			}
-			value, ok := req.Proportion.Filter.Value.(string)
+			value, ok := param.Proportion.Filter.Value.(string)
 			// The value of the "indexer" tag = "e"
-			for _, filter := range req.Proportion.Filter.FilterTypes {
+			for _, filter := range param.Proportion.Filter.FilterTypes {
 				switch filter {
 				// Treat `Add` or otherwise as `Equal`.
 				case FilterTypeAdd:
 					fallthrough
 				default:
 					if !ok {
-						filters.AddSomething(TaskIndexLabelProportionEqual, req.Proportion.Filter.Value)
+						filters.AddSomething(TaskIndexLabelProportionEqual, param.Proportion.Filter.Value)
 						continue
 					}
 					filters.Add(TaskIndexLabelProportionEqual, value)
 				}
 			}
 		}
-		if req.Flag != nil {
-			for _, chain := range req.Flag.QueryGroup {
+		if param.Flag != nil {
+			for _, chain := range param.Flag.QueryGroup {
 				items, ok := chain.Value.(map[string]float64)
 				if !ok {
 					continue

@@ -47,9 +47,9 @@ type LockRepository interface {
 	UpdateMultiWithTx(ctx context.Context, tx *firestore.Transaction, subjects []*model.Lock) (er error)
 	DeleteMultiWithTx(ctx context.Context, tx *firestore.Transaction, subjects []*model.Lock, opts ...DeleteOption) (er error)
 	DeleteMultiByIDsWithTx(ctx context.Context, tx *firestore.Transaction, ids []string, opts ...DeleteOption) (er error)
-	// List
-	List(ctx context.Context, req *LockListReq, q *firestore.Query) ([]*model.Lock, error)
-	ListWithTx(tx *firestore.Transaction, req *LockListReq, q *firestore.Query) ([]*model.Lock, error)
+	// Search
+	Search(ctx context.Context, param *LockSearchParam, q *firestore.Query) ([]*model.Lock, error)
+	SearchWithTx(tx *firestore.Transaction, param *LockSearchParam, q *firestore.Query) ([]*model.Lock, error)
 	// misc
 	GetCollection() *firestore.CollectionRef
 	GetCollectionName() string
@@ -184,8 +184,8 @@ func (repo *lockRepository) GetDocRef(id string) *firestore.DocumentRef {
 	return repo.GetCollection().Doc(id)
 }
 
-// LockListReq - params for search
-type LockListReq struct {
+// LockSearchParam - params for search
+type LockSearchParam struct {
 	Text      *QueryChainer
 	Flag      *QueryChainer
 	CreatedAt *QueryChainer
@@ -211,10 +211,10 @@ type LockUpdateParam struct {
 	Version   interface{}
 }
 
-// List - search documents
+// Search - search documents
 // The third argument is firestore.Query, basically you can pass nil
-func (repo *lockRepository) List(ctx context.Context, req *LockListReq, q *firestore.Query) ([]*model.Lock, error) {
-	return repo.list(ctx, req, q)
+func (repo *lockRepository) Search(ctx context.Context, param *LockSearchParam, q *firestore.Query) ([]*model.Lock, error) {
+	return repo.search(ctx, param, q)
 }
 
 // Get - get `Lock` by `Lock.ID`
@@ -532,8 +532,8 @@ func (repo *lockRepository) DeleteMultiByIDs(ctx context.Context, ids []string, 
 	return repo.DeleteMulti(ctx, subjects, opts...)
 }
 
-func (repo *lockRepository) ListWithTx(tx *firestore.Transaction, req *LockListReq, q *firestore.Query) ([]*model.Lock, error) {
-	return repo.list(tx, req, q)
+func (repo *lockRepository) SearchWithTx(tx *firestore.Transaction, param *LockSearchParam, q *firestore.Query) ([]*model.Lock, error) {
+	return repo.search(tx, param, q)
 }
 
 // GetWithTx - get `Lock` by `Lock.ID` in transaction
@@ -1076,8 +1076,8 @@ func (repo *lockRepository) runQuery(v interface{}, query firestore.Query) ([]*m
 var lockRepositoryMeta = tagMap(model.Lock{})
 
 // BUG(54m): there may be potential bugs
-func (repo *lockRepository) list(v interface{}, req *LockListReq, q *firestore.Query) ([]*model.Lock, error) {
-	if (req == nil && q == nil) || (req != nil && q != nil) {
+func (repo *lockRepository) search(v interface{}, param *LockSearchParam, q *firestore.Query) ([]*model.Lock, error) {
+	if (param == nil && q == nil) || (param != nil && q != nil) {
 		return nil, xerrors.New("either one should be nil")
 	}
 
@@ -1089,13 +1089,13 @@ func (repo *lockRepository) list(v interface{}, req *LockListReq, q *firestore.Q
 	}()
 
 	if q == nil {
-		if req.Text != nil {
-			for _, chain := range req.Text.QueryGroup {
+		if param.Text != nil {
+			for _, chain := range param.Text.QueryGroup {
 				query = query.Where("text", chain.Operator, chain.Value)
 			}
 		}
-		if req.Flag != nil {
-			for _, chain := range req.Flag.QueryGroup {
+		if param.Flag != nil {
+			for _, chain := range param.Flag.QueryGroup {
 				items, ok := chain.Value.(map[string]float64)
 				if !ok {
 					continue
@@ -1105,43 +1105,43 @@ func (repo *lockRepository) list(v interface{}, req *LockListReq, q *firestore.Q
 				}
 			}
 		}
-		if req.CreatedAt != nil {
-			for _, chain := range req.CreatedAt.QueryGroup {
+		if param.CreatedAt != nil {
+			for _, chain := range param.CreatedAt.QueryGroup {
 				query = query.Where(lockRepositoryMeta["CreatedAt"], chain.Operator, chain.Value)
 			}
 		}
-		if req.CreatedBy != nil {
-			for _, chain := range req.CreatedBy.QueryGroup {
+		if param.CreatedBy != nil {
+			for _, chain := range param.CreatedBy.QueryGroup {
 				query = query.Where(lockRepositoryMeta["CreatedBy"], chain.Operator, chain.Value)
 			}
 		}
-		if req.DeletedAt != nil {
-			for _, chain := range req.DeletedAt.QueryGroup {
+		if param.DeletedAt != nil {
+			for _, chain := range param.DeletedAt.QueryGroup {
 				query = query.Where(lockRepositoryMeta["DeletedAt"], chain.Operator, chain.Value)
 			}
 		}
-		if req.DeletedBy != nil {
-			for _, chain := range req.DeletedBy.QueryGroup {
+		if param.DeletedBy != nil {
+			for _, chain := range param.DeletedBy.QueryGroup {
 				query = query.Where(lockRepositoryMeta["DeletedBy"], chain.Operator, chain.Value)
 			}
 		}
-		if req.UpdatedAt != nil {
-			for _, chain := range req.UpdatedAt.QueryGroup {
+		if param.UpdatedAt != nil {
+			for _, chain := range param.UpdatedAt.QueryGroup {
 				query = query.Where(lockRepositoryMeta["UpdatedAt"], chain.Operator, chain.Value)
 			}
 		}
-		if req.UpdatedBy != nil {
-			for _, chain := range req.UpdatedBy.QueryGroup {
+		if param.UpdatedBy != nil {
+			for _, chain := range param.UpdatedBy.QueryGroup {
 				query = query.Where(lockRepositoryMeta["UpdatedBy"], chain.Operator, chain.Value)
 			}
 		}
-		if req.Version != nil {
-			for _, chain := range req.Version.QueryGroup {
+		if param.Version != nil {
+			for _, chain := range param.Version.QueryGroup {
 				query = query.Where(lockRepositoryMeta["Version"], chain.Operator, chain.Value)
 			}
 		}
 
-		if !req.IncludeSoftDeleted {
+		if !param.IncludeSoftDeleted {
 			query = query.Where("DeletedAt", OpTypeEqual, nil)
 		}
 	}
