@@ -28,6 +28,7 @@ type UniqueRepositoryMiddleware interface {
 	WrapError(ctx context.Context, err error, uniques []*Unique) error
 }
 
+// RollbackFunc - rollback function
 type RollbackFunc func(context.Context) error
 
 type uniqueRepository struct {
@@ -116,6 +117,7 @@ func (repo *uniqueRepository) getUniqueItems(value interface{}) ([]*Unique, bool
 	return uniques, len(uniques) > 0
 }
 
+// CheckUnique - unique constraint check(Insert/Update)
 func (repo *uniqueRepository) CheckUnique(ctx context.Context, old, subject interface{}) (RollbackFunc, error) {
 	if subject == nil {
 		return nil, xerrors.New("nil is not allowed")
@@ -224,6 +226,7 @@ func (repo *uniqueRepository) CheckUnique(ctx context.Context, old, subject inte
 	return repo.makeRollbackFunc(rbInsert, rbDelete), nil
 }
 
+// DeleteUnique - delete the document for unique constraints
 func (repo *uniqueRepository) DeleteUnique(ctx context.Context, subject interface{}) (RollbackFunc, error) {
 	if subject == nil {
 		return nil, xerrors.New("nil is not allowed")

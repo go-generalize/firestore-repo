@@ -16,8 +16,8 @@ import (
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
 {{- if ne .ModelImportPath "" }}
+
 	model "{{.ModelImportPath}}"
 {{- end }}
 )
@@ -26,7 +26,7 @@ import (
 {{ $generate := "go:generate" }}
 //{{ $generate }} mockgen -source {{ .GeneratedFileName }}.go -destination mock/mock_{{ .GeneratedFileName }}/mock_{{ .GeneratedFileName }}.go
 
-// {{ .RepositoryInterfaceName }} Repository of {{ .StructName }}
+// {{ .RepositoryInterfaceName }} - Repository of {{ .StructName }}
 type {{ .RepositoryInterfaceName }} interface {
 	// Single
 	{{ GetFunc }}
@@ -65,7 +65,7 @@ type {{ .RepositoryInterfaceName }} interface {
 	GetDocRef({{ .KeyValueName }} string) *firestore.DocumentRef
 }
 {{ $middlewareName := printf "%sMiddleware" .RepositoryInterfaceName }}
-// {{ $middlewareName }} middleware of {{ .RepositoryInterfaceName }}
+// {{ $middlewareName }} - middleware of {{ .RepositoryInterfaceName }}
 type {{ $middlewareName }} interface {
 	BeforeInsert(ctx context.Context, subject *{{ .StructNameRef }}) (bool, error)
 	BeforeUpdate(ctx context.Context, old, subject *{{ .StructNameRef }}) (bool, error)
@@ -84,7 +84,7 @@ type {{ .RepositoryStructName }} struct {
 	uniqueRepository *uniqueRepository
 }
 
-// New{{ .RepositoryInterfaceName }} constructor
+// New{{ .RepositoryInterfaceName }} - constructor
 func New{{ .RepositoryInterfaceName }}(firestoreClient *firestore.Client{{ if eq .IsSubCollection true }}, parentDocument *firestore.DocumentRef{{ end }}, middleware ...{{ $middlewareName }}) {{ .RepositoryInterfaceName }} {
 	return &{{ .RepositoryStructName }}{
 		collectionName:   "{{ .StructName }}",
@@ -197,7 +197,7 @@ func (repo *{{ .RepositoryStructName }}) beforeDelete(ctx context.Context, subje
 	return rb, nil
 }
 
-// GetCollection *firestore.CollectionRef getter
+// GetCollection - *firestore.CollectionRef getter
 func (repo *{{ .RepositoryStructName }}) GetCollection() *firestore.CollectionRef {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -207,12 +207,12 @@ func (repo *{{ .RepositoryStructName }}) GetCollection() *firestore.CollectionRe
 	return repo.{{ if eq .IsSubCollection true }}parentDocument{{ else }}firestoreClient{{ end }}.Collection(repo.collectionName)
 }
 
-// GetCollectionName CollectionName getter
+// GetCollectionName - CollectionName getter
 func (repo *{{ .RepositoryStructName }}) GetCollectionName() string {
 	return repo.collectionName
 }
 
-// GetDocRef *firestore.DocumentRef getter
+// GetDocRef  - *firestore.DocumentRef getter
 func (repo *{{ .RepositoryStructName }}) GetDocRef({{ .KeyValueName }} string) *firestore.DocumentRef {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -249,8 +249,7 @@ func (repo *{{ .RepositoryStructName }}) saveIndexes(subject *{{ .StructNameRef 
 }
 {{ end }}
 {{- $MetaName := .OmitMetaName }}
-// {{ .StructName }}ListReq List取得時に渡すリクエスト
-// └─ bool/int(64)|float64 は stringの独自型で渡す(BoolCriteria | NumericCriteria)
+// {{ .StructName }}ListReq - params for search
 type {{ .StructName }}ListReq struct {
 {{- range .FieldInfos }}
 {{- 	if ne $MetaName .Field }}
@@ -266,7 +265,7 @@ type {{ .StructName }}ListReq struct {
 {{- end  }}
 }
 
-// {{ .StructName }}UpdateParam - 厳格な更新をするためのパラメータ
+// {{ .StructName }}UpdateParam - params for strict updates
 type {{ .StructName }}UpdateParam struct {
 {{- range .FieldInfos }}
 {{- 	if and (eq .IsUnique false) (ne $MetaName .Field) }}
@@ -280,15 +279,13 @@ type {{ .StructName }}UpdateParam struct {
 {{- end  }}
 }
 
-// List firestore.Queryを使用し条件抽出をする
-//  └─ 第3引数はNOT/OR/IN/RANGEなど、より複雑な条件を適用したいときにつける
-//      └─ 基本的にnilを渡せば良い
-// BUG(54m) 潜在的なバグがあるかもしれない
+// List - search documents
+// The third argument is firestore.Query, basically you can pass nil
 func (repo *{{ .RepositoryStructName }}) {{ ListFunc }} {
 	return repo.list(ctx, req, q)
 }
 
-// Get 処理中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
+// Get - get `{{ .StructName }}` by `{{ .StructName }}.{{ .KeyFieldName }}`
 func (repo *{{ .RepositoryStructName }}) {{ GetFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -299,7 +296,7 @@ func (repo *{{ .RepositoryStructName }}) {{ GetFunc }} {
 	return repo.get(ctx, doc, opts...)
 }
 
-// GetWithDoc 処理中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
+// GetWithDoc - get `{{ .StructName }}` by *firestore.DocumentRef
 func (repo *{{ .RepositoryStructName }}) {{ GetWithDocFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -309,7 +306,7 @@ func (repo *{{ .RepositoryStructName }}) {{ GetWithDocFunc }} {
 	return repo.get(ctx, doc, opts...)
 }
 
-// Insert 処理中の {{ .StructName }} の登録処理一切の責任を持ち、これを行う
+// Insert - insert of `{{ .StructName }}`
 func (repo *{{ .RepositoryStructName }}) {{ InsertFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -335,7 +332,7 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertFunc }} {
 	return repo.insert(ctx, subject)
 }
 
-// Update 処理中の {{ .StructName }} の更新処理一切の責任を持ち、これを行う
+// Update - update of `{{ .StructName }}`
 func (repo *{{ .RepositoryStructName }}) {{ UpdateFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -371,7 +368,7 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateFunc }} {
 	return repo.update(ctx, subject)
 }
 
-// StrictUpdate 処理中の {{ .StructName }} の厳格な更新処理一切の責任を持ち、これを行う
+// StrictUpdate - strict update of `{{ .StructName }}`
 func (repo *{{ .RepositoryStructName }}) {{ StrictUpdateFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -381,7 +378,7 @@ func (repo *{{ .RepositoryStructName }}) {{ StrictUpdateFunc }} {
 	return repo.strictUpdate(ctx, id, param, opts...)
 }
 
-// Delete 処理中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
+// Delete - delete of `{{ .StructName }}`
 func (repo *{{ .RepositoryStructName }}) {{ DeleteFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -413,7 +410,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteFunc }} {
 	return repo.deleteBy{{ .KeyFieldName }}(ctx, subject.{{ .KeyFieldName }})
 }
 
-// DeleteBy{{ .KeyFieldName }} 処理中の {{ .StructName }} の {{ .KeyFieldName }}から削除処理一切の責任を持ち、これを行う
+// DeleteBy{{ .KeyFieldName }} - delete `{{ .StructName }}` by `{{ .StructName }}.{{ .KeyFieldName }}`
 func (repo *{{ .RepositoryStructName }}) {{ DeleteByFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -437,7 +434,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteByFunc }} {
 	return repo.Delete(ctx, subject, opts...)
 }
 
-// GetMulti 処理中の {{ .StructName }} の一括取得処理一切の責任を持ち、これを行う
+// GetMulti - get `{{ .StructName }}` in bulk by array of `{{ .StructName }}.{{ .KeyFieldName }}`
 func (repo *{{ .RepositoryStructName }}) {{ GetMultiFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -447,7 +444,7 @@ func (repo *{{ .RepositoryStructName }}) {{ GetMultiFunc }} {
 	return repo.getMulti(ctx, {{ PluralForm .KeyValueName }}, opts...)
 }
 
-// InsertMulti 処理中の {{ .StructName }} の一括挿入処理一切の責任を持ち、これを行う
+// InsertMulti - bulk insert of `{{ .StructName }}`
 func (repo *{{ .RepositoryStructName }}) {{ InsertMultiFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -517,7 +514,7 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiFunc }} {
 	return {{ PluralForm .KeyValueName }}, nil
 }
 
-// UpdateMulti 処理中の {{ .StructName }} の一括更新処理一切の責任を持ち、これを行う
+// UpdateMulti - bulk update of `{{ .StructName }}`
 func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -588,7 +585,7 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiFunc }} {
 	return nil
 }
 
-// DeleteMulti 処理中の {{ .StructName }} の一括削除処理一切の責任を持ち、これを行う
+// DeleteMulti - bulk delete of `{{ .StructName }}`
 func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -658,7 +655,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiFunc }} {
 	return nil
 }
 
-// DeleteMultiBy{{ PluralForm .KeyFieldName }} 処理中の {{ .StructName }} の {{ .KeyFieldName }}群を元に一括削除処理一切の責任を持ち、これを行う
+// DeleteMultiBy{{ PluralForm .KeyFieldName }} - delete `{{ .StructName }}` in bulk by array of `{{ .StructName }}.{{ .KeyFieldName }}`
 func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -686,7 +683,7 @@ func (repo *{{ .RepositoryStructName }}) {{ ListWithTxFunc }} {
 	return repo.list(tx, req, q)
 }
 
-// GetWithTx トランザクション中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
+// GetWithTx - get `{{ .StructName }}` by `{{ .StructName }}.{{ .KeyFieldName }}` in transaction
 func (repo *{{ .RepositoryStructName }}) {{ GetWithTxFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -697,7 +694,7 @@ func (repo *{{ .RepositoryStructName }}) {{ GetWithTxFunc }} {
 	return repo.get(tx, doc, opts...)
 }
 
-// GetWithDocWithTx トランザクション中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
+// GetWithDocWithTx - get `{{ .StructName }}` by *firestore.DocumentRef in transaction
 func (repo *{{ .RepositoryStructName }}) {{ GetWithDocWithTxFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -707,7 +704,7 @@ func (repo *{{ .RepositoryStructName }}) {{ GetWithDocWithTxFunc }} {
 	return repo.get(tx, doc, opts...)
 }
 
-// InsertWithTx トランザクション中の {{ .StructName }} の登録処理一切の責任を持ち、これを行う
+// InsertWithTx - insert of `{{ .StructName }}` in transaction
 func (repo *{{ .RepositoryStructName }}) {{ InsertWithTxFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -739,7 +736,7 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertWithTxFunc }} {
 	return repo.insert(tx, subject)
 }
 
-// UpdateWithTx トランザクション中の {{ .StructName }} の更新処理一切の責任を持ち、これを行う
+// UpdateWithTx - update of `{{ .StructName }}` in transaction
 func (repo *{{ .RepositoryStructName }}) {{ UpdateWithTxFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -775,7 +772,7 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateWithTxFunc }} {
 	return repo.update(tx, subject)
 }
 
-// StrictUpdateWithTx トランザクション中の {{ .StructName }} の厳格な更新処理一切の責任を持ち、これを行う
+// StrictUpdateWithTx - strict update of `{{ .StructName }}` in transaction
 func (repo *{{ .RepositoryStructName }}) {{ StrictUpdateWithTxFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -785,7 +782,7 @@ func (repo *{{ .RepositoryStructName }}) {{ StrictUpdateWithTxFunc }} {
 	return repo.strictUpdate(tx, id, param, opts...)
 }
 
-// DeleteWithTx トランザクション中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
+// DeleteWithTx - delete of `{{ .StructName }}` in transaction
 func (repo *{{ .RepositoryStructName }}) {{ DeleteWithTxFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -817,7 +814,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteWithTxFunc }} {
 	return repo.deleteBy{{ .KeyFieldName }}(tx, subject.{{ .KeyFieldName }})
 }
 
-// DeleteBy{{ .KeyFieldName }}WithTx トランザクション中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
+// DeleteBy{{ .KeyFieldName }}WithTx - delete `{{ .StructName }}` by `{{ .StructName }}.{{ .KeyFieldName }}` in transaction
 func (repo *{{ .RepositoryStructName }}) {{ DeleteByWithTxFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -853,7 +850,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteByWithTxFunc }} {
 	return repo.deleteBy{{ .KeyFieldName }}(tx, {{ .KeyValueName }})
 }
 
-// GetMultiWithTx トランザクション中の {{ .StructName }} の一括取得処理一切の責任を持ち、これを行う
+// GetMultiWithTx - get `{{ .StructName }}` in bulk by array of `{{ .StructName }}.{{ .KeyFieldName }}` in transaction
 func (repo *{{ .RepositoryStructName }}) {{ GetMultiWithTxFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -863,7 +860,7 @@ func (repo *{{ .RepositoryStructName }}) {{ GetMultiWithTxFunc }} {
 	return repo.getMulti(tx, {{ PluralForm .KeyValueName }}, opts...)
 }
 
-// InsertMultiWithTx トランザクション中の {{ .StructName }} の一括挿入処理一切の責任を持ち、これを行う
+// InsertMultiWithTx - bulk insert of `{{ .StructName }}` in transaction
 func (repo *{{ .RepositoryStructName }}) {{ InsertMultiWithTxFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -917,7 +914,7 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiWithTxFunc }} {
 	return {{ PluralForm .KeyValueName }}, nil
 }
 
-// UpdateMultiWithTx トランザクション中の {{ .StructName }} の一括挿入処理一切の責任を持ち、これを行う
+// UpdateMultiWithTx - bulk update of `{{ .StructName }}` in transaction
 func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiWithTxFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -973,7 +970,7 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiWithTxFunc }} {
 	return nil
 }
 
-// DeleteMultiWithTx トランザクション中の {{ .StructName }} の一括削除処理一切の責任を持ち、これを行う
+// DeleteMultiWithTx - bulk delete of `{{ .StructName }}` in transaction
 func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiWithTxFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -1044,7 +1041,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiWithTxFunc }} {
 	return nil
 }
 
-// DeleteMultiBy{{ .KeyFieldName }}WithTx トランザクション中の {{ .StructName }} の一括削除処理一切の責任を持ち、これを行う
+// DeleteMultiBy{{ .KeyFieldName }}WithTx - delete `{{ .StructName }}` in bulk by array of `{{ .StructName }}.{{ .KeyFieldName }}` in transaction
 func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByWithTxFunc }} {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
@@ -1332,6 +1329,7 @@ func (repo *{{ .RepositoryStructName }}) runQuery(v interface{}, query firestore
 {{ if .MetaFields }}
 var {{ .RepositoryStructName }}Meta = tagMap({{ .StructNameRef }}{})
 {{ end }}
+// BUG(54m): there may be potential bugs
 func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName }}ListReq, q *firestore.Query) ([]*{{ .StructNameRef }}, error) {
 	if (req == nil && q == nil) || (req != nil && q != nil) {
 		return nil, xerrors.New("either one should be nil")

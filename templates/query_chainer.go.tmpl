@@ -154,6 +154,7 @@ func (qc *QueryChainer) Filters(v interface{}, filterTypes ...FilterType) *Query
 	qc.Filter.FilterTypes = filterTypes
 	return qc
 }
+
 // Query - query
 type Query struct {
 	Operator OpType
