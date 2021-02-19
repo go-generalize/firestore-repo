@@ -2,6 +2,8 @@
 
 Automatically generate code used by Cloud Firestore.  
 
+[日本語ドキュメント](./docs/ja.md)
+
 # Installation
 Recommend that you drop the binary from the release and use it.  
 Also, possible with `go install` ↓
