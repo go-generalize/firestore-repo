@@ -137,7 +137,7 @@ if err != nil {
 ```
 
 ### Strict update
-Use a function called `Strict Update`.  
+Use a function called `StrictUpdate`.  
 By using this, firestore.Increment etc. can also be used.  
 Uniquely constrained fields are not available.
 
