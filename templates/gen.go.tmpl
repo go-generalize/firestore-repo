@@ -249,8 +249,8 @@ func (repo *{{ .RepositoryStructName }}) saveIndexes(subject *{{ .StructNameRef 
 }
 {{ end }}
 {{- $MetaName := .OmitMetaName }}
-// {{ .StructName }}ListReq - params for search
-type {{ .StructName }}ListReq struct {
+// {{ .StructName }}SearchParam - params for search
+type {{ .StructName }}SearchParam struct {
 {{- range .FieldInfos }}
 {{- 	if ne $MetaName .Field }}
 	{{ .Field }}{{ .Space }} *QueryChainer
@@ -1330,7 +1330,7 @@ func (repo *{{ .RepositoryStructName }}) runQuery(v interface{}, query firestore
 var {{ .RepositoryStructName }}Meta = tagMap({{ .StructNameRef }}{})
 {{ end }}
 // BUG(54m): there may be potential bugs
-func (repo *{{ .RepositoryStructName }}) search(v interface{}, req *{{ .StructName }}ListReq, q *firestore.Query) ([]*{{ .StructNameRef }}, error) {
+func (repo *{{ .RepositoryStructName }}) search(v interface{}, req *{{ .StructName }}SearchParam, q *firestore.Query) ([]*{{ .StructNameRef }}, error) {
 	if (req == nil && q == nil) || (req != nil && q != nil) {
 		return nil, xerrors.New("either one should be nil")
 	}
