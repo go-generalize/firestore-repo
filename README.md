@@ -74,11 +74,11 @@ Since _**xim**_ uses only Unigram Bigram, it is prone to noise (eg, when `東京
 Task.Desc = "Hello, World!".
 - Partial match search
 ```go
-req := &model.TaskListReq{
+param := &model.TaskSearchParam{
 	Desc: model.NewQueryChainer().Filters("o, Wor", model.FilterTypeAddBiunigrams),
 }
 
-tasks, err := taskRepo.List(ctx, req, nil)
+tasks, err := taskRepo.Search(ctx, param, nil)
 if err != nil {
 	// error handling
 }
@@ -86,11 +86,11 @@ if err != nil {
 
 - Prefix match search
 ```go
-req := &model.TaskListReq{
+param := &model.TaskSearchParam{
 	Desc: model.NewQueryChainer().Filters("Hell", model.FilterTypeAddPrefix),
 }
 
-tasks, err := taskRepo.List(ctx, req, nil)
+tasks, err := taskRepo.Search(ctx, param, nil)
 if err != nil {
 	// error handling
 }
@@ -98,11 +98,11 @@ if err != nil {
 
 - Suffix match search
 ```go
-req := &model.TaskListReq{
+param := &model.TaskSearchParam{
 	Desc: model.NewQueryChainer().Filters("orld!", model.FilterTypeAddSuffix),
 }
 
-tasks, err := taskRepo.List(ctx, req, nil)
+tasks, err := taskRepo.Search(ctx, param, nil)
 if err != nil {
 	// error handling
 }
@@ -111,12 +111,12 @@ if err != nil {
 - Exact match search
 ```go
 chainer := model.NewQueryChainer
-req := &model.TaskListReq{
+param := &model.TaskSearchParam{
 	Desc: chainer().Filters("Hello, World!", model.FilterTypeAdd),
 	Done: chainer().Filters(true, model.FilterTypeAddSomething), // Use Add Something when it is not a string.
 }
 
-tasks, err := taskRepo.List(ctx, req, nil)
+tasks, err := taskRepo.Search(ctx, param, nil)
 if err != nil {
 	// error handling
 }
@@ -130,7 +130,7 @@ qb := model.NewQueryBuilder(taskRepo.GetCollection())
 qb.GreaterThan("count", 3)
 qb.LessThan("count", 8)
 
-tasks, err := taskRepo.List(ctx, nil, qb.Query())
+tasks, err := taskRepo.Search(ctx, nil, qb.Query())
 if err != nil {
 	// error handling
 }
