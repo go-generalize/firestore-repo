@@ -136,6 +136,22 @@ if err != nil {
 }
 ```
 
+## Strict update
+Use a function called `Strict Update`.
+By using this, firestore.Increment etc. can also be used.  
+Uniquely constrained fields are not available.
+
+```go
+updateParam := &model.TaskUpdateParam{
+	Done:    false,
+	Created: firestore.ServerTimestamp,
+	Count:   firestore.Increment(1),
+}
+if err = taskRepo.StrictUpdate(ctx, id, updateParam); err != nil {
+	// error handling
+}
+```
+
 ## Examples
 [Generated code example.](./examples)
 

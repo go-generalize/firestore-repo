@@ -133,6 +133,21 @@ if err != nil {
 }
 ```
 
+## 厳格な更新
+StrictUpdateという関数を使用する。
+これを使用することにより、firestore.Incrementなども使用することができる。  
+ユニーク制約するフィールドは利用できない。
+```go
+updateParam := &model.TaskUpdateParam{
+	Done:    false,
+	Created: firestore.ServerTimestamp,
+	Count:   firestore.Increment(1),
+}
+if err = taskRepo.StrictUpdate(ctx, id, updateParam); err != nil {
+	// error handling
+}
+```
+
 ## サンプル
 [生成されるコード例](../examples)
 
