@@ -16,3 +16,7 @@ goimports:
 .PHONY: code_clean
 code_clean:
 	cd testfiles && rm -rf */*_gen.go
+
+.PHONY: lint
+lint:
+	golangci-lint run --config ".github/.golangci.yml" --fast
