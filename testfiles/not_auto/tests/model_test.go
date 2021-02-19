@@ -183,8 +183,8 @@ func TestFirestore(t *testing.T) {
 			}
 			ids2 = append(ids2, stsIDs...)
 
-			listReq := &model.SubTaskListReq{IsSubCollection: model.NewQueryChainer().Equal(true)}
-			sts, err = subRepo.List(ctx, listReq, nil)
+			param := &model.SubTaskSearchParam{IsSubCollection: model.NewQueryChainer().Equal(true)}
+			sts, err = subRepo.Search(ctx, param, nil)
 			if err != nil {
 				tr.Fatalf("%+v", err)
 			}
@@ -194,7 +194,7 @@ func TestFirestore(t *testing.T) {
 			}
 
 			tr.Run("CollectionGroup", func(ttrr *testing.T) {
-				sts, err = model.NewSubTaskCollectionGroupRepository(client).List(ctx, listReq, nil)
+				sts, err = model.NewSubTaskCollectionGroupRepository(client).Search(ctx, param, nil)
 				if err != nil {
 					tr.Fatalf("%+v", err)
 				}
@@ -224,8 +224,8 @@ func TestFirestore(t *testing.T) {
 					tr2.Fatal("not match")
 				}
 
-				taskListReq := &model.TaskListReq{Sub: model.NewQueryChainer().Equal(tk.Sub)}
-				tks, er := taskRepo.List(ctx, taskListReq, nil)
+				taskSearchParam := &model.TaskSearchParam{Sub: model.NewQueryChainer().Equal(tk.Sub)}
+				tks, er := taskRepo.Search(ctx, taskSearchParam, nil)
 				if er != nil {
 					tr2.Fatalf("%+v", er)
 				}
@@ -676,11 +676,11 @@ func TestFirestoreQuery(t *testing.T) {
 	}
 
 	t.Run("int(1件)", func(t *testing.T) {
-		req := &model.TaskListReq{
+		param := &model.TaskSearchParam{
 			Count: model.NewQueryChainer().Equal(1),
 		}
 
-		tasks, err := taskRepo.List(ctx, req, nil)
+		tasks, err := taskRepo.Search(ctx, param, nil)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -691,11 +691,11 @@ func TestFirestoreQuery(t *testing.T) {
 	})
 
 	t.Run("int64(6件)", func(tr *testing.T) {
-		req := &model.TaskListReq{
+		param := &model.TaskSearchParam{
 			Count64: model.NewQueryChainer().GreaterThanOrEqual(5),
 		}
 
-		tasks, err := taskRepo.List(ctx, req, nil)
+		tasks, err := taskRepo.Search(ctx, param, nil)
 		if err != nil {
 			tr.Fatalf("%+v", err)
 		}
@@ -706,11 +706,11 @@ func TestFirestoreQuery(t *testing.T) {
 	})
 
 	t.Run("float(1件)", func(t *testing.T) {
-		req := &model.TaskListReq{
+		param := &model.TaskSearchParam{
 			Proportion: model.NewQueryChainer().Equal(1.12345),
 		}
 
-		tasks, err := taskRepo.List(ctx, req, nil)
+		tasks, err := taskRepo.Search(ctx, param, nil)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -721,11 +721,11 @@ func TestFirestoreQuery(t *testing.T) {
 	})
 
 	t.Run("bool(10件)", func(t *testing.T) {
-		req := &model.TaskListReq{
+		param := &model.TaskSearchParam{
 			Done: model.NewQueryChainer().Equal(true),
 		}
 
-		tasks, err := taskRepo.List(ctx, req, nil)
+		tasks, err := taskRepo.Search(ctx, param, nil)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -736,11 +736,11 @@ func TestFirestoreQuery(t *testing.T) {
 	})
 
 	t.Run("time.Time(10件)", func(t *testing.T) {
-		req := &model.TaskListReq{
+		param := &model.TaskSearchParam{
 			Created: model.NewQueryChainer().Equal(now),
 		}
 
-		tasks, err := taskRepo.List(ctx, req, nil)
+		tasks, err := taskRepo.Search(ctx, param, nil)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -751,11 +751,11 @@ func TestFirestoreQuery(t *testing.T) {
 	})
 
 	t.Run("[]string(10件)", func(t *testing.T) {
-		req := &model.TaskListReq{
+		param := &model.TaskSearchParam{
 			NameList: model.NewQueryChainer().ArrayContainsAny([]string{"a", "b"}),
 		}
 
-		tasks, err := taskRepo.List(ctx, req, nil)
+		tasks, err := taskRepo.Search(ctx, param, nil)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -766,11 +766,11 @@ func TestFirestoreQuery(t *testing.T) {
 	})
 
 	t.Run("Flag(10件)", func(t *testing.T) {
-		req := &model.TaskListReq{
+		param := &model.TaskSearchParam{
 			Flag: model.NewQueryChainer().Equal(true),
 		}
 
-		tasks, err := taskRepo.List(ctx, req, nil)
+		tasks, err := taskRepo.Search(ctx, param, nil)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -781,11 +781,11 @@ func TestFirestoreQuery(t *testing.T) {
 	})
 
 	t.Run("Geo(9件)", func(t *testing.T) {
-		req := &model.TaskListReq{
+		param := &model.TaskSearchParam{
 			Geo: model.NewQueryChainer().Equal(latLng),
 		}
 
-		tasks, err := taskRepo.List(ctx, req, nil)
+		tasks, err := taskRepo.Search(ctx, param, nil)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -796,10 +796,10 @@ func TestFirestoreQuery(t *testing.T) {
 	})
 
 	t.Run("NotEqual(1件)", func(tr *testing.T) {
-		req := &model.TaskListReq{
+		param := &model.TaskSearchParam{
 			Geo: model.NewQueryChainer().NotEqual(latLng),
 		}
-		tasks, err := taskRepo.List(ctx, req, nil)
+		tasks, err := taskRepo.Search(ctx, param, nil)
 		if err != nil {
 			tr.Fatalf("%+v", err)
 		}
@@ -809,10 +809,10 @@ func TestFirestoreQuery(t *testing.T) {
 	})
 
 	t.Run("NotIn(9件)", func(tr *testing.T) {
-		req := &model.TaskListReq{
+		param := &model.TaskSearchParam{
 			Geo: model.NewQueryChainer().NotIn([]*latlng.LatLng{skyTreeLatLng}),
 		}
-		tasks, err := taskRepo.List(ctx, req, nil)
+		tasks, err := taskRepo.Search(ctx, param, nil)
 		if err != nil {
 			tr.Fatalf("%+v", err)
 		}
@@ -827,7 +827,7 @@ func TestFirestoreQuery(t *testing.T) {
 			qb.GreaterThan("count", 3)
 			qb.LessThan("count", 8)
 
-			tasks, err := taskRepo.List(ctx, nil, qb.Query())
+			tasks, err := taskRepo.Search(ctx, nil, qb.Query())
 			if err != nil {
 				ttr.Fatalf("%+v", err)
 			}
@@ -840,7 +840,7 @@ func TestFirestoreQuery(t *testing.T) {
 			qb := model.NewQueryBuilder(taskRepo.GetCollection())
 			qb.NotEqual("count", 1)
 
-			tasks, err := taskRepo.List(ctx, nil, qb.Query())
+			tasks, err := taskRepo.Search(ctx, nil, qb.Query())
 			if err != nil {
 				ttr.Fatalf("%+v", err)
 			}
@@ -853,7 +853,7 @@ func TestFirestoreQuery(t *testing.T) {
 			qb := model.NewQueryBuilder(taskRepo.GetCollection())
 			qb.NotIn("count", []int{1, 2, 3, 4, 5})
 
-			tasks, err := taskRepo.List(ctx, nil, qb.Query())
+			tasks, err := taskRepo.Search(ctx, nil, qb.Query())
 			if err != nil {
 				ttr.Fatalf("%+v", err)
 			}

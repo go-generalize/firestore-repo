@@ -71,11 +71,11 @@ _**xim**_ ではUnigram/Bigramしか採用していないため、ノイズが�
 Task.Desc = "Hello, World!".
 - 部分一致検索
 ```go
-req := &model.TaskListReq{
+param := &model.TaskSearchParam{
 	Desc: model.NewQueryChainer().Filters("o, Wor", model.FilterTypeAddBiunigrams),
 }
 
-tasks, err := taskRepo.List(ctx, req, nil)
+tasks, err := taskRepo.Search(ctx, param, nil)
 if err != nil {
 	// error handling
 }
@@ -83,11 +83,11 @@ if err != nil {
 
 - 接頭辞一致検索
 ```go
-req := &model.TaskListReq{
+param := &model.TaskSearchParam{
 	Desc: model.NewQueryChainer().Filters("Hell", model.FilterTypeAddPrefix),
 }
 
-tasks, err := taskRepo.List(ctx, req, nil)
+tasks, err := taskRepo.Search(ctx, param, nil)
 if err != nil {
 	// error handling
 }
@@ -95,11 +95,11 @@ if err != nil {
 
 - 接尾辞一致検索
 ```go
-req := &model.TaskListReq{
+param := &model.TaskSearchParam{
 	Desc: model.NewQueryChainer().Filters("orld!", model.FilterTypeAddSuffix),
 }
 
-tasks, err := taskRepo.List(ctx, req, nil)
+tasks, err := taskRepo.Search(ctx, param, nil)
 if err != nil {
 	// error handling
 }
@@ -108,12 +108,12 @@ if err != nil {
 - 完全一致検索
 ```go
 chainer := model.NewQueryChainer
-req := &model.TaskListReq{
+param := &model.TaskSearchParam{
 	Desc: chainer().Filters("Hello, World!", model.FilterTypeAdd),
 	Done: chainer().Filters(true, model.FilterTypeAddSomething), // 文字列以外の時はAddSomethingを使用する
 }
 
-tasks, err := taskRepo.List(ctx, req, nil)
+tasks, err := taskRepo.Search(ctx, param, nil)
 if err != nil {
 	// error handling
 }
@@ -127,7 +127,7 @@ qb := model.NewQueryBuilder(taskRepo.GetCollection())
 qb.GreaterThan("count", 3)
 qb.LessThan("count", 8)
 
-tasks, err := taskRepo.List(ctx, nil, qb.Query())
+tasks, err := taskRepo.Search(ctx, nil, qb.Query())
 if err != nil {
 	// error handling
 }
@@ -138,12 +138,12 @@ StrictUpdateという関数を使用する。
 これを使用することにより、firestore.Incrementなども使用することができる。  
 ユニーク制約するフィールドは利用できない。
 ```go
-updateParam := &model.TaskUpdateParam{
+param := &model.TaskUpdateParam{
 	Done:    false,
 	Created: firestore.ServerTimestamp,
 	Count:   firestore.Increment(1),
 }
-if err = taskRepo.StrictUpdate(ctx, id, updateParam); err != nil {
+if err = taskRepo.StrictUpdate(ctx, id, param); err != nil {
 	// error handling
 }
 ```

@@ -44,9 +44,9 @@ type HistoryRepository interface {
 	UpdateMultiWithTx(ctx context.Context, tx *firestore.Transaction, subjects []*History) (er error)
 	DeleteMultiWithTx(ctx context.Context, tx *firestore.Transaction, subjects []*History, opts ...DeleteOption) (er error)
 	DeleteMultiByIDsWithTx(ctx context.Context, tx *firestore.Transaction, ids []string, opts ...DeleteOption) (er error)
-	// List
-	List(ctx context.Context, req *HistoryListReq, q *firestore.Query) ([]*History, error)
-	ListWithTx(tx *firestore.Transaction, req *HistoryListReq, q *firestore.Query) ([]*History, error)
+	// Search
+	Search(ctx context.Context, param *HistorySearchParam, q *firestore.Query) ([]*History, error)
+	SearchWithTx(tx *firestore.Transaction, param *HistorySearchParam, q *firestore.Query) ([]*History, error)
 	// misc
 	GetCollection() *firestore.CollectionRef
 	GetCollectionName() string
@@ -170,8 +170,8 @@ func (repo *historyRepository) GetDocRef(id string) *firestore.DocumentRef {
 	return repo.GetCollection().Doc(id)
 }
 
-// HistoryListReq - params for search
-type HistoryListReq struct {
+// HistorySearchParam - params for search
+type HistorySearchParam struct {
 	IsSubCollection *QueryChainer
 }
 
@@ -180,10 +180,10 @@ type HistoryUpdateParam struct {
 	IsSubCollection interface{}
 }
 
-// List - search documents
+// Search - search documents
 // The third argument is firestore.Query, basically you can pass nil
-func (repo *historyRepository) List(ctx context.Context, req *HistoryListReq, q *firestore.Query) ([]*History, error) {
-	return repo.list(ctx, req, q)
+func (repo *historyRepository) Search(ctx context.Context, param *HistorySearchParam, q *firestore.Query) ([]*History, error) {
+	return repo.search(ctx, param, q)
 }
 
 // Get - get `History` by `History.ID`
@@ -513,8 +513,8 @@ func (repo *historyRepository) DeleteMultiByIDs(ctx context.Context, ids []strin
 	return repo.DeleteMulti(ctx, subjects, opts...)
 }
 
-func (repo *historyRepository) ListWithTx(tx *firestore.Transaction, req *HistoryListReq, q *firestore.Query) ([]*History, error) {
-	return repo.list(tx, req, q)
+func (repo *historyRepository) SearchWithTx(tx *firestore.Transaction, param *HistorySearchParam, q *firestore.Query) ([]*History, error) {
+	return repo.search(tx, param, q)
 }
 
 // GetWithTx - get `History` by `History.ID` in transaction
@@ -1039,8 +1039,8 @@ func (repo *historyRepository) runQuery(v interface{}, query firestore.Query) ([
 }
 
 // BUG(54m): there may be potential bugs
-func (repo *historyRepository) list(v interface{}, req *HistoryListReq, q *firestore.Query) ([]*History, error) {
-	if (req == nil && q == nil) || (req != nil && q != nil) {
+func (repo *historyRepository) search(v interface{}, param *HistorySearchParam, q *firestore.Query) ([]*History, error) {
+	if (param == nil && q == nil) || (param != nil && q != nil) {
 		return nil, xerrors.New("either one should be nil")
 	}
 
@@ -1055,8 +1055,8 @@ func (repo *historyRepository) list(v interface{}, req *HistoryListReq, q *fires
 	}()
 
 	if q == nil {
-		if req.IsSubCollection != nil {
-			for _, chain := range req.IsSubCollection.QueryGroup {
+		if param.IsSubCollection != nil {
+			for _, chain := range param.IsSubCollection.QueryGroup {
 				query = query.Where("IsSubCollection", chain.Operator, chain.Value)
 			}
 		}

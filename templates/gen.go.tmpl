@@ -56,9 +56,9 @@ type {{ .RepositoryInterfaceName }} interface {
 	{{ UpdateMultiWithTxFunc }}
 	{{ DeleteMultiWithTxFunc }}
 	{{ DeleteMultiByWithTxFunc }}
-	// List
-	{{ ListFunc }}
-	{{ ListWithTxFunc }}
+	// Search
+	{{ SearchFunc }}
+	{{ SearchWithTxFunc }}
 	// misc
 	GetCollection() *firestore.CollectionRef
 	GetCollectionName() string
@@ -249,8 +249,8 @@ func (repo *{{ .RepositoryStructName }}) saveIndexes(subject *{{ .StructNameRef 
 }
 {{ end }}
 {{- $MetaName := .OmitMetaName }}
-// {{ .StructName }}ListReq - params for search
-type {{ .StructName }}ListReq struct {
+// {{ .StructName }}SearchParam - params for search
+type {{ .StructName }}SearchParam struct {
 {{- range .FieldInfos }}
 {{- 	if ne $MetaName .Field }}
 	{{ .Field }}{{ .Space }} *QueryChainer
@@ -279,10 +279,10 @@ type {{ .StructName }}UpdateParam struct {
 {{- end  }}
 }
 
-// List - search documents
+// Search - search documents
 // The third argument is firestore.Query, basically you can pass nil
-func (repo *{{ .RepositoryStructName }}) {{ ListFunc }} {
-	return repo.list(ctx, req, q)
+func (repo *{{ .RepositoryStructName }}) {{ SearchFunc }} {
+	return repo.search(ctx, param, q)
 }
 
 // Get - get `{{ .StructName }}` by `{{ .StructName }}.{{ .KeyFieldName }}`
@@ -679,8 +679,8 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByFunc }} {
 	return repo.DeleteMulti(ctx, subjects, opts...)
 }
 
-func (repo *{{ .RepositoryStructName }}) {{ ListWithTxFunc }} {
-	return repo.list(tx, req, q)
+func (repo *{{ .RepositoryStructName }}) {{ SearchWithTxFunc }} {
+	return repo.search(tx, param, q)
 }
 
 // GetWithTx - get `{{ .StructName }}` by `{{ .StructName }}.{{ .KeyFieldName }}` in transaction
@@ -1330,8 +1330,8 @@ func (repo *{{ .RepositoryStructName }}) runQuery(v interface{}, query firestore
 var {{ .RepositoryStructName }}Meta = tagMap({{ .StructNameRef }}{})
 {{ end }}
 // BUG(54m): there may be potential bugs
-func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName }}ListReq, q *firestore.Query) ([]*{{ .StructNameRef }}, error) {
-	if (req == nil && q == nil) || (req != nil && q != nil) {
+func (repo *{{ .RepositoryStructName }}) search(v interface{}, param *{{ .StructName }}SearchParam, q *firestore.Query) ([]*{{ .StructNameRef }}, error) {
+	if (param == nil && q == nil) || (param != nil && q != nil) {
 		return nil, xerrors.New("either one should be nil")
 	}
 
@@ -1360,8 +1360,8 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 {{- range $fi := .FieldInfos }}
 {{- 	if eq $MetaName $fi.Field }}
 {{- 		range $key, $value := $Meta }}
-		if req.{{ $key }} != nil {
-			for _, chain := range req.{{ $key }}.QueryGroup {
+		if param.{{ $key }} != nil {
+			for _, chain := range param.{{ $key }}.QueryGroup {
 				query = query.Where({{ $RepositoryStructName }}Meta["{{ $key }}"], chain.Operator, chain.Value)
 			}
 		}
@@ -1369,9 +1369,9 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 {{- 	else }}
 {{- 	$IsSlice := HasSlice $fi.FieldType }}
 {{- 	$IsMap := HasMap $fi.FieldType }}
-		if req.{{ $fi.Field }} != nil {
+		if param.{{ $fi.Field }} != nil {
 {{- 		if eq $IsMap true }}
-			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
+			for _, chain := range param.{{ $fi.Field }}.QueryGroup {
 				items, ok := chain.Value.({{ $fi.FieldType }})
 				if !ok {
 					continue
@@ -1381,20 +1381,20 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 				}
 			}
 {{- 		else if eq $IsSlice true }}
-			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
+			for _, chain := range param.{{ $fi.Field }}.QueryGroup {
 				query = query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
 			}
 {{- 		else }}
-			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
+			for _, chain := range param.{{ $fi.Field }}.QueryGroup {
 				query = query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
 			}
 {{- 			if and (eq $EnableIndexes true ) (ne ( len $fi.Indexes ) 0) }}
-			value, ok := req.{{ $fi.Field }}.Filter.Value.(string)
+			value, ok := param.{{ $fi.Field }}.Filter.Value.(string)
 {{- 				$indexerInfo := IndexerInfo $fi }}
 {{- 				if ne $indexerInfo "" }}
 			{{ print $indexerInfo }}
 {{- 				end }}
-			for _, filter := range req.{{ $fi.Field }}.Filter.FilterTypes {
+			for _, filter := range param.{{ $fi.Field }}.Filter.FilterTypes {
 				switch filter {
 {{- 				$EqualLabel := "" }}
 {{- 				range $filters := $fi.Indexes }}
@@ -1415,7 +1415,7 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 					fallthrough
 				default:
 					if !ok {
-						filters.AddSomething({{ $EqualLabel }}, req.{{ $fi.Field }}.Filter.Value)
+						filters.AddSomething({{ $EqualLabel }}, param.{{ $fi.Field }}.Filter.Value)
 						continue
 					}
 					filters.Add({{ $EqualLabel }}, value)
@@ -1428,7 +1428,7 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 {{- end }}
 {{- if .MetaFields }}
 {{ $metaPath := (index .MetaFields "DeletedAt").ParentPath }}
-		if !req.IncludeSoftDeleted {
+		if !param.IncludeSoftDeleted {
 			query = query.Where("DeletedAt", OpTypeEqual, nil)
 		}
 {{- end }}
