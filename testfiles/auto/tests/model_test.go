@@ -16,6 +16,8 @@ import (
 	"golang.org/x/xerrors"
 )
 
+var desc = "Hello, World!"
+
 func initFirestoreClient(t *testing.T) *firestore.Client {
 	t.Helper()
 
@@ -74,7 +76,6 @@ func TestFirestore(t *testing.T) {
 	}()
 
 	now := time.Unix(0, time.Now().UnixNano()).UTC()
-	desc := "Hello, World!"
 
 	t.Run("Multi", func(tr *testing.T) {
 		tks := make([]*model.Task, 0)
@@ -155,7 +156,7 @@ func TestFirestore(t *testing.T) {
 
 		tk.Count++
 		tk.Flag["4"] = 4.4
-		if err := taskRepo.Update(ctx, tk); err != nil {
+		if err = taskRepo.Update(ctx, tk); err != nil {
 			tr.Fatalf("%+v", err)
 		}
 
@@ -235,7 +236,6 @@ func TestFirestoreTransaction_Single(t *testing.T) {
 	}()
 
 	now := time.Unix(0, time.Now().UnixNano())
-	desc := "Hello, World!"
 
 	t.Run("Insert", func(tr *testing.T) {
 		err := client.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
@@ -388,7 +388,6 @@ func TestFirestoreTransaction_Multi(t *testing.T) {
 	}()
 
 	now := time.Unix(0, time.Now().UnixNano())
-	desc := "Hello, World!"
 
 	tks := make([]*model.Task, 0)
 	t.Run("InsertMulti", func(tr *testing.T) {
@@ -476,7 +475,6 @@ func TestFirestoreQuery(t *testing.T) {
 	}()
 
 	now := time.Unix(0, time.Now().UnixNano())
-	desc := "Hello, World!"
 
 	tks := make([]*model.Task, 0)
 	for i := 1; i <= 10; i++ {
@@ -821,7 +819,6 @@ func TestFirestoreError(t *testing.T) {
 	}()
 
 	now := time.Unix(0, time.Now().UnixNano())
-	desc := "Hello, World!"
 
 	t.Run("Prepare", func(tr *testing.T) {
 		tk := &model.Task{
@@ -883,9 +880,9 @@ func TestFirestoreError(t *testing.T) {
 		}
 
 		if err = client.RunTransaction(ctx, func(cx context.Context, tx *firestore.Transaction) error {
-			id, err := taskRepo.InsertWithTx(cx, tx, new(model.Task))
-			if err != nil {
-				return err
+			id, er := taskRepo.InsertWithTx(cx, tx, new(model.Task))
+			if er != nil {
+				return er
 			}
 
 			if _, err = taskRepo.GetWithTx(tx, id); err != nil {
@@ -898,152 +895,6 @@ func TestFirestoreError(t *testing.T) {
 	})
 }
 
-/* TODO Map版Indexes実装
-func TestFirestoreListNameWithIndexes(t *testing.T) {
-	client := initFirestoreClient(t)
-
-	nameRepo := model.NewNameRepository(client)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	var ids []string
-	defer func() {
-		defer cancel()
-		if err := nameRepo.DeleteMultiByIDs(ctx, ids); err != nil {
-			t.Fatal(err)
-		}
-	}()
-
-	now := time.Unix(0, time.Now().UnixNano())
-	desc := "Hello, World!"
-	desc2 := "Prefix, Test!"
-
-	tks := make([]*model.Name, 0)
-	for i := int64(1); i <= 10; i++ {
-		tk := &model.Name{
-			ID:        i,
-			Created:   now,
-			Desc:      fmt.Sprintf("%s%d", desc, i),
-			Desc2:     fmt.Sprintf("%s%d", desc2, i),
-			Done:      true,
-			Count:     int(i),
-			PriceList: []int{1, 2, 3, 4, 5},
-		}
-		tks = append(tks, tk)
-	}
-	ids, err := nameRepo.InsertMulti(ctx, tks)
-	if err != nil {
-		tr.Fatalf("%+v", err)
-	}
-
-	t.Run("int(1件)", func(tr *testing.T) {
-		req := &model.NameListReq{
-			Count: model.NumericCriteriaBase.Parse(1),
-		}
-
-		tasks, err := nameRepo.List(ctx, req, nil)
-		if err != nil {
-			tr.Fatalf("%+v", err)
-		}
-
-		if len(tasks) != 1 {
-			tr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 1)
-		}
-	})
-
-	t.Run("bool(10件)", func(tr *testing.T) {
-		req := &model.NameListReq{
-			Done: model.BoolCriteriaTrue,
-		}
-
-		tasks, err := nameRepo.List(ctx, req, nil)
-		if err != nil {
-			tr.Fatalf("%+v", err)
-		}
-
-		if len(tasks) != 10 {
-			tr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 10)
-		}
-	})
-
-	t.Run("like(10件)", func(tr *testing.T) {
-		req := &model.NameListReq{
-			Desc: "ll",
-		}
-
-		tasks, err := nameRepo.List(ctx, req, nil)
-		if err != nil {
-			tr.Fatalf("%+v", err)
-		}
-
-		if len(tasks) != 10 {
-			tr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 10)
-		}
-	})
-
-	t.Run("prefix", func(tr *testing.T) {
-		t.Run("Success", func(tr *testing.T) {
-			req := &model.NameListReq{
-				Desc2: "Pre",
-			}
-
-			tasks, err := nameRepo.List(ctx, req, nil)
-			if err != nil {
-				tr.Fatalf("%+v", err)
-			}
-
-			if len(tasks) != 10 {
-				tr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 10)
-			}
-		})
-
-		t.Run("Failure", func(tr *testing.T) {
-			req := &model.NameListReq{
-				Desc2: "He",
-			}
-
-			tasks, err := nameRepo.List(ctx, req, nil)
-			if err != nil {
-				tr.Fatalf("%+v", err)
-			}
-
-			if len(tasks) != 0 {
-				tr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 0)
-			}
-		})
-	})
-
-	t.Run("time.Time(10件)", func(tr *testing.T) {
-		req := &model.NameListReq{
-			Created: now,
-		}
-
-		tasks, err := nameRepo.List(ctx, req, nil)
-		if err != nil {
-			tr.Fatalf("%+v", err)
-		}
-
-		if len(tasks) != 10 {
-			tr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 10)
-		}
-	})
-
-	t.Run("[]int(10件)", func(tr *testing.T) {
-		req := &model.NameListReq{
-			PriceList: []int{1, 2, 3},
-		}
-
-		tasks, err := nameRepo.List(ctx, req, nil)
-		if err != nil {
-			tr.Fatalf("%+v", err)
-		}
-
-		if len(tasks) != 10 {
-			tr.Fatalf("unexpected length: %d (expected: %d)", len(tasks), 10)
-		}
-	})
-}
-*/
-
 func TestFirestoreOfTaskRepo(t *testing.T) {
 	client := initFirestoreClient(t)
 
@@ -1053,7 +904,6 @@ func TestFirestoreOfTaskRepo(t *testing.T) {
 	defer cancel()
 
 	now := time.Unix(time.Now().Unix(), 0)
-	desc := "hello"
 
 	id, err := taskRepo.Insert(ctx, &model.Task{
 		Desc:    desc,
@@ -1399,6 +1249,5 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 		if ret.Version != 2 {
 			tr.Fatalf("unexpected Version: %d (expected: %d)", ret.Version, 2)
 		}
-
 	})
 }

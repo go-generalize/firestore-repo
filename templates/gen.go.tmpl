@@ -16,9 +16,10 @@ import (
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-{{- if ne .ModelImportPath ""}}
+
+{{- if ne .ModelImportPath "" }}
 	model "{{.ModelImportPath}}"
-{{- end}}
+{{- end }}
 )
 {{- $bracketsStart := "{" }}
 {{- $bracketsEnd := "}" }}
@@ -74,8 +75,11 @@ type {{ $middlewareName }} interface {
 
 type {{ .RepositoryStructName }} struct {
 	collectionName   string
-	firestoreClient  *firestore.Client{{ if eq .IsSubCollection true }}
-	parentDocument   *firestore.DocumentRef{{ end }}
+	firestoreClient  *firestore.Client
+{{- if eq .IsSubCollection true }}
+	parentDocument   *firestore.DocumentRef
+	collectionGroup  *firestore.CollectionGroupRef
+{{- end }}
 	middleware       []{{ $middlewareName }}
 	uniqueRepository *uniqueRepository
 }
@@ -89,7 +93,15 @@ func New{{ .RepositoryInterfaceName }}(firestoreClient *firestore.Client{{ if eq
 		middleware:       middleware,
 		uniqueRepository: newUniqueRepository(firestoreClient, "{{ .StructName }}"),
 	}
-}
+}{{ if eq .IsSubCollection true }}
+
+// New{{ .StructName }}CollectionGroupRepository - constructor
+func New{{ .StructName }}CollectionGroupRepository(firestoreClient *firestore.Client) {{ .RepositoryInterfaceName }} {
+	return &{{ .RepositoryStructName }}{
+		collectionName:  "{{ .StructName }}",
+		collectionGroup: firestoreClient.CollectionGroup("{{ .StructName }}"),
+	}
+}{{ end }}
 {{ if .MetaFields }}
 func (repo *{{ .RepositoryStructName }}) setMeta(subject *{{ .StructNameRef }}, isInsert bool) {
 	now := time.Now()
@@ -158,6 +170,7 @@ func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, 
 			continue
 		}
 	}
+
 	return rb, nil
 }
 
@@ -180,11 +193,17 @@ func (repo *{{ .RepositoryStructName }}) beforeDelete(ctx context.Context, subje
 			continue
 		}
 	}
+
 	return rb, nil
 }
 
 // GetCollection *firestore.CollectionRef getter
 func (repo *{{ .RepositoryStructName }}) GetCollection() *firestore.CollectionRef {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return nil
+	}
+{{- end }}
 	return repo.{{ if eq .IsSubCollection true }}parentDocument{{ else }}firestoreClient{{ end }}.Collection(repo.collectionName)
 }
 
@@ -195,6 +214,11 @@ func (repo *{{ .RepositoryStructName }}) GetCollectionName() string {
 
 // GetDocRef *firestore.DocumentRef getter
 func (repo *{{ .RepositoryStructName }}) GetDocRef({{ .KeyValueName }} string) *firestore.DocumentRef {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return nil
+	}
+{{- end }}
 	return repo.GetCollection().Doc({{ .KeyValueName }})
 }
 {{ if .EnableIndexes }}
@@ -266,17 +290,32 @@ func (repo *{{ .RepositoryStructName }}) {{ ListFunc }} {
 
 // Get 処理中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ GetFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return nil, ErrNotAvailableCG
+	}
+{{- end }}
 	doc := repo.GetDocRef({{ .KeyValueName }})
 	return repo.get(ctx, doc, opts...)
 }
 
 // GetWithDoc 処理中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ GetWithDocFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return nil, ErrNotAvailableCG
+	}
+{{- end }}
 	return repo.get(ctx, doc, opts...)
 }
 
 // Insert 処理中の {{ .StructName }} の登録処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ InsertFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return "", ErrNotAvailableCG
+	}
+{{- end }}
 	rb, err := repo.beforeInsert(ctx, subject)
 	if err != nil {
 		return "", xerrors.Errorf("before insert error: %w", err)
@@ -298,6 +337,11 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertFunc }} {
 
 // Update 処理中の {{ .StructName }} の更新処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ UpdateFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return ErrNotAvailableCG
+	}
+{{- end }}
 	doc := repo.GetDocRef(subject.{{ .KeyFieldName }})
 
 	old, err := repo.get(ctx, doc)
@@ -329,11 +373,21 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateFunc }} {
 
 // StrictUpdate 処理中の {{ .StructName }} の厳格な更新処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ StrictUpdateFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return ErrNotAvailableCG
+	}
+{{- end }}
 	return repo.strictUpdate(ctx, id, param, opts...)
 }
 
 // Delete 処理中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return ErrNotAvailableCG
+	}
+{{- end }}
 {{- if .MetaFields }}
 	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 		t := time.Now()
@@ -361,6 +415,11 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteFunc }} {
 
 // DeleteBy{{ .KeyFieldName }} 処理中の {{ .StructName }} の {{ .KeyFieldName }}から削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteByFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return ErrNotAvailableCG
+	}
+{{- end }}
 	subject, err := repo.Get(ctx, {{ .KeyValueName }})
 	if err != nil {
 		return xerrors.Errorf("error in Get method: %w", err)
@@ -380,11 +439,21 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteByFunc }} {
 
 // GetMulti 処理中の {{ .StructName }} の一括取得処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ GetMultiFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return nil, ErrNotAvailableCG
+	}
+{{- end }}
 	return repo.getMulti(ctx, {{ PluralForm .KeyValueName }}, opts...)
 }
 
 // InsertMulti 処理中の {{ .StructName }} の一括挿入処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ InsertMultiFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return nil, ErrNotAvailableCG
+	}
+{{- end }}
 	var rbs []RollbackFunc
 	defer func() {
 		if er == nil {
@@ -450,6 +519,11 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiFunc }} {
 
 // UpdateMulti 処理中の {{ .StructName }} の一括更新処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return ErrNotAvailableCG
+	}
+{{- end }}
 	var rbs []RollbackFunc
 	defer func() {
 		if er == nil {
@@ -516,6 +590,11 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiFunc }} {
 
 // DeleteMulti 処理中の {{ .StructName }} の一括削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return ErrNotAvailableCG
+	}
+{{- end }}
 	var rbs []RollbackFunc
 	defer func() {
 		if er == nil {
@@ -581,6 +660,11 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiFunc }} {
 
 // DeleteMultiBy{{ PluralForm .KeyFieldName }} 処理中の {{ .StructName }} の {{ .KeyFieldName }}群を元に一括削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return ErrNotAvailableCG
+	}
+{{- end }}
 	subjects := make([]*{{ .StructNameRef }}, len({{ PluralForm .KeyValueName }}))
 
 	opt := GetOption{}
@@ -604,17 +688,32 @@ func (repo *{{ .RepositoryStructName }}) {{ ListWithTxFunc }} {
 
 // GetWithTx トランザクション中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ GetWithTxFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return nil, ErrNotAvailableCG
+	}
+{{- end }}
 	doc := repo.GetDocRef({{ .KeyValueName }})
 	return repo.get(tx, doc, opts...)
 }
 
 // GetWithDocWithTx トランザクション中の {{ .StructName }} の取得処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ GetWithDocWithTxFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return nil, ErrNotAvailableCG
+	}
+{{- end }}
 	return repo.get(tx, doc, opts...)
 }
 
 // InsertWithTx トランザクション中の {{ .StructName }} の登録処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ InsertWithTxFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return "", ErrNotAvailableCG
+	}
+{{- end }}
 	rb, err := repo.beforeInsert(context.WithValue(ctx, transactionInProgressKey{}, 1), subject)
 	if err != nil {
 		return "", xerrors.Errorf("before insert error: %w", err)
@@ -642,6 +741,11 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertWithTxFunc }} {
 
 // UpdateWithTx トランザクション中の {{ .StructName }} の更新処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ UpdateWithTxFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return ErrNotAvailableCG
+	}
+{{- end }}
 	doc := repo.GetDocRef(subject.{{ .KeyFieldName }})
 
 	old, err := repo.get(tx, doc)
@@ -673,11 +777,21 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateWithTxFunc }} {
 
 // StrictUpdateWithTx トランザクション中の {{ .StructName }} の厳格な更新処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ StrictUpdateWithTxFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return ErrNotAvailableCG
+	}
+{{- end }}
 	return repo.strictUpdate(tx, id, param, opts...)
 }
 
 // DeleteWithTx トランザクション中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteWithTxFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return ErrNotAvailableCG
+	}
+{{- end }}
 {{- if .MetaFields }}
 	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 		t := time.Now()
@@ -705,6 +819,11 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteWithTxFunc }} {
 
 // DeleteBy{{ .KeyFieldName }}WithTx トランザクション中の {{ .StructName }} の削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteByWithTxFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return ErrNotAvailableCG
+	}
+{{- end }}
 	subject, err := repo.GetWithTx(tx, {{ .KeyValueName }})
 	if err != nil {
 		return xerrors.Errorf("error in GetWithTx method: %w", err)
@@ -736,11 +855,21 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteByWithTxFunc }} {
 
 // GetMultiWithTx トランザクション中の {{ .StructName }} の一括取得処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ GetMultiWithTxFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return nil, ErrNotAvailableCG
+	}
+{{- end }}
 	return repo.getMulti(tx, {{ PluralForm .KeyValueName }}, opts...)
 }
 
 // InsertMultiWithTx トランザクション中の {{ .StructName }} の一括挿入処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ InsertMultiWithTxFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return nil, ErrNotAvailableCG
+	}
+{{- end }}
 	ctx = context.WithValue(ctx, transactionInProgressKey{}, 1)
 	var rbs []RollbackFunc
 	defer func() {
@@ -790,6 +919,11 @@ func (repo *{{ .RepositoryStructName }}) {{ InsertMultiWithTxFunc }} {
 
 // UpdateMultiWithTx トランザクション中の {{ .StructName }} の一括挿入処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiWithTxFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return ErrNotAvailableCG
+	}
+{{- end }}
 	ctx = context.WithValue(ctx, transactionInProgressKey{}, 1)
 	var rbs []RollbackFunc
 	defer func() {
@@ -841,6 +975,11 @@ func (repo *{{ .RepositoryStructName }}) {{ UpdateMultiWithTxFunc }} {
 
 // DeleteMultiWithTx トランザクション中の {{ .StructName }} の一括削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiWithTxFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return ErrNotAvailableCG
+	}
+{{- end }}
 	var rbs []RollbackFunc
 	defer func() {
 		if er == nil {
@@ -907,6 +1046,11 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiWithTxFunc }} {
 
 // DeleteMultiBy{{ .KeyFieldName }}WithTx トランザクション中の {{ .StructName }} の一括削除処理一切の責任を持ち、これを行う
 func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByWithTxFunc }} {
+{{- if eq .IsSubCollection true }}
+	if repo.collectionGroup != nil {
+		return ErrNotAvailableCG
+	}
+{{- end }}
 	var rbs []RollbackFunc
 	defer func() {
 		if er == nil {
@@ -1197,12 +1341,16 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 		if q != nil {
 			return *q
 		}
-		return firestore.Query{}
+{{- if eq .IsSubCollection true }}
+		if repo.collectionGroup != nil {
+			return repo.collectionGroup.Query
+		}
+{{- end }}
+		return repo.GetCollection().Query
 	}()
 
 	if q == nil {
-		ref := repo.GetCollection()
-{{ if .EnableIndexes }}
+{{- if .EnableIndexes }}
 		filters := xim.NewFilters(&xim.Config{
 			IgnoreCase:         true,
 			SaveNoFiltersIndex: true,
@@ -1216,7 +1364,7 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 {{- 		range $key, $value := $Meta }}
 		if req.{{ $key }} != nil {
 			for _, chain := range req.{{ $key }}.QueryGroup {
-				ref.Query = ref.Query.Where({{ $RepositoryStructName }}Meta["{{ $key }}"], chain.Operator, chain.Value)
+				query = query.Where({{ $RepositoryStructName }}Meta["{{ $key }}"], chain.Operator, chain.Value)
 			}
 		}
 {{- 		end }}
@@ -1231,16 +1379,16 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 					continue
 				}
 				for key, value := range items {
-					ref.Query = ref.Query.WherePath(firestore.FieldPath{{ $bracketsStart }}"{{ $fi.FsTag }}", key{{ $bracketsEnd }}, chain.Operator, value)
+					query = query.WherePath(firestore.FieldPath{{ $bracketsStart }}"{{ $fi.FsTag }}", key{{ $bracketsEnd }}, chain.Operator, value)
 				}
 			}
 {{- 		else if eq $IsSlice true }}
 			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
-				ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
+				query = query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
 			}
 {{- 		else }}
 			for _, chain := range req.{{ $fi.Field }}.QueryGroup {
-				ref.Query = ref.Query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
+				query = query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
 			}
 {{- 			if and (eq $EnableIndexes true ) (ne ( len $fi.Indexes ) 0) }}
 			value, ok := req.{{ $fi.Field }}.Filter.Value.(string)
@@ -1280,23 +1428,22 @@ func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName
 		}
 {{- 	end }}
 {{- end }}
-
 {{- if .MetaFields }}
 {{ $metaPath := (index .MetaFields "DeletedAt").ParentPath }}
 		if !req.IncludeSoftDeleted {
-			ref.Query = ref.Query.Where("DeletedAt", OpTypeEqual, nil)
+			query = query.Where("DeletedAt", OpTypeEqual, nil)
 		}
 {{- end }}
-{{ if .EnableIndexes }}
+{{- if .EnableIndexes }}
+
 		build, err := filters.Build()
 		if err != nil {
 			return nil, xerrors.Errorf("failed to filter build: %w", err)
 		}
 		for key := range build {
-			ref.Query = ref.Query.WherePath(firestore.FieldPath{{ $bracketsStart }}"{{ .FieldInfoForIndexes.FsTag }}", key{{ $bracketsEnd}}, OpTypeEqual, true)
+			query = query.WherePath(firestore.FieldPath{{ $bracketsStart }}"{{ .FieldInfoForIndexes.FsTag }}", key{{ $bracketsEnd}}, OpTypeEqual, true)
 		}
-{{ end }}
-		query = ref.Query
+{{- end }}
 	}
 
 	return repo.runQuery(v, query)
