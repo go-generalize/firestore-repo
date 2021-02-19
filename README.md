@@ -122,7 +122,7 @@ if err != nil {
 }
 ```
 
-## Query builder
+### Query builder
 The code for the query builder called `query_builder_gen.go` is generated.  
 
 ```go
@@ -136,8 +136,8 @@ if err != nil {
 }
 ```
 
-## Strict update
-Use a function called `Strict Update`.
+### Strict update
+Use a function called `Strict Update`.  
 By using this, firestore.Increment etc. can also be used.  
 Uniquely constrained fields are not available.
 
