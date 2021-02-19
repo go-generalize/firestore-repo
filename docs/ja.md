@@ -118,6 +118,9 @@ if err != nil {
 }
 ```
 
+## サンプル
+[生成されるコード例](../examples)
+
 ## License
 - Under the [MIT License](../LICENSE)
 - Copyright (C) 2021 go-generalize

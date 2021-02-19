@@ -121,6 +121,9 @@ if err != nil {
 }
 ```
 
+## Examples
+[Generated code example.](./examples)
+
 ## License
 - Under the [MIT License](./LICENSE)
 - Copyright (C) 2021 go-generalize
