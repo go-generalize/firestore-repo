@@ -1,6 +1,6 @@
 module github.com/go-generalize/firestore-repo
 
-go 1.12
+go 1.16
 
 require (
 	cloud.google.com/go/firestore v1.4.0
@@ -11,8 +11,7 @@ require (
 	github.com/go-utils/plural v0.0.1
 	github.com/go-utils/xim v0.1.2
 	github.com/google/go-cmp v0.5.4
-	github.com/iancoleman/strcase v0.1.3
-	github.com/rakyll/statik v0.1.7
+	github.com/iancoleman/strcase v0.0.0-20191112232945-16388991a334
 	go.opencensus.io v0.22.6 // indirect
 	golang.org/x/oauth2 v0.0.0-20210201163806-010130855d6c // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1

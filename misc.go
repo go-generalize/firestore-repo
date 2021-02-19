@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"go/ast"
-	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -34,21 +32,6 @@ var (
 		"Unique",
 	}
 )
-
-func getFileContents(name string) string {
-	fp, err := statikFS.Open("/" + name + ".go.tmpl")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer fp.Close()
-
-	contents, err := ioutil.ReadAll(fp)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return string(contents)
-}
 
 func uppercaseExtraction(name string, dupMap map[string]int) (lower string) {
 	defer func() {
