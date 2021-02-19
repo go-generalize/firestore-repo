@@ -7,11 +7,12 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
-	model "github.com/go-generalize/firestore-repo/examples"
 	"golang.org/x/xerrors"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	model "github.com/go-generalize/firestore-repo/examples"
 )
 
 //go:generate mockgen -source lock_gen.go -destination mock/mock_lock_gen/mock_lock_gen.go
