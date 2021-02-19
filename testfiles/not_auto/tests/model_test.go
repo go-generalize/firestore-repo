@@ -183,8 +183,8 @@ func TestFirestore(t *testing.T) {
 			}
 			ids2 = append(ids2, stsIDs...)
 
-			listReq := &model.SubTaskSearchParam{IsSubCollection: model.NewQueryChainer().Equal(true)}
-			sts, err = subRepo.Search(ctx, listReq, nil)
+			param := &model.SubTaskSearchParam{IsSubCollection: model.NewQueryChainer().Equal(true)}
+			sts, err = subRepo.Search(ctx, param, nil)
 			if err != nil {
 				tr.Fatalf("%+v", err)
 			}
@@ -194,7 +194,7 @@ func TestFirestore(t *testing.T) {
 			}
 
 			tr.Run("CollectionGroup", func(ttrr *testing.T) {
-				sts, err = model.NewSubTaskCollectionGroupRepository(client).Search(ctx, listReq, nil)
+				sts, err = model.NewSubTaskCollectionGroupRepository(client).Search(ctx, param, nil)
 				if err != nil {
 					tr.Fatalf("%+v", err)
 				}
