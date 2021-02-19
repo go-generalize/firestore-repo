@@ -209,7 +209,6 @@ type TaskUpdateParam struct {
 
 // List - search documents
 // The third argument is firestore.Query, basically you can pass nil
-// BUG(54m): there may be potential bugs
 func (repo *taskRepository) List(ctx context.Context, req *TaskListReq, q *firestore.Query) ([]*Task, error) {
 	return repo.list(ctx, req, q)
 }
@@ -1025,6 +1024,7 @@ func (repo *taskRepository) runQuery(v interface{}, query firestore.Query) ([]*T
 	return subjects, nil
 }
 
+// BUG(54m): there may be potential bugs
 func (repo *taskRepository) list(v interface{}, req *TaskListReq, q *firestore.Query) ([]*Task, error) {
 	if (req == nil && q == nil) || (req != nil && q != nil) {
 		return nil, xerrors.New("either one should be nil")

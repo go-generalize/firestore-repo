@@ -182,7 +182,6 @@ type HistoryUpdateParam struct {
 
 // List - search documents
 // The third argument is firestore.Query, basically you can pass nil
-// BUG(54m): there may be potential bugs
 func (repo *historyRepository) List(ctx context.Context, req *HistoryListReq, q *firestore.Query) ([]*History, error) {
 	return repo.list(ctx, req, q)
 }
@@ -1039,6 +1038,7 @@ func (repo *historyRepository) runQuery(v interface{}, query firestore.Query) ([
 	return subjects, nil
 }
 
+// BUG(54m): there may be potential bugs
 func (repo *historyRepository) list(v interface{}, req *HistoryListReq, q *firestore.Query) ([]*History, error) {
 	if (req == nil && q == nil) || (req != nil && q != nil) {
 		return nil, xerrors.New("either one should be nil")

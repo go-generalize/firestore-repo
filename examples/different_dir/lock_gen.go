@@ -212,7 +212,6 @@ type LockUpdateParam struct {
 
 // List - search documents
 // The third argument is firestore.Query, basically you can pass nil
-// BUG(54m): there may be potential bugs
 func (repo *lockRepository) List(ctx context.Context, req *LockListReq, q *firestore.Query) ([]*model.Lock, error) {
 	return repo.list(ctx, req, q)
 }
@@ -1075,6 +1074,7 @@ func (repo *lockRepository) runQuery(v interface{}, query firestore.Query) ([]*m
 
 var lockRepositoryMeta = tagMap(model.Lock{})
 
+// BUG(54m): there may be potential bugs
 func (repo *lockRepository) list(v interface{}, req *LockListReq, q *firestore.Query) ([]*model.Lock, error) {
 	if (req == nil && q == nil) || (req != nil && q != nil) {
 		return nil, xerrors.New("either one should be nil")
