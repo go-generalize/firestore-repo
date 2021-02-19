@@ -24,6 +24,7 @@ type Task struct {
 	ID      string          `firestore:"-"           firestore_key:""`
 	Desc    string          `firestore:"description" indexer:"suffix,like" unique:""`
 	Done    bool            `firestore:"done"        indexer:"equal"`
+	Count   int             `firestore:"count"`
 	Created time.Time       `firestore:"created"`
 	Indexes map[string]bool `firestore:"indexes"`
 }
@@ -113,6 +114,20 @@ req := &model.TaskListReq{
 }
 
 tasks, err := taskRepo.List(ctx, req, nil)
+if err != nil {
+	// error handling
+}
+```
+
+## クエリビルダー
+`query_builder_gen.go` というクエリビルダー用のコードも生成される。  
+
+```go
+qb := model.NewQueryBuilder(taskRepo.GetCollection())
+qb.GreaterThan("count", 3)
+qb.LessThan("count", 8)
+
+tasks, err := taskRepo.List(ctx, nil, qb.Query())
 if err != nil {
 	// error handling
 }
