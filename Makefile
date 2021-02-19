@@ -12,3 +12,7 @@ statik:
 .PHONY: goimports
 goimports:
 	cd /tmp && go get golang.org/x/tools/cmd/goimports
+
+.PHONY: code_clean
+code_clean:
+	cd testfiles && rm -rf */*_gen.go
