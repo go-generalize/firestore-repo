@@ -351,9 +351,9 @@ func (g *generator) setFuncMap() template.FuncMap {
 			)
 			return raw
 		},
-		"ListFunc": func() string {
+		"SearchFunc": func() string {
 			return fmt.Sprintf(
-				"List(ctx context.Context, req *%sListReq, q *firestore.Query) ([]*%s, error)",
+				"Search(ctx context.Context, req *%sListReq, q *firestore.Query) ([]*%s, error)",
 				g.StructName, g.StructNameRef)
 		},
 		"GetWithTxFunc": func() string {
@@ -397,9 +397,9 @@ func (g *generator) setFuncMap() template.FuncMap {
 				g.KeyFieldName, g.KeyValueName, g.KeyFieldType,
 			)
 		},
-		"ListWithTxFunc": func() string {
+		"SearchWithTxFunc": func() string {
 			return fmt.Sprintf(
-				"ListWithTx(tx *firestore.Transaction, req *%sListReq, q *firestore.Query) ([]*%s, error)",
+				"SearchWithTx(tx *firestore.Transaction, req *%sListReq, q *firestore.Query) ([]*%s, error)",
 				g.StructName, g.StructNameRef)
 		},
 		"GetMultiWithTxFunc": func() string {

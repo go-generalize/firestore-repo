@@ -56,9 +56,9 @@ type {{ .RepositoryInterfaceName }} interface {
 	{{ UpdateMultiWithTxFunc }}
 	{{ DeleteMultiWithTxFunc }}
 	{{ DeleteMultiByWithTxFunc }}
-	// List
-	{{ ListFunc }}
-	{{ ListWithTxFunc }}
+	// Search
+	{{ SearchFunc }}
+	{{ SearchWithTxFunc }}
 	// misc
 	GetCollection() *firestore.CollectionRef
 	GetCollectionName() string
@@ -279,10 +279,10 @@ type {{ .StructName }}UpdateParam struct {
 {{- end  }}
 }
 
-// List - search documents
+// Search - search documents
 // The third argument is firestore.Query, basically you can pass nil
-func (repo *{{ .RepositoryStructName }}) {{ ListFunc }} {
-	return repo.list(ctx, req, q)
+func (repo *{{ .RepositoryStructName }}) {{ SearchFunc }} {
+	return repo.search(ctx, req, q)
 }
 
 // Get - get `{{ .StructName }}` by `{{ .StructName }}.{{ .KeyFieldName }}`
@@ -679,8 +679,8 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByFunc }} {
 	return repo.DeleteMulti(ctx, subjects, opts...)
 }
 
-func (repo *{{ .RepositoryStructName }}) {{ ListWithTxFunc }} {
-	return repo.list(tx, req, q)
+func (repo *{{ .RepositoryStructName }}) {{ SearchWithTxFunc }} {
+	return repo.search(tx, req, q)
 }
 
 // GetWithTx - get `{{ .StructName }}` by `{{ .StructName }}.{{ .KeyFieldName }}` in transaction
@@ -1330,7 +1330,7 @@ func (repo *{{ .RepositoryStructName }}) runQuery(v interface{}, query firestore
 var {{ .RepositoryStructName }}Meta = tagMap({{ .StructNameRef }}{})
 {{ end }}
 // BUG(54m): there may be potential bugs
-func (repo *{{ .RepositoryStructName }}) list(v interface{}, req *{{ .StructName }}ListReq, q *firestore.Query) ([]*{{ .StructNameRef }}, error) {
+func (repo *{{ .RepositoryStructName }}) search(v interface{}, req *{{ .StructName }}ListReq, q *firestore.Query) ([]*{{ .StructNameRef }}, error) {
 	if (req == nil && q == nil) || (req != nil && q != nil) {
 		return nil, xerrors.New("either one should be nil")
 	}
