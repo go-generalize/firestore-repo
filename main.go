@@ -207,9 +207,10 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType, roo
 			obj := strings.TrimPrefix(typeNameDetail, typeMap)
 
 			if !cont.Contains(supportType, obj) {
-				if isStruct(root, importPath, name) {
+				if strings.HasSuffix(typeNameDetail, "STRUCT") {
 					break
 				}
+
 				log.Printf(
 					"%s: the type of `%s` is an invalid type in struct `%s` [%s]\n",
 					pos, name, gen.StructName, typeName,
