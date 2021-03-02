@@ -62,18 +62,24 @@ func run(structName string, isDisableMeta, subCollection bool) error {
 		panic(err)
 	}
 
+	goModPath, err := gopackages.GetGoModPath(",")
+	if err != nil {
+		return err
+	}
+	root := filepath.Dir(goModPath)
+
 	for name, v := range pkgs {
 		if strings.HasSuffix(name, "_test") {
 			continue
 		}
 
-		return traverse(v, fs, structName)
+		return traverse(v, fs, structName, root)
 	}
 
 	return nil
 }
 
-func traverse(pkg *ast.Package, fs *token.FileSet, structName string) error {
+func traverse(pkg *ast.Package, fs *token.FileSet, structName, root string) error {
 	gen := &generator{PackageName: pkg.Name}
 	if *isSubCollection {
 		gen.IsSubCollection = true
@@ -138,7 +144,7 @@ func traverse(pkg *ast.Package, fs *token.FileSet, structName string) error {
 					gen.ModelImportPath = importPath
 				}
 
-				return generate(gen, fs, structType)
+				return generate(gen, fs, structType, root, importPath)
 			}
 		}
 	}
@@ -146,7 +152,7 @@ func traverse(pkg *ast.Package, fs *token.FileSet, structName string) error {
 	return xerrors.Errorf("no such struct: %s", structName)
 }
 
-func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) error {
+func generate(gen *generator, fs *token.FileSet, structType *ast.StructType, root, importPath string) error {
 	dupMap := make(map[string]int)
 	fieldLabel = gen.StructName + indexLabel
 
@@ -201,6 +207,9 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 			obj := strings.TrimPrefix(typeNameDetail, typeMap)
 
 			if !cont.Contains(supportType, obj) {
+				if isStruct(root, importPath, name) {
+					break
+				}
 				log.Printf(
 					"%s: the type of `%s` is an invalid type in struct `%s` [%s]\n",
 					pos, name, gen.StructName, typeName,

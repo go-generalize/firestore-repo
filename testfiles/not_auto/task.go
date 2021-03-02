@@ -24,6 +24,11 @@ type Task struct {
 	Geo        *latlng.LatLng         `firestore:"geo"`
 	Sub        *firestore.DocumentRef `firestore:"sub"`
 	Flag       Flag                   `firestore:"flag"`
+	Author     *Author                `firestore:"author"`
 }
 
 type Flag bool
+
+type Author struct {
+	Name string `firestore:"name"`
+}

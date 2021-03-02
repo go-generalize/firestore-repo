@@ -1020,3 +1020,35 @@ func TestFirestoreValueCheck(t *testing.T) {
 		t.Fatalf("should get an error")
 	}
 }
+
+func TestFirestoreNestedStructTest(t *testing.T) {
+	client := initFirestoreClient(t)
+
+	taskRepo := model.NewTaskRepository(client)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	name := "John Doe"
+
+	id, err := taskRepo.Insert(ctx, &model.Task{
+		Identity: "TestID",
+		Author: &model.Author{
+			Name: name,
+		},
+	})
+
+	if err != nil {
+		t.Fatalf("failed to put item: %+v", err)
+	}
+
+	ret, err := taskRepo.Get(ctx, id)
+
+	if err != nil {
+		t.Fatalf("failed to get item: %+v", err)
+	}
+
+	if ret.Author.Name != name {
+		t.Fatalf("expected author name %s but got %s", name, ret.Author.Name)
+	}
+}
