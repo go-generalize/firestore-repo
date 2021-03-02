@@ -62,7 +62,7 @@ func run(structName string, isDisableMeta, subCollection bool) error {
 		panic(err)
 	}
 
-	goModPath, err := gopackages.GetGoModPath(",")
+	goModPath, err := gopackages.GetGoModPath(".")
 	if err != nil {
 		return err
 	}
