@@ -3,12 +3,9 @@ package main
 import (
 	"fmt"
 	"go/ast"
-	"go/types"
 	"os"
 	"path/filepath"
 	"regexp"
-
-	"golang.org/x/tools/go/packages"
 
 	"github.com/go-utils/cont"
 	"golang.org/x/xerrors"
@@ -149,78 +146,6 @@ func getTypeNameDetail(typ ast.Expr) string {
 	default:
 		return ""
 	}
-}
-
-//func getTypeIdent(typ ast.Expr) *ast.Ident {
-//	switch v := typ.(type) {
-//	case *ast.SelectorExpr:
-//		return getTypeIdent(v.X)
-//
-//	case *ast.Ident:
-//		return v
-//
-//	case *ast.StarExpr:
-//		return getTypeIdent(v.X)
-//
-//	case *ast.ArrayType:
-//		return getTypeIdent(v.Elt)
-//
-//	default:
-//		return nil
-//	}
-//}
-
-func isStruct(root, packageName, structName string) bool {
-	conf := &packages.Config{
-		Dir: root,
-		Mode: packages.NeedName |
-			packages.NeedCompiledGoFiles |
-			packages.NeedTypes |
-			packages.NeedSyntax |
-			packages.NeedTypesInfo,
-	}
-
-	pkgs, err := packages.Load(conf, packageName)
-	if err != nil {
-		return false
-	}
-	if packages.PrintErrors(pkgs) > 0 {
-		return false
-	}
-
-	flg := false
-
-	packages.Visit(pkgs, nil, func(pkg *packages.Package) {
-		for _, obj := range pkg.TypesInfo.Defs {
-			if obj == nil {
-				continue
-			}
-
-			if obj.Parent() != pkg.Types.Scope() {
-				continue
-			}
-
-			if obj.Name() != structName {
-				continue
-			}
-
-			v, ok := obj.(*types.TypeName)
-			if !(ok && !v.IsAlias()) {
-				continue
-			}
-
-			t, ok := v.Type().(*types.Named)
-
-			if !ok {
-				continue
-			}
-
-			_, flg = t.Underlying().(*types.Struct)
-			return
-		}
-	})
-
-	return flg
 }
 
 func isCurrentDirectory(path string) (bool, error) {
