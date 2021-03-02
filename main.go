@@ -62,24 +62,18 @@ func run(structName string, isDisableMeta, subCollection bool) error {
 		panic(err)
 	}
 
-	goModPath, err := gopackages.GetGoModPath(".")
-	if err != nil {
-		return err
-	}
-	root := filepath.Dir(goModPath)
-
 	for name, v := range pkgs {
 		if strings.HasSuffix(name, "_test") {
 			continue
 		}
 
-		return traverse(v, fs, structName, root)
+		return traverse(v, fs, structName)
 	}
 
 	return nil
 }
 
-func traverse(pkg *ast.Package, fs *token.FileSet, structName, root string) error {
+func traverse(pkg *ast.Package, fs *token.FileSet, structName string) error {
 	gen := &generator{PackageName: pkg.Name}
 	if *isSubCollection {
 		gen.IsSubCollection = true
@@ -144,7 +138,7 @@ func traverse(pkg *ast.Package, fs *token.FileSet, structName, root string) erro
 					gen.ModelImportPath = importPath
 				}
 
-				return generate(gen, fs, structType, root, importPath)
+				return generate(gen, fs, structType)
 			}
 		}
 	}
@@ -152,7 +146,7 @@ func traverse(pkg *ast.Package, fs *token.FileSet, structName, root string) erro
 	return xerrors.Errorf("no such struct: %s", structName)
 }
 
-func generate(gen *generator, fs *token.FileSet, structType *ast.StructType, root, importPath string) error {
+func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) error {
 	dupMap := make(map[string]int)
 	fieldLabel = gen.StructName + indexLabel
 
