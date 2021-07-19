@@ -5,6 +5,7 @@ statik/
 # etc
 .idea/
 .DS_Store
+bin/
 firebase.json
 firebase-debug.log
 firestore-debug.log

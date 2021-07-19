@@ -29,8 +29,12 @@ func init() {
 var (
 	isShowVersion   = flag.Bool("v", false, "print version")
 	isSubCollection = flag.Bool("sub-collection", false, "is SubCollection")
-	disableMeta     = flag.Bool("disable-meta", false, "Disable meta embed for Lock")
+	disableMeta     = flag.Bool("disable-meta", false, "Disable meta embed")
 	outputDir       = flag.String("o", "./", "Specify directory to generate code in")
+	mockGenPath     = flag.String("mockgen", "mockgen", "Specify mockgen path")
+	mockOutputPath  = flag.String(
+		"mock-output", defaultMockOut, "Specify directory to generate mock code in",
+	)
 )
 
 func main() {
@@ -74,7 +78,10 @@ func run(structName string, isDisableMeta, subCollection bool) error {
 }
 
 func traverse(pkg *ast.Package, fs *token.FileSet, structName string) error {
-	gen := &generator{PackageName: pkg.Name}
+	gen := &generator{
+		PackageName: pkg.Name,
+		MockGenPath: *mockGenPath,
+	}
 	if *isSubCollection {
 		gen.IsSubCollection = true
 	}
@@ -288,6 +295,19 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		if err := keyFieldHandler(gen, tags, name, typeName); err != nil {
 			log.Fatalf("%s: %v", pos, err)
 		}
+	}
+
+	{
+		gen.MockOutputPath = func() string {
+			mop := *mockOutputPath
+			if mop == defaultMockOut {
+				return strings.ReplaceAll(mop, "{{ .GeneratedFileName }}", gen.GeneratedFileName)
+			}
+			if !strings.HasSuffix(mop, ".go") {
+				mop += ".go"
+			}
+			return mop
+		}()
 	}
 
 	{

@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-//go:generate mockgen -source task_gen.go -destination mock/mock_task_gen/mock_task_gen.go
+//go:generate ../bin/mockgen -source task_gen.go -destination mock/mock_task_gen/mock_task_gen.go
 
 // TaskRepository - Repository of Task
 type TaskRepository interface {
