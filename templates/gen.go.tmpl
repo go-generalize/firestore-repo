@@ -24,7 +24,7 @@ import (
 {{- $bracketsStart := "{" }}
 {{- $bracketsEnd := "}" }}
 {{ $generate := "go:generate" }}
-//{{ $generate }} {{ .MockGenPath }} -source {{ .GeneratedFileName }}.go -destination mock/mock_{{ .GeneratedFileName }}/mock_{{ .GeneratedFileName }}.go
+//{{ $generate }} {{ .MockGenPath }} -source $GOFILE -destination mock/mock_{{ .GeneratedFileName }}/mock_{{ .GeneratedFileName }}.go
 
 // {{ .RepositoryInterfaceName }} - Repository of {{ .StructName }}
 type {{ .RepositoryInterfaceName }} interface {
