@@ -22,4 +22,5 @@ const (
 	typeFloat64Map = "map[string]float64"
 	typeBoolMap    = "map[string]bool"
 	NgType         = "NG"
+	defaultMockOut = "mock/mock_{{ .GeneratedFileName }}/mock_{{ .GeneratedFileName }}.go"
 )

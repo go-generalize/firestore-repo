@@ -46,6 +46,7 @@ type generator struct {
 	StructNameRef     string
 	ModelImportPath   string
 	MockGenPath       string
+	MockOutputPath    string
 
 	RepositoryStructName    string
 	RepositoryInterfaceName string

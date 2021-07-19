@@ -32,6 +32,9 @@ var (
 	disableMeta     = flag.Bool("disable-meta", false, "Disable meta embed")
 	outputDir       = flag.String("o", "./", "Specify directory to generate code in")
 	mockGenPath     = flag.String("mockgen", "mockgen", "Specify mockgen path")
+	mockOutputPath  = flag.String(
+		"mock-output", defaultMockOut, "Specify directory to generate mock code in",
+	)
 )
 
 func main() {
@@ -292,6 +295,19 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		if err := keyFieldHandler(gen, tags, name, typeName); err != nil {
 			log.Fatalf("%s: %v", pos, err)
 		}
+	}
+
+	{
+		gen.MockOutputPath = func() string {
+			mop := *mockOutputPath
+			if mop == defaultMockOut {
+				return strings.ReplaceAll(mop, "{{ .GeneratedFileName }}", gen.GeneratedFileName)
+			}
+			if !strings.HasSuffix(mop, ".go") {
+				mop += ".go"
+			}
+			return mop
+		}()
 	}
 
 	{
