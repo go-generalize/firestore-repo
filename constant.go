@@ -21,6 +21,6 @@ const (
 	typeInt64Map   = "map[string]int64"
 	typeFloat64Map = "map[string]float64"
 	typeBoolMap    = "map[string]bool"
-	NgType         = "NG"
+	ngType         = "NG"
 	defaultMockOut = "mock/mock_{{ .GeneratedFileName }}/mock_{{ .GeneratedFileName }}.go"
 )

@@ -124,9 +124,9 @@ func getTypeNameDetail(typ ast.Expr) string {
 				name = fmt.Sprintf(name, key.Name)
 				break
 			}
-			name = fmt.Sprintf(name, NgType)
+			name = fmt.Sprintf(name, ngType)
 		default:
-			name = fmt.Sprintf(name, NgType)
+			name = fmt.Sprintf(name, ngType)
 		}
 		switch val := v.Value.(type) {
 		case *ast.Ident:
@@ -134,11 +134,11 @@ func getTypeNameDetail(typ ast.Expr) string {
 				name += val.Name
 				break
 			}
-			name += NgType
+			name += ngType
 		case *ast.InterfaceType:
 			name += "interface{}"
 		default:
-			name += NgType
+			name += ngType
 		}
 
 		return name
