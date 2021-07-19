@@ -31,6 +31,7 @@ var (
 	isSubCollection = flag.Bool("sub-collection", false, "is SubCollection")
 	disableMeta     = flag.Bool("disable-meta", false, "Disable meta embed")
 	outputDir       = flag.String("o", "./", "Specify directory to generate code in")
+	mockGenPath     = flag.String("mockgen", "mockgen", "Specify mockgen path")
 )
 
 func main() {
@@ -74,7 +75,10 @@ func run(structName string, isDisableMeta, subCollection bool) error {
 }
 
 func traverse(pkg *ast.Package, fs *token.FileSet, structName string) error {
-	gen := &generator{PackageName: pkg.Name}
+	gen := &generator{
+		PackageName: pkg.Name,
+		MockGenPath: *mockGenPath,
+	}
 	if *isSubCollection {
 		gen.IsSubCollection = true
 	}
