@@ -1,6 +1,6 @@
 package examples
 
-//go:generate ../bin/firestore-repo -o different_dir -mockgen ../../bin/mockgen -mock-output mock/lock_gen.go Lock
+//go:generate ../bin/firestore-repo -p repository -o different_dir -mockgen ../../bin/mockgen -mock-output mock/lock_gen.go Lock
 
 // Lock - with automatic id generation
 type Lock struct {
