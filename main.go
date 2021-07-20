@@ -33,9 +33,7 @@ var (
 	outputDir       = flag.String("o", "./", "Specify directory to generate code in")
 	packageName     = flag.String("p", "", "Specify the package name, default is the same as the original package")
 	mockGenPath     = flag.String("mockgen", "mockgen", "Specify mockgen path")
-	mockOutputPath  = flag.String(
-		"mock-output", defaultMockOut, "Specify directory to generate mock code in",
-	)
+	mockOutputPath  = flag.String("mock-output", defaultMockOut, "Specify directory to generate mock code in")
 )
 
 func main() {
