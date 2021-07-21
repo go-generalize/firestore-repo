@@ -440,13 +440,6 @@ func appendIndexer(tags *structtag.Tags, fieldInfo *FieldInfo, dupMap map[string
 			Label:     uppercaseExtraction(fieldInfo.Field, dupMap),
 			Method:    "Add",
 		}
-		if fieldInfo.FieldType != typeString {
-			idx.Use = isUseIndexer(filters, "e", equal)
-			idx.Method += "Something"
-			fieldInfo.Indexes = append(fieldInfo.Indexes, idx)
-			idx.Comment = fmt.Sprintf("perfect-match of %s", fieldInfo.Field)
-			continue
-		}
 		switch patterns[i] {
 		case prefix:
 			idx.Use = isUseIndexer(filters, "p", prefix)
@@ -463,6 +456,9 @@ func appendIndexer(tags *structtag.Tags, fieldInfo *FieldInfo, dupMap map[string
 		case equal:
 			idx.Use = isUseIndexer(filters, "e", equal)
 			idx.Comment = fmt.Sprintf("perfect-match of %s", fieldInfo.Field)
+		}
+		if fieldInfo.FieldType != typeString {
+			idx.Method = "AddSomething"
 		}
 		fieldInfo.Indexes = append(fieldInfo.Indexes, idx)
 	}
