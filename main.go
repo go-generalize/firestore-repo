@@ -436,25 +436,18 @@ func appendIndexer(tags *structtag.Tags, fieldInfo *FieldInfo, dupMap map[string
 	}
 	for i := range patterns {
 		idx := &IndexesInfo{
-			ConstName: fieldLabel + fieldInfo.Field + patterns[i],
+			ConstName: fieldLabel + fieldInfo.Field + strcase.ToCamel(patterns[i]),
 			Label:     uppercaseExtraction(fieldInfo.Field, dupMap),
 			Method:    "Add",
-		}
-		if fieldInfo.FieldType != typeString {
-			idx.Use = isUseIndexer(filters, "e", equal)
-			idx.Method += "Something"
-			fieldInfo.Indexes = append(fieldInfo.Indexes, idx)
-			idx.Comment = fmt.Sprintf("perfect-match of %s", fieldInfo.Field)
-			continue
 		}
 		switch patterns[i] {
 		case prefix:
 			idx.Use = isUseIndexer(filters, "p", prefix)
-			idx.Method += prefix
+			idx.Method += strcase.ToCamel(prefix)
 			idx.Comment = fmt.Sprintf("prefix-match of %s", fieldInfo.Field)
 		case suffix:
 			idx.Use = isUseIndexer(filters, "s", suffix)
-			idx.Method += suffix
+			idx.Method += strcase.ToCamel(suffix)
 			idx.Comment = fmt.Sprintf("suffix-match of %s", fieldInfo.Field)
 		case like:
 			idx.Use = isUseIndexer(filters, "l", like)
@@ -463,6 +456,9 @@ func appendIndexer(tags *structtag.Tags, fieldInfo *FieldInfo, dupMap map[string
 		case equal:
 			idx.Use = isUseIndexer(filters, "e", equal)
 			idx.Comment = fmt.Sprintf("perfect-match of %s", fieldInfo.Field)
+		}
+		if fieldInfo.FieldType != typeString {
+			idx.Method = "AddSomething"
 		}
 		fieldInfo.Indexes = append(fieldInfo.Indexes, idx)
 	}

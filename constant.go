@@ -1,11 +1,11 @@
 package main
 
 const (
-	equal          = "Equal"
+	equal          = "equal"
+	like           = "like"
+	prefix         = "prefix"
+	suffix         = "suffix"
 	biunigrams     = "Biunigrams"
-	like           = "Like"
-	prefix         = "Prefix"
-	suffix         = "Suffix"
 	indexLabel     = "IndexLabel"
 	typeString     = "string"
 	typeInt        = "int"
