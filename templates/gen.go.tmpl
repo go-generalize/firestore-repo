@@ -107,7 +107,7 @@ func (repo *{{ .RepositoryStructName }}) setMeta(subject *{{ .StructNameRef }}, 
 	now := time.Now()
 
 	if isInsert {
-		subject.CreatedAt = time.Now()
+		subject.CreatedAt = now
 	}
 	subject.UpdatedAt = now
 	subject.Version++
