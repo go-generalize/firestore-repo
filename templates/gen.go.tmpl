@@ -212,7 +212,7 @@ func (repo *{{ .RepositoryStructName }}) GetCollectionName() string {
 	return repo.collectionName
 }
 
-// GetDocRef  - *firestore.DocumentRef getter
+// GetDocRef - *firestore.DocumentRef getter
 func (repo *{{ .RepositoryStructName }}) GetDocRef({{ .KeyValueName }} string) *firestore.DocumentRef {
 {{- if eq .IsSubCollection true }}
 	if repo.collectionGroup != nil {
