@@ -63,8 +63,10 @@ type {{ .RepositoryInterfaceName }} interface {
 	GetCollection() *firestore.CollectionRef
 	GetCollectionName() string
 	GetDocRef({{ .KeyValueName }} string) *firestore.DocumentRef
+{{- if eq .IsSubCollection true }}
 	SetParentDoc(doc *firestore.DocumentRef)
 	Free()
+{{- end }}
 }
 {{ $middlewareName := printf "%sMiddleware" .RepositoryInterfaceName }}
 // {{ $middlewareName }} - middleware of {{ .RepositoryInterfaceName }}
