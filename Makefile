@@ -15,3 +15,7 @@ code_clean:
 .PHONY: lint
 lint:
 	golangci-lint run --config ".github/.golangci.yml" --fast
+
+.PHONY: build
+build:
+	go build -o ./bin/firestore-repo .
