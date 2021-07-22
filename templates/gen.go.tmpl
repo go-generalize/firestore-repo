@@ -112,6 +112,11 @@ func (repo *{{ .RepositoryStructName }}) setMeta(subject *{{ .StructNameRef }}, 
 	subject.UpdatedAt = now
 	subject.Version++
 }
+
+func (repo *{{ .RepositoryStructName }}) setMetaWithStrictUpdate(param *{{ .StructName }}UpdateParam) {
+	param.UpdatedAt = firestore.ServerTimestamp
+	param.Version = firestore.Increment(1)
+}
 {{ end }}
 func (repo *{{ .RepositoryStructName }}) beforeInsert(ctx context.Context, subject *{{ .StructNameRef }}) (RollbackFunc, error) {
 {{- if .MetaFields }}
@@ -1250,7 +1255,9 @@ func (repo *{{ .RepositoryStructName }}) strictUpdate(v interface{}, id string, 
 		dr  = repo.GetDocRef(id)
 		err error
 	)
-
+{{ if .MetaFields }}
+	repo.setMetaWithStrictUpdate(param)
+{{ end }}
 	updates := updater({{ .StructNameRef }}{}, param)
 
 	switch x := v.(type) {
