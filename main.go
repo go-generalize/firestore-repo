@@ -31,10 +31,9 @@ var (
 	isSubCollection = flag.Bool("sub-collection", false, "is SubCollection")
 	disableMeta     = flag.Bool("disable-meta", false, "Disable meta embed")
 	outputDir       = flag.String("o", "./", "Specify directory to generate code in")
+	packageName     = flag.String("p", "", "Specify the package name, default is the same as the original package")
 	mockGenPath     = flag.String("mockgen", "mockgen", "Specify mockgen path")
-	mockOutputPath  = flag.String(
-		"mock-output", defaultMockOut, "Specify directory to generate mock code in",
-	)
+	mockOutputPath  = flag.String("mock-output", defaultMockOut, "Specify directory to generate mock code in")
 )
 
 func main() {
@@ -79,7 +78,13 @@ func run(structName string, isDisableMeta, subCollection bool) error {
 
 func traverse(pkg *ast.Package, fs *token.FileSet, structName string) error {
 	gen := &generator{
-		PackageName: pkg.Name,
+		PackageName: func() string {
+			pn := *packageName
+			if pn == "" {
+				return pkg.Name
+			}
+			return pn
+		}(),
 		MockGenPath: *mockGenPath,
 	}
 	if *isSubCollection {
@@ -431,25 +436,18 @@ func appendIndexer(tags *structtag.Tags, fieldInfo *FieldInfo, dupMap map[string
 	}
 	for i := range patterns {
 		idx := &IndexesInfo{
-			ConstName: fieldLabel + fieldInfo.Field + patterns[i],
+			ConstName: fieldLabel + fieldInfo.Field + strcase.ToCamel(patterns[i]),
 			Label:     uppercaseExtraction(fieldInfo.Field, dupMap),
 			Method:    "Add",
-		}
-		if fieldInfo.FieldType != typeString {
-			idx.Use = isUseIndexer(filters, "e", equal)
-			idx.Method += "Something"
-			fieldInfo.Indexes = append(fieldInfo.Indexes, idx)
-			idx.Comment = fmt.Sprintf("perfect-match of %s", fieldInfo.Field)
-			continue
 		}
 		switch patterns[i] {
 		case prefix:
 			idx.Use = isUseIndexer(filters, "p", prefix)
-			idx.Method += prefix
+			idx.Method += strcase.ToCamel(prefix)
 			idx.Comment = fmt.Sprintf("prefix-match of %s", fieldInfo.Field)
 		case suffix:
 			idx.Use = isUseIndexer(filters, "s", suffix)
-			idx.Method += suffix
+			idx.Method += strcase.ToCamel(suffix)
 			idx.Comment = fmt.Sprintf("suffix-match of %s", fieldInfo.Field)
 		case like:
 			idx.Use = isUseIndexer(filters, "l", like)
@@ -458,6 +456,9 @@ func appendIndexer(tags *structtag.Tags, fieldInfo *FieldInfo, dupMap map[string
 		case equal:
 			idx.Use = isUseIndexer(filters, "e", equal)
 			idx.Comment = fmt.Sprintf("perfect-match of %s", fieldInfo.Field)
+		}
+		if fieldInfo.FieldType != typeString {
+			idx.Method = "AddSomething"
 		}
 		fieldInfo.Indexes = append(fieldInfo.Indexes, idx)
 	}
