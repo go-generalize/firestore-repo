@@ -230,7 +230,8 @@ func (repo *{{ .RepositoryStructName }}) GetDocRef({{ .KeyValueName }} string) *
 {{- end }}
 	return repo.GetCollection().Doc({{ .KeyValueName }})
 }
-{{ if eq .IsSubCollection true }}
+{{- if eq .IsSubCollection true }}
+
 // SetParentDoc - parent document setter
 func (repo *{{ .RepositoryStructName }}) SetParentDoc(doc *firestore.DocumentRef) {
 	if doc == nil {
