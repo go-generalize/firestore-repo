@@ -63,6 +63,8 @@ type {{ .RepositoryInterfaceName }} interface {
 	GetCollection() *firestore.CollectionRef
 	GetCollectionName() string
 	GetDocRef({{ .KeyValueName }} string) *firestore.DocumentRef
+	SetParentDoc(doc *firestore.DocumentRef)
+	Free()
 }
 {{ $middlewareName := printf "%sMiddleware" .RepositoryInterfaceName }}
 // {{ $middlewareName }} - middleware of {{ .RepositoryInterfaceName }}
@@ -226,6 +228,20 @@ func (repo *{{ .RepositoryStructName }}) GetDocRef({{ .KeyValueName }} string) *
 {{- end }}
 	return repo.GetCollection().Doc({{ .KeyValueName }})
 }
+{{ if eq .IsSubCollection true }}
+// SetParentDoc - parent document setter
+func (repo *{{ .RepositoryStructName }}) SetParentDoc(doc *firestore.DocumentRef) {
+	if doc == nil {
+		return
+	}
+	repo.parentDocument = doc
+}
+
+// Free - parent document releaser
+func (repo *{{ .RepositoryStructName }}) Free() {
+	repo.parentDocument = nil
+}
+{{- end }}
 {{ if .EnableIndexes }}
 func (repo *{{ .RepositoryStructName }}) saveIndexes(subject *{{ .StructNameRef }}) error {
 	idx := xim.NewIndexes(&xim.Config{
