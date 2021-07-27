@@ -11,21 +11,27 @@ import (
 	"google.golang.org/genproto/googleapis/type/latlng"
 )
 
+// SetLastThreeToZero - set the last three digits to zero
 func SetLastThreeToZero(t time.Time) time.Time {
 	return time.Unix(t.Unix(), int64(t.Nanosecond()/1000*1000))
 }
 
+// GetOption - option to include logical deletion data
 type GetOption struct {
 	IncludeSoftDeleted bool
 }
 
-type DeleteMode string
+// DeleteMode - delete mode
+type DeleteMode int
 
 const (
-	DeleteModeSoft = "soft"
-	DeleteModeHard = "hard"
+	DeleteModeSoft DeleteMode = iota + 1 // logical delete mode
+	DeleteModeHard                       // physical delete mode
 )
 
+// DeleteOption - option to delete logically or physically
+// default: physical deletion
+// use `DeleteModeSoft` or `DeleteModeHard
 type DeleteOption struct {
 	Mode DeleteMode
 }
