@@ -19,11 +19,11 @@ type GetOption struct {
 	IncludeSoftDeleted bool
 }
 
-type DeleteMode string
+type DeleteMode int
 
 const (
-	DeleteModeSoft DeleteMode = "soft"
-	DeleteModeHard DeleteMode = "hard"
+	DeleteModeSoft DeleteMode = iota + 1
+	DeleteModeHard
 )
 
 type DeleteOption struct {
