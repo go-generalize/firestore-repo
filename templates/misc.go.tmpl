@@ -37,16 +37,6 @@ type DeleteOption struct {
 	Mode DeleteMode
 }
 
-// RunInTransaction - tx func
-var RunInTransaction func(ctx context.Context, f func(ctx context.Context, tx *firestore.Transaction) error, opts ...firestore.TransactionOption) error
-
-func setTxFunc(c *firestore.Client) {
-	if RunInTransaction != nil {
-		return
-	}
-	RunInTransaction = c.RunTransaction
-}
-
 func isReservedType(value reflect.Value) bool {
 	switch value.Interface().(type) {
 	case time.Time, *time.Time,
