@@ -230,6 +230,11 @@ func (repo *{{ .RepositoryStructName }}) GetDocRef({{ .KeyValueName }} string) *
 {{- end }}
 	return repo.GetCollection().Doc({{ .KeyValueName }})
 }
+
+// RunInTransaction - (*firestore.Client).RunTransaction getter
+func (repo *{{ .RepositoryStructName }}) RunInTransaction() func(ctx context.Context, f func(context.Context, *firestore.Transaction) error, opts ...firestore.TransactionOption) (err error) {
+	return repo.firestoreClient.RunTransaction
+}
 {{- if eq .IsSubCollection true }}
 
 // SetParentDoc - parent document setter
