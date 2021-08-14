@@ -126,7 +126,7 @@ func (repo *{{ .RepositoryStructName }}) setMetaWithStrictUpdate(param *{{ .Stru
 func (repo *{{ .RepositoryStructName }}) beforeInsert(ctx context.Context, subject *{{ .StructNameRef }}) (RollbackFunc, error) {
 {{- if .MetaFields }}
 	if subject.Version != 0 {
-		return nil, xerrors.Errorf("insert data must be Version == 0: %+v", subject)
+		return nil, xerrors.Errorf("insert data must be Version == 0 %+v: %w", subject, ErrVersionConflict)
 	}
 	if subject.DeletedAt != nil {
 		return nil, xerrors.Errorf("insert data must be DeletedAt == nil: %+v", subject)
@@ -156,8 +156,8 @@ func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, 
 {{- if .MetaFields }}
 	if old.Version > subject.Version {
 		return nil, xerrors.Errorf(
-			"The data in the database is newer: (db version: %d, target version: %d) %+v",
-			old.Version, subject.Version, subject,
+			"The data in the database is newer: (db version: %d, target version: %d) %+v: %w",
+			old.Version, subject.Version, subject, ErrVersionConflict,
 		)
 	}
 	if subject.DeletedAt != nil {
