@@ -63,6 +63,7 @@ type {{ .RepositoryInterfaceName }} interface {
 	GetCollection() *firestore.CollectionRef
 	GetCollectionName() string
 	GetDocRef({{ .KeyValueName }} string) *firestore.DocumentRef
+	RunInTransaction() func(ctx context.Context, f func(context.Context, *firestore.Transaction) error, opts ...firestore.TransactionOption) (err error)
 {{- if eq .IsSubCollection true }}
 	SetParentDoc(doc *firestore.DocumentRef)
 	Free()
