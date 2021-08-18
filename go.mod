@@ -10,6 +10,7 @@ require (
 	github.com/go-utils/gopackages v0.0.0-20210218102646-e7d1f0008968
 	github.com/go-utils/plural v0.0.1
 	github.com/go-utils/xim v0.1.2
+	github.com/golang/mock v1.4.4
 	github.com/google/go-cmp v0.5.4
 	github.com/iancoleman/strcase v0.0.0-20191112232945-16388991a334
 	go.opencensus.io v0.22.6 // indirect
