@@ -1193,7 +1193,7 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 
 		param = &model.LockSearchParam{
 			CreatedAt:          model.NewQueryChainer().Asc(),
-			Limit:              5,
+			CursorLimit:        5,
 			IncludeSoftDeleted: true,
 		}
 		locks, err = lockRepo.Search(ctx, param, nil)
@@ -1207,7 +1207,7 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 
 		param = &model.LockSearchParam{
 			CreatedAt:          model.NewQueryChainer().Asc().StartAfter(locks[len(locks)-1].CreatedAt),
-			Limit:              5,
+			CursorLimit:        5,
 			IncludeSoftDeleted: true,
 		}
 		locks, err = lockRepo.Search(ctx, param, nil)

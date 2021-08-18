@@ -292,10 +292,10 @@ type {{ .StructName }}SearchParam struct {
 {{- 	end }}
 
 	IncludeSoftDeleted bool
-	Limit              int
+	CursorLimit              int
 {{- else }}
 
-	Limit int
+	CursorLimit int
 {{- end  }}
 }
 
@@ -1485,7 +1485,7 @@ func (repo *{{ .RepositoryStructName }}) search(v interface{}, param *{{ .Struct
 			query = query.WherePath(firestore.FieldPath{{ $bracketsStart }}"{{ .FieldInfoForIndexes.FsTag }}", key{{ $bracketsEnd}}, OpTypeEqual, true)
 		}
 {{ end }}
-		if l := param.Limit; l > 0 {
+		if l := param.CursorLimit; l > 0 {
 			query = query.Limit(l)
 		}
 	}
