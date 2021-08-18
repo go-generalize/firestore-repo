@@ -37,6 +37,7 @@ var (
 	ErrNotFound         = xerrors.New("not found")
 	ErrUniqueConstraint = xerrors.New("unique constraint error")
 	ErrNotAvailableCG   = xerrors.New("not available in collection groups")
+	ErrVersionConflict  = xerrors.New("version conflict")
 )
 
 type (
