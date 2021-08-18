@@ -1190,6 +1190,60 @@ func TestFirestoreOfLockRepo(t *testing.T) {
 		if len(locks) != 6 {
 			tr.Fatalf("unexpected length: %d (expected: %d)", len(locks), 6)
 		}
+
+		param = &model.LockSearchParam{
+			CreatedAt:          model.NewQueryChainer().Asc(),
+			Limit:              5,
+			IncludeSoftDeleted: true,
+		}
+		locks, err = lockRepo.Search(ctx, param, nil)
+		if err != nil {
+			tr.Fatalf("%+v", err)
+		}
+
+		if len(locks) != 5 {
+			tr.Fatalf("unexpected length: %d (expected: %d)", len(locks), 5)
+		}
+
+		param = &model.LockSearchParam{
+			CreatedAt:          model.NewQueryChainer().Asc().StartAfter(locks[len(locks)-1].CreatedAt),
+			Limit:              5,
+			IncludeSoftDeleted: true,
+		}
+		locks, err = lockRepo.Search(ctx, param, nil)
+		if err != nil {
+			tr.Fatalf("%+v", err)
+		}
+
+		if len(locks) != 1 {
+			tr.Fatalf("unexpected length: %d (expected: %d)", len(locks), 1)
+		}
+
+		param = &model.LockSearchParam{
+			CreatedAt:          model.NewQueryChainer().Asc().EndAt(locks[len(locks)-1].CreatedAt),
+			IncludeSoftDeleted: true,
+		}
+		locks, err = lockRepo.Search(ctx, param, nil)
+		if err != nil {
+			tr.Fatalf("%+v", err)
+		}
+
+		if len(locks) != 6 {
+			tr.Fatalf("unexpected length: %d (expected: %d)", len(locks), 6)
+		}
+
+		param = &model.LockSearchParam{
+			CreatedAt:          model.NewQueryChainer().Asc().EndBefore(locks[len(locks)-1].CreatedAt),
+			IncludeSoftDeleted: true,
+		}
+		locks, err = lockRepo.Search(ctx, param, nil)
+		if err != nil {
+			tr.Fatalf("%+v", err)
+		}
+
+		if len(locks) != 5 {
+			tr.Fatalf("unexpected length: %d (expected: %d)", len(locks), 5)
+		}
 	})
 
 	t.Run("update_builder", func(tr *testing.T) {
