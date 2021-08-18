@@ -1400,6 +1400,10 @@ func (repo *{{ .RepositoryStructName }}) search(v interface{}, param *{{ .Struct
 			for _, chain := range param.{{ $key }}.QueryGroup {
 				query = query.Where({{ $RepositoryStructName }}Meta["{{ $key }}"], chain.Operator, chain.Value)
 			}
+			if direction := param.{{ $key }}.OrderByDirection; direction > 0 {
+				query = query.OrderBy({{ $RepositoryStructName }}Meta["{{ $key }}"], direction)
+				query = param.{{ $key }}.BuildCursorQuery(query)
+			}
 		}
 {{- 		end }}
 {{- 	else }}
@@ -1426,6 +1430,7 @@ func (repo *{{ .RepositoryStructName }}) search(v interface{}, param *{{ .Struct
 			}
 			if direction := param.{{ $fi.Field }}.OrderByDirection; direction > 0 {
 				query = query.OrderBy("{{ $fi.FsTag }}", direction)
+				query = param.{{ $fi.Field }}.BuildCursorQuery(query)
 			}
 {{- 			if and (eq $EnableIndexes true ) (ne ( len $fi.Indexes ) 0) }}
 			value, ok := param.{{ $fi.Field }}.Filter.Value.(string)

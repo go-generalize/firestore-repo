@@ -16,6 +16,7 @@ type QueryChainer struct {
 	QueryGroup       []*Query
 	OrderByDirection firestore.Direction
 	Filter           Filter
+	cursor           Cursor
 	err              error
 }
 
@@ -149,6 +150,68 @@ func (qc *QueryChainer) Desc() *QueryChainer {
 // Error - error
 func (qc *QueryChainer) Error() error {
 	return qc.err
+}
+
+// Cursor - query cursor
+type Cursor struct {
+	isStartAt    bool
+	isStartAfter bool
+	isEndAt      bool
+	isEndBefore  bool
+	values       []interface{}
+}
+
+// StartAt - start at
+func (qc *QueryChainer) StartAt(v ...interface{}) *QueryChainer {
+	qc.cursor.isStartAt = true
+	qc.cursor.values = v
+	return qc
+}
+
+// StartAt - start after
+func (qc *QueryChainer) StartAfter(v ...interface{}) *QueryChainer {
+	qc.cursor.isStartAfter = true
+	qc.cursor.values = v
+	return qc
+}
+
+// EndAt - end at
+func (qc *QueryChainer) EndAt(v ...interface{}) *QueryChainer {
+	qc.cursor.isEndAt = true
+	qc.cursor.values = v
+	return qc
+}
+
+// EndBefore - end before
+func (qc *QueryChainer) EndBefore(v ...interface{}) *QueryChainer {
+	qc.cursor.isEndBefore = true
+	qc.cursor.values = v
+	return qc
+}
+
+// BuildCursor - build query for cursor
+func (qc *QueryChainer) BuildCursorQuery(q firestore.Query) firestore.Query {
+	if qc.OrderByDirection == 0 || len(qc.cursor.values) == 0 {
+		return q
+	}
+
+	if qc.cursor.isStartAt {
+		return q.StartAt(qc.cursor.values...)
+	}
+
+	if qc.cursor.isStartAfter {
+		return q.StartAfter(qc.cursor.values...)
+	}
+
+	if qc.cursor.isEndAt {
+		return q.EndAt(qc.cursor.values...)
+	}
+
+	if qc.cursor.isEndBefore {
+		return q.EndBefore(qc.cursor.values...)
+	}
+
+	return q
 }
 
 // Filter - filters of extra indexer
