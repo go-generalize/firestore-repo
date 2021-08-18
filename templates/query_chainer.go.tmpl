@@ -281,7 +281,7 @@ func newQuery(v interface{}, opType OpType) (*Query, error) {
 		map[string]int,
 		map[string]int64,
 		map[string]float64:
-	// ok
+		// ok
 	case time.Time:
 		v = SetLastThreeToZero(x)
 	case []time.Time:
