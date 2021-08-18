@@ -292,6 +292,10 @@ type {{ .StructName }}SearchParam struct {
 {{- 	end }}
 
 	IncludeSoftDeleted bool
+	Limit              int
+{{- else }}
+
+	Limit int
 {{- end  }}
 }
 
@@ -1467,8 +1471,7 @@ func (repo *{{ .RepositoryStructName }}) search(v interface{}, param *{{ .Struct
 			query = query.Where("DeletedAt", OpTypeEqual, nil)
 		}
 {{- end }}
-{{- if .EnableIndexes }}
-
+{{ if .EnableIndexes }}
 		build, err := filters.Build()
 		if err != nil {
 			return nil, xerrors.Errorf("failed to filter build: %w", err)
@@ -1476,7 +1479,10 @@ func (repo *{{ .RepositoryStructName }}) search(v interface{}, param *{{ .Struct
 		for key := range build {
 			query = query.WherePath(firestore.FieldPath{{ $bracketsStart }}"{{ .FieldInfoForIndexes.FsTag }}", key{{ $bracketsEnd}}, OpTypeEqual, true)
 		}
-{{- end }}
+{{ end }}
+		if l := param.Limit; l > 0 {
+			query = query.Limit(l)
+		}
 	}
 
 	return repo.runQuery(v, query)
