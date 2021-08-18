@@ -154,11 +154,9 @@ func (qc *QueryChainer) Error() error {
 
 // Cursor - query cursor
 type Cursor struct {
-	isStartAt    bool
-	isStartAfter bool
-	isEndAt      bool
-	isEndBefore  bool
-	values       []interface{}
+	isStartAt, isStartAfter bool
+	isEndAt, isEndBefore    bool
+	values                  []interface{}
 }
 
 // StartAt - start at
