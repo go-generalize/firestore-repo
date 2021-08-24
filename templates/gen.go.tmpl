@@ -292,6 +292,10 @@ type {{ .StructName }}SearchParam struct {
 {{- 	end }}
 
 	IncludeSoftDeleted bool
+	CursorLimit        int
+{{- else }}
+
+	CursorLimit int
 {{- end  }}
 }
 
@@ -1396,6 +1400,10 @@ func (repo *{{ .RepositoryStructName }}) search(v interface{}, param *{{ .Struct
 			for _, chain := range param.{{ $key }}.QueryGroup {
 				query = query.Where({{ $RepositoryStructName }}Meta["{{ $key }}"], chain.Operator, chain.Value)
 			}
+			if direction := param.{{ $key }}.OrderByDirection; direction > 0 {
+				query = query.OrderBy({{ $RepositoryStructName }}Meta["{{ $key }}"], direction)
+				query = param.{{ $key }}.BuildCursorQuery(query)
+			}
 		}
 {{- 		end }}
 {{- 	else }}
@@ -1419,6 +1427,10 @@ func (repo *{{ .RepositoryStructName }}) search(v interface{}, param *{{ .Struct
 {{- 		else }}
 			for _, chain := range param.{{ $fi.Field }}.QueryGroup {
 				query = query.Where("{{ $fi.FsTag }}", chain.Operator, chain.Value)
+			}
+			if direction := param.{{ $fi.Field }}.OrderByDirection; direction > 0 {
+				query = query.OrderBy("{{ $fi.FsTag }}", direction)
+				query = param.{{ $fi.Field }}.BuildCursorQuery(query)
 			}
 {{- 			if and (eq $EnableIndexes true ) (ne ( len $fi.Indexes ) 0) }}
 			value, ok := param.{{ $fi.Field }}.Filter.Value.(string)
@@ -1464,8 +1476,7 @@ func (repo *{{ .RepositoryStructName }}) search(v interface{}, param *{{ .Struct
 			query = query.Where("DeletedAt", OpTypeEqual, nil)
 		}
 {{- end }}
-{{- if .EnableIndexes }}
-
+{{ if .EnableIndexes }}
 		build, err := filters.Build()
 		if err != nil {
 			return nil, xerrors.Errorf("failed to filter build: %w", err)
@@ -1473,7 +1484,10 @@ func (repo *{{ .RepositoryStructName }}) search(v interface{}, param *{{ .Struct
 		for key := range build {
 			query = query.WherePath(firestore.FieldPath{{ $bracketsStart }}"{{ .FieldInfoForIndexes.FsTag }}", key{{ $bracketsEnd}}, OpTypeEqual, true)
 		}
-{{- end }}
+{{ end }}
+		if l := param.CursorLimit; l > 0 {
+			query = query.Limit(l)
+		}
 	}
 
 	return repo.runQuery(v, query)
