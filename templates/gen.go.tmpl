@@ -833,7 +833,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteWithTxFunc }} {
 		return nil
 	}
 {{ end }}
-	rb, err := repo.beforeDelete(ctx, subject, opts...)
+	rb, err := repo.beforeDelete(context.WithValue(ctx, transactionInProgressKey{}, 1), subject, opts...)
 	if err != nil {
 		return xerrors.Errorf("before delete error: %w", err)
 	}
@@ -855,9 +855,9 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteByWithTxFunc }} {
 		return ErrNotAvailableCG
 	}
 {{- end }}
-	subject, err := repo.GetWithTx(tx, {{ .KeyValueName }})
+	subject, err := repo.Get(context.Background(), {{ .KeyValueName }})
 	if err != nil {
-		return xerrors.Errorf("error in GetWithTx method: %w", err)
+		return xerrors.Errorf("error in Get method: %w", err)
 	}
 {{ if .MetaFields }}
 	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
@@ -869,7 +869,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteByWithTxFunc }} {
 		return nil
 	}
 {{ end }}
-	rb, err := repo.beforeDelete(ctx, subject, opts...)
+	rb, err := repo.beforeDelete(context.WithValue(ctx, transactionInProgressKey{}, 1), subject, opts...)
 	if err != nil {
 		return xerrors.Errorf("before delete error: %w", err)
 	}
@@ -1039,14 +1039,14 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiWithTxFunc }} {
 	}
 	for i := range subjects {
 		dr := repo.GetDocRef(subjects[i].{{ .KeyFieldName }})
-		if _, err := repo.get(tx, dr, opt); err != nil {
+		if _, err := repo.get(context.Background(), dr, opt); err != nil {
 			if status.Code(err) == codes.NotFound {
 				return xerrors.Errorf("not found(%d) [%v]", i, subjects[i].{{ .KeyFieldName }})
 			}
 			return xerrors.Errorf("error in get method(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
 
-		rb, err := repo.beforeDelete(ctx, subjects[i], opts...)
+		rb, err := repo.beforeDelete(context.WithValue(ctx, transactionInProgressKey{}, 1), subjects[i], opts...)
 		if err != nil {
 			return xerrors.Errorf("before delete error(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
@@ -1103,7 +1103,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByWithTxFunc }} {
 {{- end }}
 	for i := range {{ PluralForm .KeyValueName }} {
 		dr := repo.GetDocRef({{ PluralForm .KeyValueName }}[i])
-		subject, err := repo.get(tx, dr)
+		subject, err := repo.get(context.Background(), dr)
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
 				return xerrors.Errorf("not found(%d) [%v]", i, {{ PluralForm .KeyValueName }}[i])
@@ -1111,7 +1111,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByWithTxFunc }} {
 			return xerrors.Errorf("error in get method(%d) [%v]: %w", i, {{ PluralForm .KeyValueName }}[i], err)
 		}
 
-		rb, err := repo.beforeDelete(ctx, subject, opts...)
+		rb, err := repo.beforeDelete(context.WithValue(ctx, transactionInProgressKey{}, 1), subject, opts...)
 		if err != nil {
 			return xerrors.Errorf("before delete error(%d) [%v]: %w", i, subject.{{ .KeyFieldName }}, err)
 		}
