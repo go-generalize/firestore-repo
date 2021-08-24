@@ -901,6 +901,29 @@ func TestFirestoreError(t *testing.T) {
 		ids = append(ids, id)
 	})
 
+	t.Run("Create test", func(tr *testing.T) {
+		tk := &model.Task{
+			Identity:   "identity",
+			Desc:       desc + "2",
+			Created:    now,
+			Done:       true,
+			Done2:      false,
+			Count:      11,
+			Count64:    11,
+			Proportion: 0.12345 + 11,
+			NameList:   []string{"a", "b", "c"},
+			Flag:       model.Flag(true),
+		}
+		id, err := taskRepo.Insert(ctx, tk)
+		if err != nil {
+			if !xerrors.Is(err, model.ErrAlreadyExists) {
+				tr.Fatalf("%+v", err)
+			}
+		} else {
+			ids = append(ids, id)
+		}
+	})
+
 	t.Run("ErrorReadAfterWrite", func(tr *testing.T) {
 		tkID := ids[len(ids)-1]
 		errReadAfterWrite := xerrors.New("firestore: read after write in transaction")
