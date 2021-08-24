@@ -1236,20 +1236,18 @@ func (repo *{{ .RepositoryStructName }}) insert(v interface{}, subject *{{ .Stru
 
 	switch x := v.(type) {
 	case *firestore.Transaction:
-		err = x.Set(dr, subject)
+		err = x.Create(dr, subject)
 	case context.Context:
-{{- 	if not .AutomaticGeneration }}
-		if _, err = dr.Get(x); err == nil {
-			return "", ErrAlreadyExists
-		}
-{{- 	end }}
-		_, err = dr.Set(x, subject)
+		_, err = dr.Create(x, subject)
 	default:
 		return "", xerrors.Errorf("invalid type: %v", v)
 	}
 
 	if err != nil {
-		return "", xerrors.Errorf("error in Set method: %w", err)
+		if status.Code(err) == codes.AlreadyExists {
+			return "", xerrors.Errorf("error in Create method: err=%+v: %w", err, ErrAlreadyExists)
+		}
+		return "", xerrors.Errorf("error in Create method: %w", err)
 	}
 
 	subject.{{ .KeyFieldName }} = dr.ID
