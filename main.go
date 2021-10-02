@@ -248,6 +248,11 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 			)
 			continue
 		}
+
+		if isIgnore(tags) {
+			continue
+		}
+
 		if name == "Indexes" && typeName == typeBoolMap {
 			gen.EnableIndexes = true
 			fieldInfo := &FieldInfo{
@@ -396,6 +401,19 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 	}
 
 	return nil
+}
+
+func isIgnore(tags *structtag.Tags) bool {
+	fsTag, err := tags.Get("firestore")
+	if err != nil {
+		return false
+	}
+
+	if _, err = tags.Get("firestore_key"); err == nil {
+		return false
+	}
+
+	return strings.Split(fsTag.Value(), ",")[0] == "-"
 }
 
 func keyFieldHandler(gen *generator, tags *structtag.Tags, name, typeName string) error {
