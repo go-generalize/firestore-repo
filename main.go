@@ -346,6 +346,16 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 	}
 
 	{
+		fp, err := os.Create(filepath.Join(*outputDir, "errors_gen.go"))
+		if err != nil {
+			panic(err)
+		}
+		defer fp.Close()
+
+		gen.generateByFileName(fp, "errors.go.tmpl")
+	}
+
+	{
 		fp, err := os.Create(filepath.Join(*outputDir, "misc_gen.go"))
 		if err != nil {
 			panic(err)
