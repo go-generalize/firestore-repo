@@ -913,10 +913,10 @@ func (repo *historyRepository) getMulti(v interface{}, ids []string, _ ...GetOpt
 	}
 
 	subjects := make([]*History, 0, len(ids))
-	getMultiErrors := make([]*GetMultiError, 0)
+	multiError := NewGetMultiErrors()
 	for i, snapShot := range snapShots {
 		if !snapShot.Exists() {
-			getMultiErrors = append(getMultiErrors, &GetMultiError{
+			multiError.Append(&GetMultiError{
 				Index: i,
 				Err:   ErrNotFound,
 			})
@@ -932,11 +932,11 @@ func (repo *historyRepository) getMulti(v interface{}, ids []string, _ ...GetOpt
 		subjects = append(subjects, subject)
 	}
 
-	if len(getMultiErrors) == 0 {
+	if multiError.Len() == 0 {
 		return subjects, nil
 	}
 
-	return subjects, GetMultiErrors(getMultiErrors)
+	return subjects, multiError
 }
 
 func (repo *historyRepository) insert(v interface{}, subject *History) (string, error) {

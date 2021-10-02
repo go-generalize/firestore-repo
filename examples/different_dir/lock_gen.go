@@ -932,10 +932,10 @@ func (repo *lockRepository) getMulti(v interface{}, ids []string, opts ...GetOpt
 	}
 
 	subjects := make([]*model.Lock, 0, len(ids))
-	getMultiErrors := make([]*GetMultiError, 0)
+	multiError := NewGetMultiErrors()
 	for i, snapShot := range snapShots {
 		if !snapShot.Exists() {
-			getMultiErrors = append(getMultiErrors, &GetMultiError{
+			multiError.Append(&GetMultiError{
 				Index: i,
 				Err:   ErrNotFound,
 			})
@@ -949,7 +949,7 @@ func (repo *lockRepository) getMulti(v interface{}, ids []string, opts ...GetOpt
 
 		if len(opts) == 0 || !opts[0].IncludeSoftDeleted {
 			if subject.DeletedAt != nil {
-				getMultiErrors = append(getMultiErrors, &GetMultiError{
+				multiError.Append(&GetMultiError{
 					Index: i,
 					Err:   ErrLogicallyDeletedData,
 				})
@@ -960,11 +960,11 @@ func (repo *lockRepository) getMulti(v interface{}, ids []string, opts ...GetOpt
 		subjects = append(subjects, subject)
 	}
 
-	if len(getMultiErrors) == 0 {
+	if multiError.Len() == 0 {
 		return subjects, nil
 	}
 
-	return subjects, GetMultiErrors(getMultiErrors)
+	return subjects, multiError
 }
 
 func (repo *lockRepository) insert(v interface{}, subject *model.Lock) (string, error) {

@@ -881,10 +881,10 @@ func (repo *taskRepository) getMulti(v interface{}, ids []string, _ ...GetOption
 	}
 
 	subjects := make([]*Task, 0, len(ids))
-	getMultiErrors := make([]*GetMultiError, 0)
+	multiError := NewGetMultiErrors()
 	for i, snapShot := range snapShots {
 		if !snapShot.Exists() {
-			getMultiErrors = append(getMultiErrors, &GetMultiError{
+			multiError.Append(&GetMultiError{
 				Index: i,
 				Err:   ErrNotFound,
 			})
@@ -900,11 +900,11 @@ func (repo *taskRepository) getMulti(v interface{}, ids []string, _ ...GetOption
 		subjects = append(subjects, subject)
 	}
 
-	if len(getMultiErrors) == 0 {
+	if multiError.Len() == 0 {
 		return subjects, nil
 	}
 
-	return subjects, GetMultiErrors(getMultiErrors)
+	return subjects, multiError
 }
 
 func (repo *taskRepository) insert(v interface{}, subject *Task) (string, error) {
