@@ -933,7 +933,7 @@ func (repo *historyRepository) getMulti(v interface{}, ids []string, _ ...GetOpt
 	}
 
 	if len(getMultiErrors) == 0 {
-		getMultiErrors = nil
+		return subjects, nil
 	}
 
 	return subjects, GetMultiErrors(getMultiErrors)

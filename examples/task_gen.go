@@ -901,7 +901,7 @@ func (repo *taskRepository) getMulti(v interface{}, ids []string, _ ...GetOption
 	}
 
 	if len(getMultiErrors) == 0 {
-		getMultiErrors = nil
+		return subjects, nil
 	}
 
 	return subjects, GetMultiErrors(getMultiErrors)

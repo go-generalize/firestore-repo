@@ -961,7 +961,7 @@ func (repo *lockRepository) getMulti(v interface{}, ids []string, opts ...GetOpt
 	}
 
 	if len(getMultiErrors) == 0 {
-		getMultiErrors = nil
+		return subjects, nil
 	}
 
 	return subjects, GetMultiErrors(getMultiErrors)

@@ -45,7 +45,7 @@ type GetMultiError struct {
 
 // Error - get multi error string
 func (e *GetMultiError) Error() string {
-	return fmt.Sprintf("index: %d err: %v", e.Index, e.Err)
+	return fmt.Sprintf("[index=%d, err=%v]", e.Index, e.Err)
 }
 
 // GetMultiErrors - get multi errors
