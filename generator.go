@@ -230,6 +230,19 @@ func (g *generator) generateUnique(writer io.Writer) {
 	}
 }
 
+func (g *generator) generateByFileName(writer io.Writer, fileName string) {
+	t := template.Must(
+		template.ParseFS(
+			generateCodeTemplate,
+			"templates/"+fileName,
+		),
+	)
+
+	if err := t.Execute(writer, g); err != nil {
+		log.Printf("failed to execute template: %+v", err)
+	}
+}
+
 func (g *generator) metaJudgment() string {
 	opts := "_"
 	if len(g.MetaFields) > 0 {
