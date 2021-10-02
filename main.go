@@ -337,6 +337,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		}
 		defer fp.Close()
 
+		gen.insertSpaceForLabel()
 		gen.generateByFileName(fp, "label.go.tmpl")
 	}
 
