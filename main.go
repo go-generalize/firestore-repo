@@ -302,7 +302,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 				`%s: The contents of the firestore_key tag should be "" or "auto"`, pos)
 		}
 
-		if err := keyFieldHandler(gen, tags, name, typeName); err != nil {
+		if err = keyFieldHandler(gen, tags, name, typeName); err != nil {
 			log.Fatalf("%s: %v", pos, err)
 		}
 	}
@@ -453,21 +453,25 @@ func appendIndexer(tags *structtag.Tags, fieldInfo *FieldInfo, dupMap map[string
 		} else if tag != "" {
 			fieldInfo.FsTag = tag
 		}
+
 		idr, err := tags.Get("indexer")
 		if err == nil {
 			fieldInfo.IndexerTag = idr.Value()
 			filters = strings.Split(idr.Value(), ",")
 		}
 	}
+
 	patterns := [4]string{
 		prefix, suffix, like, equal,
 	}
+
 	for i := range patterns {
 		idx := &IndexesInfo{
 			ConstName: fieldLabel + fieldInfo.Field + strcase.ToCamel(patterns[i]),
 			Label:     uppercaseExtraction(fieldInfo.Field, dupMap),
 			Method:    "Add",
 		}
+
 		switch patterns[i] {
 		case prefix:
 			idx.Use = isUseIndexer(filters, "p", prefix)
@@ -485,14 +489,18 @@ func appendIndexer(tags *structtag.Tags, fieldInfo *FieldInfo, dupMap map[string
 			idx.Use = isUseIndexer(filters, "e", equal)
 			idx.Comment = fmt.Sprintf("perfect-match of %s", fieldInfo.Field)
 		}
+
 		if fieldInfo.FieldType != typeString {
 			idx.Method = "AddSomething"
 		}
+
 		fieldInfo.Indexes = append(fieldInfo.Indexes, idx)
 	}
+
 	sort.Slice(fieldInfo.Indexes, func(i, j int) bool {
 		return fieldInfo.Indexes[i].Method < fieldInfo.Indexes[j].Method
 	})
+
 	return fieldInfo, nil
 }
 
