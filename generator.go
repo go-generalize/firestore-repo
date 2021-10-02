@@ -150,78 +150,11 @@ func (g *generator) generate(writer io.Writer) {
 	}
 }
 
-func (g *generator) generateLabel(writer io.Writer) {
-	g.insertSpaceForLabel()
-
+func (g *generator) generateByFileName(writer io.Writer, fileName string) {
 	t := template.Must(
 		template.ParseFS(
 			generateCodeTemplate,
-			"templates/label.go.tmpl",
-		),
-	)
-
-	if err := t.Execute(writer, g); err != nil {
-		log.Printf("failed to execute template: %+v", err)
-	}
-}
-
-func (g *generator) generateConstant(writer io.Writer) {
-	t := template.Must(
-		template.ParseFS(
-			generateCodeTemplate,
-			"templates/constant.go.tmpl",
-		),
-	)
-
-	if err := t.Execute(writer, g); err != nil {
-		log.Printf("failed to execute template: %+v", err)
-	}
-}
-
-func (g *generator) generateMisc(writer io.Writer) {
-	t := template.Must(
-		template.ParseFS(
-			generateCodeTemplate,
-			"templates/misc.go.tmpl",
-		),
-	)
-
-	if err := t.Execute(writer, g); err != nil {
-		log.Printf("failed to execute template: %+v", err)
-	}
-}
-
-func (g *generator) generateQueryBuilder(writer io.Writer) {
-	t := template.Must(
-		template.ParseFS(
-			generateCodeTemplate,
-			"templates/query_builder.go.tmpl",
-		),
-	)
-
-	if err := t.Execute(writer, g); err != nil {
-		log.Printf("failed to execute template: %+v", err)
-	}
-}
-
-func (g *generator) generateQueryChainer(writer io.Writer) {
-	t := template.Must(
-		template.ParseFS(
-			generateCodeTemplate,
-			"templates/query_chainer.go.tmpl",
-		),
-	)
-
-	if err := t.Execute(writer, g); err != nil {
-		log.Printf("failed to execute template: %+v", err)
-	}
-}
-
-func (g *generator) generateUnique(writer io.Writer) {
-	t := template.Must(
-		template.ParseFS(
-			generateCodeTemplate,
-			"templates/unique.go.tmpl",
+			"templates/"+fileName,
 		),
 	)
 

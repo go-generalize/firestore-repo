@@ -1192,10 +1192,10 @@ func (repo *{{ .RepositoryStructName }}) getMulti(v interface{}, {{ PluralForm .
 	}
 
 	subjects := make([]*{{ .StructNameRef }}, 0, len({{ PluralForm .KeyValueName }}))
-	multiError := NewGetMultiErrors()
+	mErr := NewMultiErrors()
 	for i, snapShot := range snapShots {
 		if !snapShot.Exists() {
-			multiError = append(multiError, NewGetMultiError(i, ErrNotFound))
+			mErr = append(mErr, NewMultiError(i, ErrNotFound))
 			continue
 		}
 
@@ -1206,7 +1206,7 @@ func (repo *{{ .RepositoryStructName }}) getMulti(v interface{}, {{ PluralForm .
 {{ if .MetaFields }}
 		if len(opts) == 0 || !opts[0].IncludeSoftDeleted {
 			if subject.DeletedAt != nil {
-				multiError = append(multiError, NewGetMultiError(i, ErrLogicallyDeletedData))
+				mErr = append(mErr, NewMultiError(i, ErrLogicallyDeletedData))
 				continue
 			}
 		}
@@ -1215,11 +1215,11 @@ func (repo *{{ .RepositoryStructName }}) getMulti(v interface{}, {{ PluralForm .
 		subjects = append(subjects, subject)
 	}
 
-	if len(multiError) == 0 {
+	if len(mErr) == 0 {
 		return subjects, nil
 	}
 
-	return subjects, multiError
+	return subjects, mErr
 }
 
 func (repo *{{ .RepositoryStructName }}) insert(v interface{}, subject *{{ .StructNameRef }}) ({{ .KeyFieldType }}, error) {

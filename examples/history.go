@@ -6,4 +6,5 @@ package examples
 type History struct {
 	ID              string `firestore:"-" firestore_key:"auto"`
 	IsSubCollection bool   ``
+	IsBool          bool   `firestore:"-"`
 }

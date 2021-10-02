@@ -248,6 +248,11 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 			)
 			continue
 		}
+
+		if isIgnore(tags) {
+			continue
+		}
+
 		if name == "Indexes" && typeName == typeBoolMap {
 			gen.EnableIndexes = true
 			fieldInfo := &FieldInfo{
@@ -297,7 +302,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 				`%s: The contents of the firestore_key tag should be "" or "auto"`, pos)
 		}
 
-		if err := keyFieldHandler(gen, tags, name, typeName); err != nil {
+		if err = keyFieldHandler(gen, tags, name, typeName); err != nil {
 			log.Fatalf("%s: %v", pos, err)
 		}
 	}
@@ -332,7 +337,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		}
 		defer fp.Close()
 
-		gen.generateLabel(fp)
+		gen.generateByFileName(fp, "label.go.tmpl")
 	}
 
 	{
@@ -342,7 +347,17 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		}
 		defer fp.Close()
 
-		gen.generateConstant(fp)
+		gen.generateByFileName(fp, "constant.go.tmpl")
+	}
+
+	{
+		fp, err := os.Create(filepath.Join(*outputDir, "errors_gen.go"))
+		if err != nil {
+			panic(err)
+		}
+		defer fp.Close()
+
+		gen.generateByFileName(fp, "errors.go.tmpl")
 	}
 
 	{
@@ -352,7 +367,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		}
 		defer fp.Close()
 
-		gen.generateMisc(fp)
+		gen.generateByFileName(fp, "misc.go.tmpl")
 	}
 
 	{
@@ -362,7 +377,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		}
 		defer fp.Close()
 
-		gen.generateQueryBuilder(fp)
+		gen.generateByFileName(fp, "query_builder.go.tmpl")
 	}
 
 	{
@@ -372,7 +387,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		}
 		defer fp.Close()
 
-		gen.generateQueryChainer(fp)
+		gen.generateByFileName(fp, "query_chainer.go.tmpl")
 	}
 
 	{
@@ -382,17 +397,30 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		}
 		defer fp.Close()
 
-		gen.generateUnique(fp)
+		gen.generateByFileName(fp, "unique.go.tmpl")
 	}
 
 	return nil
 }
 
+func isIgnore(tags *structtag.Tags) bool {
+	fsTag, err := tags.Get("firestore")
+	if err != nil {
+		return false
+	}
+
+	if _, err = tags.Get("firestore_key"); err == nil {
+		return false
+	}
+
+	return strings.Split(fsTag.Value(), ",")[0] == "-"
+}
+
 func keyFieldHandler(gen *generator, tags *structtag.Tags, name, typeName string) error {
-	FsTag, err := tags.Get("firestore")
+	fsTag, err := tags.Get("firestore")
 
 	// firestore タグが存在しないか-になっていない
-	if err != nil || strings.Split(FsTag.Value(), ",")[0] != "-" {
+	if err != nil || strings.Split(fsTag.Value(), ",")[0] != "-" {
 		return xerrors.New("key field for firestore should have firestore:\"-\" tag")
 	}
 
@@ -425,21 +453,25 @@ func appendIndexer(tags *structtag.Tags, fieldInfo *FieldInfo, dupMap map[string
 		} else if tag != "" {
 			fieldInfo.FsTag = tag
 		}
+
 		idr, err := tags.Get("indexer")
 		if err == nil {
 			fieldInfo.IndexerTag = idr.Value()
 			filters = strings.Split(idr.Value(), ",")
 		}
 	}
+
 	patterns := [4]string{
 		prefix, suffix, like, equal,
 	}
+
 	for i := range patterns {
 		idx := &IndexesInfo{
 			ConstName: fieldLabel + fieldInfo.Field + strcase.ToCamel(patterns[i]),
 			Label:     uppercaseExtraction(fieldInfo.Field, dupMap),
 			Method:    "Add",
 		}
+
 		switch patterns[i] {
 		case prefix:
 			idx.Use = isUseIndexer(filters, "p", prefix)
@@ -457,27 +489,35 @@ func appendIndexer(tags *structtag.Tags, fieldInfo *FieldInfo, dupMap map[string
 			idx.Use = isUseIndexer(filters, "e", equal)
 			idx.Comment = fmt.Sprintf("perfect-match of %s", fieldInfo.Field)
 		}
+
 		if fieldInfo.FieldType != typeString {
 			idx.Method = "AddSomething"
 		}
+
 		fieldInfo.Indexes = append(fieldInfo.Indexes, idx)
 	}
+
 	sort.Slice(fieldInfo.Indexes, func(i, j int) bool {
 		return fieldInfo.Indexes[i].Method < fieldInfo.Indexes[j].Method
 	})
+
 	return fieldInfo, nil
 }
 
 func fireStoreTagCheck(tags *structtag.Tags) (string, error) {
-	if FsTag, err := tags.Get("firestore"); err == nil {
-		tag := strings.Split(FsTag.Value(), ",")[0]
-		if !valueCheck.MatchString(tag) {
-			return "", xerrors.New("key field for firestore should have other than blanks and symbols tag")
-		}
-		if unicode.IsDigit(rune(tag[0])) {
-			return "", xerrors.New("key field for firestore should have indexerPrefix other than numbers required")
-		}
-		return tag, nil
+	fsTag, err := tags.Get("firestore")
+	if err != nil {
+		return "", nil
 	}
-	return "", nil
+
+	tag := strings.Split(fsTag.Value(), ",")[0]
+	if !valueCheck.MatchString(tag) {
+		return "", xerrors.New("key field for firestore should have other than blanks and symbols tag")
+	}
+
+	if unicode.IsDigit(rune(tag[0])) {
+		return "", xerrors.New("key field for firestore should have indexerPrefix other than numbers required")
+	}
+
+	return tag, nil
 }
