@@ -505,15 +505,19 @@ func appendIndexer(tags *structtag.Tags, fieldInfo *FieldInfo, dupMap map[string
 }
 
 func fireStoreTagCheck(tags *structtag.Tags) (string, error) {
-	if fsTag, err := tags.Get("firestore"); err == nil {
-		tag := strings.Split(fsTag.Value(), ",")[0]
-		if !valueCheck.MatchString(tag) {
-			return "", xerrors.New("key field for firestore should have other than blanks and symbols tag")
-		}
-		if unicode.IsDigit(rune(tag[0])) {
-			return "", xerrors.New("key field for firestore should have indexerPrefix other than numbers required")
-		}
-		return tag, nil
+	fsTag, err := tags.Get("firestore")
+	if err != nil {
+		return "", nil
 	}
-	return "", nil
+
+	tag := strings.Split(fsTag.Value(), ",")[0]
+	if !valueCheck.MatchString(tag) {
+		return "", xerrors.New("key field for firestore should have other than blanks and symbols tag")
+	}
+
+	if unicode.IsDigit(rune(tag[0])) {
+		return "", xerrors.New("key field for firestore should have indexerPrefix other than numbers required")
+	}
+
+	return tag, nil
 }
