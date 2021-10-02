@@ -332,7 +332,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		}
 		defer fp.Close()
 
-		gen.generateLabel(fp)
+		gen.generateByFileName(fp, "label.go.tmpl")
 	}
 
 	{
@@ -342,7 +342,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		}
 		defer fp.Close()
 
-		gen.generateConstant(fp)
+		gen.generateByFileName(fp, "constant.go.tmpl")
 	}
 
 	{
@@ -352,7 +352,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		}
 		defer fp.Close()
 
-		gen.generateMisc(fp)
+		gen.generateByFileName(fp, "misc.go.tmpl")
 	}
 
 	{
@@ -362,7 +362,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		}
 		defer fp.Close()
 
-		gen.generateQueryBuilder(fp)
+		gen.generateByFileName(fp, "query_builder.go.tmpl")
 	}
 
 	{
@@ -372,7 +372,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		}
 		defer fp.Close()
 
-		gen.generateQueryChainer(fp)
+		gen.generateByFileName(fp, "query_chainer.go.tmpl")
 	}
 
 	{
@@ -382,7 +382,7 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 		}
 		defer fp.Close()
 
-		gen.generateUnique(fp)
+		gen.generateByFileName(fp, "unique.go.tmpl")
 	}
 
 	return nil
