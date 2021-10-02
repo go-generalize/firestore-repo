@@ -399,10 +399,10 @@ func generate(gen *generator, fs *token.FileSet, structType *ast.StructType) err
 }
 
 func keyFieldHandler(gen *generator, tags *structtag.Tags, name, typeName string) error {
-	FsTag, err := tags.Get("firestore")
+	fsTag, err := tags.Get("firestore")
 
 	// firestore タグが存在しないか-になっていない
-	if err != nil || strings.Split(FsTag.Value(), ",")[0] != "-" {
+	if err != nil || strings.Split(fsTag.Value(), ",")[0] != "-" {
 		return xerrors.New("key field for firestore should have firestore:\"-\" tag")
 	}
 
@@ -479,8 +479,8 @@ func appendIndexer(tags *structtag.Tags, fieldInfo *FieldInfo, dupMap map[string
 }
 
 func fireStoreTagCheck(tags *structtag.Tags) (string, error) {
-	if FsTag, err := tags.Get("firestore"); err == nil {
-		tag := strings.Split(FsTag.Value(), ",")[0]
+	if fsTag, err := tags.Get("firestore"); err == nil {
+		tag := strings.Split(fsTag.Value(), ",")[0]
 		if !valueCheck.MatchString(tag) {
 			return "", xerrors.New("key field for firestore should have other than blanks and symbols tag")
 		}
