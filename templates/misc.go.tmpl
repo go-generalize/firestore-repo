@@ -37,45 +37,47 @@ type DeleteOption struct {
 	Mode DeleteMode
 }
 
-// GetMultiError - get multi error
-type GetMultiError struct {
+// GetMultiError - get multi error interface
+type GetMultiError interface {
+	Error() string
+}
+
+// NewGetMultiError - constructor
+func NewGetMultiError(index int, err error) GetMultiError {
+	return &getMultiError{
+		Index: index,
+		Err:   err,
+	}
+}
+
+// compile time interface checks
+var _ GetMultiError = (*getMultiError)(nil)
+var _ error = (*getMultiError)(nil)
+
+// getMultiError - get multi error
+type getMultiError struct {
 	Index int
 	Err   error
 }
 
 // Error - get multi error string
-func (e *GetMultiError) Error() string {
+func (e *getMultiError) Error() string {
 	return fmt.Sprintf("[index=%d, err=%v]", e.Index, e.Err)
 }
 
 // GetMultiErrors - get multi errors
-type GetMultiErrors interface {
-	Append(*GetMultiError) GetMultiErrors
-	Len() int
-	error
-}
-
-type getMultiErrors []*GetMultiError
+type GetMultiErrors []GetMultiError
 
 // NewGetMultiErrors - constructor
 func NewGetMultiErrors() GetMultiErrors {
-	return getMultiErrors(make([]*GetMultiError, 0))
+	return make([]GetMultiError, 0)
 }
 
-var _ GetMultiErrors = (*getMultiErrors)(nil)
-
-// Append - append get multi error
-func (errs getMultiErrors) Append(err *GetMultiError) GetMultiErrors {
-	return append(errs, err)
-}
-
-// Len - get multi errors length
-func (errs getMultiErrors) Len() int {
-	return len(errs)
-}
+// compile time interface checks
+var _ error = (*GetMultiErrors)(nil)
 
 // Error - get multi errors string
-func (errs getMultiErrors) Error() string {
+func (errs GetMultiErrors) Error() string {
 	msgs := make([]string, 0)
 	for _, e := range errs {
 		msgs = append(msgs, e.Error())
