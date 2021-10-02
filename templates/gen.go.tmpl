@@ -1192,14 +1192,27 @@ func (repo *{{ .RepositoryStructName }}) getMulti(v interface{}, {{ PluralForm .
 	}
 
 	subjects := make([]*{{ .StructNameRef }}, 0, len({{ PluralForm .KeyValueName }}))
-	for _, snapShot := range snapShots {
+	getMultiErrors := make([]*GetMultiError, 0)
+	for i, snapShot := range snapShots {
+		if !snapShot.Exists() {
+			getMultiErrors = append(getMultiErrors, &GetMultiError{
+				Index: i,
+				Err:   ErrNotFound,
+			})
+			continue
+		}
+
 		subject := new({{ .StructNameRef }})
-		if err := snapShot.DataTo(&subject); err != nil {
+		if err = snapShot.DataTo(&subject); err != nil {
 			return nil, xerrors.Errorf("error in DataTo method: %w", err)
 		}
 {{ if .MetaFields }}
 		if len(opts) == 0 || !opts[0].IncludeSoftDeleted {
 			if subject.DeletedAt != nil {
+				getMultiErrors = append(getMultiErrors, &GetMultiError{
+					Index: i,
+					Err:   ErrLogicallyDeletedData,
+				})
 				continue
 			}
 		}
@@ -1208,7 +1221,11 @@ func (repo *{{ .RepositoryStructName }}) getMulti(v interface{}, {{ PluralForm .
 		subjects = append(subjects, subject)
 	}
 
-	return subjects, nil
+	if len(getMultiErrors) == 0 {
+		return subjects, nil
+	}
+
+	return subjects, GetMultiErrors(getMultiErrors)
 }
 
 func (repo *{{ .RepositoryStructName }}) insert(v interface{}, subject *{{ .StructNameRef }}) ({{ .KeyFieldType }}, error) {
