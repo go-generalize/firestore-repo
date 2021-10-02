@@ -49,10 +49,33 @@ func (e *GetMultiError) Error() string {
 }
 
 // GetMultiErrors - get multi errors
-type GetMultiErrors []*GetMultiError
+type GetMultiErrors interface {
+	Append(*GetMultiError) GetMultiErrors
+	Len() int
+	error
+}
+
+type getMultiErrors []*GetMultiError
+
+// NewGetMultiErrors - constructor
+func NewGetMultiErrors() GetMultiErrors {
+	return getMultiErrors(make([]*GetMultiError, 0))
+}
+
+var _ GetMultiErrors = (*getMultiErrors)(nil)
+
+// Append - append get multi error
+func (errs getMultiErrors) Append(err *GetMultiError) GetMultiErrors {
+	return append(errs, err)
+}
+
+// Len - get multi errors length
+func (errs getMultiErrors) Len() int {
+	return len(errs)
+}
 
 // Error - get multi errors string
-func (errs GetMultiErrors) Error() string {
+func (errs getMultiErrors) Error() string {
 	msgs := make([]string, 0)
 	for _, e := range errs {
 		msgs = append(msgs, e.Error())
