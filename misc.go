@@ -21,6 +21,7 @@ var (
 		typeInt64,
 		typeFloat64,
 		typeTime,
+		typeTimePtr,
 		typeLatLng,
 		typeReference,
 		typeStringMap,

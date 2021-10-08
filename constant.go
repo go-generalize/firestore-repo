@@ -13,6 +13,7 @@ const (
 	typeFloat64    = "float64"
 	typeBool       = "bool"
 	typeTime       = "time.Time"
+	typeTimePtr    = "*time.Time"
 	typeLatLng     = "*latlng.LatLng"
 	typeReference  = "*firestore.DocumentRef"
 	typeMap        = "map[string]"
