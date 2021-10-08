@@ -282,6 +282,9 @@ func newQuery(v interface{}, opType OpType) (*Query, error) {
 		// ok
 	case time.Time:
 		v = SetLastThreeToZero(x)
+	case *time.Time:
+		t := SetLastThreeToZero(*x)
+		v = &t
 	case []time.Time:
 		after := make([]time.Time, len(x))
 		for n, t := range x {
