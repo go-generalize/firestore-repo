@@ -638,17 +638,18 @@ func TestFirestoreQuery(t *testing.T) {
 	tks := make([]*model.Task, 0)
 	for i := 1; i <= 9; i++ {
 		tk := &model.Task{
-			Identity:   fmt.Sprintf("%d", i),
-			Desc:       fmt.Sprintf("%s%d", desc, i),
-			Created:    now,
-			Done:       true,
-			Done2:      false,
-			Count:      i,
-			Count64:    int64(i),
-			NameList:   []string{"a", "b", "c"},
-			Proportion: 0.12345 + float64(i),
-			Geo:        latLng,
-			Flag:       model.Flag(true),
+			Identity:     fmt.Sprintf("%d", i),
+			Desc:         fmt.Sprintf("%s%d", desc, i),
+			Created:      now,
+			ReservedDate: &now,
+			Done:         true,
+			Done2:        false,
+			Count:        i,
+			Count64:      int64(i),
+			NameList:     []string{"a", "b", "c"},
+			Proportion:   0.12345 + float64(i),
+			Geo:          latLng,
+			Flag:         model.Flag(true),
 		}
 		tks = append(tks, tk)
 	}
@@ -746,6 +747,21 @@ func TestFirestoreQuery(t *testing.T) {
 		}
 
 		if len(tasks) != 10 {
+			t.Fatal("not match")
+		}
+	})
+
+	t.Run("*time.Time(9件)", func(t *testing.T) {
+		param := &model.TaskSearchParam{
+			ReservedDate: model.NewQueryChainer().Equal(&now),
+		}
+
+		tasks, err := taskRepo.Search(ctx, param, nil)
+		if err != nil {
+			t.Fatalf("%+v", err)
+		}
+
+		if len(tasks) != 9 {
 			t.Fatal("not match")
 		}
 	})
