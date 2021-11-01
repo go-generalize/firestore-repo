@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"embed"
 	"fmt"
 	"io"
@@ -233,6 +234,20 @@ func (g *generator) setFuncMap() template.FuncMap {
 				g.KeyValueName, g.KeyFieldType, g.StructNameRef,
 			)
 			return raw
+		},
+		"GenerateUpdateParam": func(fis []*FieldInfo, metaName string) string {
+			buf := bytes.Buffer{}
+
+			layers := []string{}
+			for _, f := range fis {
+				if f.IsUnique || metaName == f.Field {
+					continue
+				}
+
+				split := strings.Split(f.Field, ".")
+
+				common := 0
+			}
 		},
 		"GetWithDocFunc": func() string {
 			raw := fmt.Sprintf(

@@ -4,6 +4,10 @@ import "time"
 
 //go:generate firestore-repo -disable-meta Task
 
+type Inner struct {
+	A string
+}
+
 // Task - with automatic id generation
 type Task struct {
 	ID           string             `firestore:"-" firestore_key:"auto"`
@@ -18,4 +22,5 @@ type Task struct {
 	Proportion   float64            `firestore:"proportion" indexer:"e"`
 	Flag         map[string]float64 `firestore:"flag"`
 	Indexes      map[string]bool    `firestore:"indexes"`
+	Inner        Inner
 }

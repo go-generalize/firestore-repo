@@ -164,3 +164,19 @@ func isCurrentDirectory(path string) (bool, error) {
 
 	return filepath.Clean(abs) == filepath.Clean(wd), nil
 }
+
+func removeFilesWithGlob(pattern string) error {
+	matched, err := filepath.Glob(pattern)
+
+	if err != nil {
+		return xerrors.Errorf("failed to glob with %s: %w", pattern, err)
+	}
+
+	for _, m := range matched {
+		if err := os.Remove(m); err != nil {
+			return xerrors.Errorf("failed to remove %s: %w", m, err)
+		}
+	}
+
+	return nil
+}
