@@ -292,11 +292,7 @@ func (repo *{{ .RepositoryStructName }}) saveIndexes(subject *{{ .StructNameRef 
 {{- $MetaName := .OmitMetaName }}
 // {{ .StructName }}SearchParam - params for search
 type {{ .StructName }}SearchParam struct {
-{{- range .FieldInfos }}
-{{- 	if ne $MetaName .Field }}
-	{{ .Field }}{{ .Space }} *QueryChainer
-{{- 	end }}
-{{- end }}
+{{ GenerateSearchParam .FieldInfos $MetaName }}
 {{- if .MetaFields }}
 {{- 	range $key, $value := .MetaFields }}
 	{{ $key }}{{ $value.Space }} *QueryChainer
@@ -312,11 +308,7 @@ type {{ .StructName }}SearchParam struct {
 
 // {{ .StructName }}UpdateParam - params for strict updates
 type {{ .StructName }}UpdateParam struct {
-{{- range .FieldInfos }}
-{{- 	if and (eq .IsUnique false) (ne $MetaName .Field) }}
-	{{ .Field }}{{ .Space }} interface{}
-{{- 	end }}
-{{- end }}
+{{ GenerateUpdateParam .FieldInfos $MetaName }}
 {{- if .MetaFields }}
 {{- 	range $key, $value := .MetaFields }}
 	{{ $key }}{{ $value.Space }} interface{}

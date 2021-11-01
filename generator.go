@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"embed"
 	"fmt"
+	"go/format"
 	"io"
 	"log"
 	"strings"
@@ -125,7 +126,7 @@ func (g *generator) generate(writer io.Writer) {
 	g.setting()
 	funcMap := g.setFuncMap()
 
-	buf, err := generateCodeTemplate.ReadFile("templates/gen.go.tmpl")
+	tmpl, err := generateCodeTemplate.ReadFile("templates/gen.go.tmpl")
 	if err != nil {
 		log.Fatalf("error in fs.ReadFile method: %+v", err)
 	}
@@ -133,7 +134,7 @@ func (g *generator) generate(writer io.Writer) {
 	t := template.Must(
 		template.New("Template").
 			Funcs(funcMap).
-			Parse(string(buf)),
+			Parse(string(tmpl)),
 	)
 
 	/* TODO(54m): use when `go1.16` is modified
@@ -146,8 +147,22 @@ func (g *generator) generate(writer io.Writer) {
 			),
 	)*/
 
-	if err := t.Execute(writer, g); err != nil {
+	buf := bytes.Buffer{}
+	if err := t.Execute(&buf, g); err != nil {
 		log.Printf("failed to execute template: %+v", err)
+		return
+	}
+
+	b, err := format.Source(buf.Bytes())
+
+	if err != nil {
+		log.Printf("failed to format source code: %+v", err)
+		return
+	}
+
+	if _, err := writer.Write(b); err != nil {
+		log.Printf("failed to write into the writer: %+v", err)
+		return
 	}
 }
 
@@ -159,8 +174,22 @@ func (g *generator) generateByFileName(writer io.Writer, fileName string) {
 		),
 	)
 
-	if err := t.Execute(writer, g); err != nil {
+	buf := bytes.Buffer{}
+	if err := t.Execute(&buf, g); err != nil {
 		log.Printf("failed to execute template: %+v", err)
+		return
+	}
+
+	b, err := format.Source(buf.Bytes())
+
+	if err != nil {
+		log.Printf("failed to format source code: %+v", err)
+		return
+	}
+
+	if _, err := writer.Write(b); err != nil {
+		log.Printf("failed to write into the writer: %+v", err)
+		return
 	}
 }
 
@@ -247,7 +276,63 @@ func (g *generator) setFuncMap() template.FuncMap {
 				split := strings.Split(f.Field, ".")
 
 				common := 0
+				for common < len(split)-1 &&
+					common < len(layers) &&
+					split[common] == layers[common] {
+					common++
+				}
+
+				for i := len(layers) - 1; i >= common; i-- {
+					buf.WriteString("}\n")
+				}
+				for i := common; i < len(split)-1; i++ {
+					buf.WriteString(fmt.Sprintf("%s struct {\n", split[i]))
+				}
+				layers = split[:len(split)-1]
+
+				buf.WriteString(fmt.Sprintf("%s interface{}\n", split[len(split)-1]))
 			}
+
+			for i := len(layers) - 1; i >= 0; i-- {
+				buf.WriteString("}\n")
+			}
+
+			return buf.String()
+		},
+		"GenerateSearchParam": func(fis []*FieldInfo, metaName string) string {
+			buf := bytes.Buffer{}
+
+			layers := []string{}
+			for _, f := range fis {
+				if metaName == f.Field {
+					continue
+				}
+
+				split := strings.Split(f.Field, ".")
+
+				common := 0
+				for common < len(split)-1 &&
+					common < len(layers) &&
+					split[common] == layers[common] {
+					common++
+				}
+
+				for i := len(layers) - 1; i >= common; i-- {
+					buf.WriteString("}\n")
+				}
+				for i := common; i < len(split)-1; i++ {
+					buf.WriteString(fmt.Sprintf("%s struct {\n", split[i]))
+				}
+				layers = split[:len(split)-1]
+
+				buf.WriteString(fmt.Sprintf("%s *QueryChainer\n", split[len(split)-1]))
+			}
+
+			for i := len(layers) - 1; i >= 0; i-- {
+				buf.WriteString("}\n")
+			}
+
+			return buf.String()
 		},
 		"GetWithDocFunc": func() string {
 			raw := fmt.Sprintf(

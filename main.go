@@ -62,10 +62,6 @@ func run(structName string, isDisableMeta, subCollection bool) error {
 	disableMeta = &isDisableMeta
 	isSubCollection = &subCollection
 
-	if err := removeFilesWithGlob("*_gen.go"); err != nil {
-		return xerrors.Errorf("failed to remove files generated previously: %w", err)
-	}
-
 	psr, err := go2tsparser.NewParser(".", func(fo *go2tsparser.FilterOpt) bool {
 		return fo.BasePackage && fo.Name == structName
 	})
@@ -200,7 +196,6 @@ func generateWithTSTypes(rawKey, firestoreKey string, gen *generator, obj *go2ts
 	})
 
 	for _, e := range entries {
-		fmt.Println(e)
 		typeName := getGo2tsType(e.Type)
 
 		if typeName == "" {
@@ -302,7 +297,6 @@ func generateWithTSTypes(rawKey, firestoreKey string, gen *generator, obj *go2ts
 }
 
 func getGo2tsType(t go2tstypes.Type) string {
-	fmt.Println(t)
 	switch t := t.(type) {
 	case *go2tstypes.String:
 		return "string"

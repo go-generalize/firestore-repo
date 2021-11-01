@@ -207,7 +207,9 @@ type TaskSearchParam struct {
 	NameList     *QueryChainer
 	Proportion   *QueryChainer
 	Flag         *QueryChainer
-	Inner.A      *QueryChainer
+	Inner        struct {
+		A *QueryChainer
+	}
 
 	CursorLimit int
 }
@@ -224,7 +226,9 @@ type TaskUpdateParam struct {
 	NameList     interface{}
 	Proportion   interface{}
 	Flag         interface{}
-	Inner.A      interface{}
+	Inner        struct {
+		A interface{}
+	}
 }
 
 // Search - search documents
@@ -1275,10 +1279,10 @@ func (repo *taskRepository) search(v interface{}, param *TaskSearchParam, q *fir
 		}
 		if param.Inner.A != nil {
 			for _, chain := range param.Inner.A.QueryGroup {
-				query = query.Where("Inner.A", chain.Operator, chain.Value)
+				query = query.Where("inner.a", chain.Operator, chain.Value)
 			}
 			if direction := param.Inner.A.OrderByDirection; direction > 0 {
-				query = query.OrderBy("Inner.A", direction)
+				query = query.OrderBy("inner.a", direction)
 				query = param.Inner.A.BuildCursorQuery(query)
 			}
 			value, ok := param.Inner.A.Filter.Value.(string)
