@@ -12,15 +12,22 @@ type documentRef struct {
 
 var _ go2tstypes.Type = &documentRef{}
 
+// SetPackageName sets PkgName
 func (dr *documentRef) SetPackageName(pkgName string) {
 	dr.pkgName = pkgName
 }
+
+// GetPackageName returns PkgName
 func (dr *documentRef) GetPackageName() string {
 	return dr.pkgName
 }
+
+// UsedAsMapKey returns whether this type can be used as the key for map
 func (dr *documentRef) UsedAsMapKey() bool {
 	return false
 }
+
+// String returns this type in string representation
 func (dr *documentRef) String() string {
 	return "firestore.DocumentRef"
 }

@@ -267,7 +267,7 @@ func (g *generator) setFuncMap() template.FuncMap {
 		"GenerateUpdateParam": func(fis []*FieldInfo, metaName string) string {
 			buf := bytes.Buffer{}
 
-			layers := []string{}
+			layers := make([]string, 0)
 			for _, f := range fis {
 				if f.IsUnique || metaName == f.Field {
 					continue
@@ -302,7 +302,7 @@ func (g *generator) setFuncMap() template.FuncMap {
 		"GenerateSearchParam": func(fis []*FieldInfo, metaName string) string {
 			buf := bytes.Buffer{}
 
-			layers := []string{}
+			layers := make([]string, 0)
 			for _, f := range fis {
 				if metaName == f.Field {
 					continue
