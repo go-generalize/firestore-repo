@@ -60,6 +60,8 @@ github.com/go-generalize/go2ts v1.1.0 h1:S/wrT7LSM/BXto4BLc5xcJku2xeOLhSpahhooue
 github.com/go-generalize/go2ts v1.1.0/go.mod h1:075q+zcpc6IjwYy9WpJpY+M9ssbEA6uccjzWwr59t3M=
 github.com/go-generalize/go2ts v1.2.0 h1:NUGvhEgdnSC6dRwl/S3iBfv1EKMAfV6Tlm7qs2XKN00=
 github.com/go-generalize/go2ts v1.2.0/go.mod h1:075q+zcpc6IjwYy9WpJpY+M9ssbEA6uccjzWwr59t3M=
+github.com/go-generalize/go2ts v1.3.0 h1:aXrhH7I/GUyl8YR0BtnOqb9j5CkhudUFzAqsYHhJfpY=
+github.com/go-generalize/go2ts v1.3.0/go.mod h1:075q+zcpc6IjwYy9WpJpY+M9ssbEA6uccjzWwr59t3M=
 github.com/go-gl/glfw v0.0.0-20190409004039-e6da0acd62b1/go.mod h1:vR7hzQXu2zJy9AVAgeJqvqgH9Q5CA+iKCZ2gyEVpxRU=
 github.com/go-gl/glfw/v3.3/glfw v0.0.0-20191125211704-12ad95a8df72/go.mod h1:tQ2UAYgL5IevRw8kRxooKSPJfGvJ9fJQFa0TUsXzTg8=
 github.com/go-gl/glfw/v3.3/glfw v0.0.0-20200222043503-6f7a984d4dc4/go.mod h1:tQ2UAYgL5IevRw8kRxooKSPJfGvJ9fJQFa0TUsXzTg8=

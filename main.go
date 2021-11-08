@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"unicode"
@@ -69,6 +70,7 @@ func run(structName string, isDisableMeta, subCollection bool) error {
 	if err != nil {
 		return xerrors.Errorf("failed to initializer go2ts parser: %w", err)
 	}
+	psr.Replacer = replacer
 
 	types, err := psr.Parse()
 
@@ -341,9 +343,11 @@ func getGo2tsType(t go2tstypes.Type) string {
 		return ""
 	case *go2tstypes.Map:
 		return "map[" + getGo2tsType(t.Key) + "]" + getGo2tsType(t.Value)
+	case *documentRef:
+		return typeReference
 	}
 
-	panic("unsupported")
+	panic("unsupported: " + reflect.TypeOf(t).String())
 }
 
 func generate(gen *generator, fs *token.FileSet, tstype *go2tstypes.Object, structType *ast.StructType) error {

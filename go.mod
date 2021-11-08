@@ -5,7 +5,7 @@ go 1.16
 require (
 	cloud.google.com/go/firestore v1.4.0
 	github.com/fatih/structtag v1.2.0
-	github.com/go-generalize/go2ts v1.2.0 // indirect
+	github.com/go-generalize/go2ts v1.3.0 // indirect
 	github.com/go-utils/cont v0.1.2
 	github.com/go-utils/dedupe v0.2.1
 	github.com/go-utils/gopackages v0.0.0-20210218102646-e7d1f0008968
