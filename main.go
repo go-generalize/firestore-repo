@@ -199,6 +199,7 @@ func generateWithTSTypes(rawKey, firestoreKey string, gen *generator, obj *go2ts
 
 	for _, e := range entries {
 		typeName := getGo2tsType(e.Type)
+		pos := e.Position.String()
 
 		if typeName == "" {
 			obj := e.Type.(*go2tstypes.Object)
@@ -223,8 +224,8 @@ func generateWithTSTypes(rawKey, firestoreKey string, gen *generator, obj *go2ts
 
 			if !cont.Contains(supportType, obj) {
 				log.Printf(
-					"the type of `%s` is an invalid type in struct `%s` [%s]\n",
-					e.RawName, gen.StructName, typeName,
+					"%s: the type of `%s` is an invalid type in struct `%s` [%s]\n",
+					pos, e.RawName, gen.StructName, typeName,
 				)
 				continue
 			}
@@ -242,7 +243,7 @@ func generateWithTSTypes(rawKey, firestoreKey string, gen *generator, obj *go2ts
 				Indexes:   make([]*IndexesInfo, 0),
 			}
 			if _, err := appendIndexer(nil, firestoreKey, fieldInfo, dupMap); err != nil {
-				log.Fatalf("%v", err)
+				log.Fatalf("%s: %v", pos, err)
 			}
 			gen.FieldInfos = append(gen.FieldInfos, fieldInfo)
 			continue
@@ -251,8 +252,8 @@ func generateWithTSTypes(rawKey, firestoreKey string, gen *generator, obj *go2ts
 		tags, err := structtag.Parse(e.RawTag)
 		if err != nil {
 			log.Printf(
-				"tag for %s in struct %s in %s",
-				e.RawTag, gen.StructName, gen.GeneratedFileName+".go",
+				"%s: tag for %s in struct %s in %s",
+				pos, e.RawTag, gen.StructName, gen.GeneratedFileName+".go",
 			)
 			continue
 		}
@@ -271,12 +272,12 @@ func generateWithTSTypes(rawKey, firestoreKey string, gen *generator, obj *go2ts
 			}
 			if _, err = tags.Get("unique"); err == nil {
 				if typeName != typeString {
-					log.Fatalf("The only field type that uses the `unique` tag is a string")
+					log.Fatalf("%s: The only field type that uses the `unique` tag is a string", pos)
 				}
 				fieldInfo.IsUnique = true
 			}
 			if fieldInfo, err = appendIndexer(tags, firestoreKey, fieldInfo, dupMap); err != nil {
-				log.Fatalf("%v", err)
+				log.Fatalf("%s: %v", pos, err)
 			}
 			gen.FieldInfos = append(gen.FieldInfos, fieldInfo)
 			continue
@@ -289,11 +290,11 @@ func generateWithTSTypes(rawKey, firestoreKey string, gen *generator, obj *go2ts
 			gen.AutomaticGeneration = true
 		default:
 			log.Fatalf(
-				`The contents of the firestore_key tag should be "" or "auto"`)
+				`%s: The contents of the firestore_key tag should be "" or "auto"`, pos)
 		}
 
 		if err = keyFieldHandler(gen, tags, e.RawName, typeName); err != nil {
-			log.Fatalf("%v", err)
+			log.Fatalf("%s: %v", pos, err)
 		}
 	}
 }

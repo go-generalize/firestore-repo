@@ -7,20 +7,10 @@ import (
 )
 
 type documentRef struct {
-	pkgName string
+	go2tstypes.Common
 }
 
 var _ go2tstypes.Type = &documentRef{}
-
-// SetPackageName sets PkgName
-func (dr *documentRef) SetPackageName(pkgName string) {
-	dr.pkgName = pkgName
-}
-
-// GetPackageName returns PkgName
-func (dr *documentRef) GetPackageName() string {
-	return dr.pkgName
-}
 
 // UsedAsMapKey returns whether this type can be used as the key for map
 func (dr *documentRef) UsedAsMapKey() bool {
