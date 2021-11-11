@@ -2,16 +2,20 @@ package examples
 
 import "time"
 
-//go:generate firestore-repo -disable-meta Task
+//go:generate ../bin/firestore-repo -disable-meta Task
 
 type Inner struct {
 	A string `firestore:"a"`
 }
 
+type Embedded struct {
+	ID   string `firestore:"-" firestore_key:"auto"`
+	Desc string `firestore:"description" indexer:"e,p,s,l"`
+}
+
 // Task - with automatic id generation
 type Task struct {
-	ID           string             `firestore:"-" firestore_key:"auto"`
-	Desc         string             `firestore:"description" indexer:"e,p,s,l"`
+	Embedded
 	Created      time.Time          `firestore:"created"`
 	ReservedDate *time.Time         `firestore:"reservedDate"`
 	Done         bool               `firestore:"done"`
