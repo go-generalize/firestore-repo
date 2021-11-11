@@ -448,5 +448,14 @@ func (g *generator) setFuncMap() template.FuncMap {
 			)
 			return raw
 		},
+		"LookUpFieldByName": func(fieldInfos []*FieldInfo, name string) *FieldInfo {
+			for _, fi := range fieldInfos {
+				if fi.Field == name {
+					return fi
+				}
+			}
+
+			return nil
+		},
 	}
 }

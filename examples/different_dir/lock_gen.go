@@ -1094,8 +1094,6 @@ func (repo *lockRepository) runQuery(v interface{}, query firestore.Query) ([]*m
 	return subjects, nil
 }
 
-var lockRepositoryMeta = tagMap(model.Lock{})
-
 // BUG(54m): there may be potential bugs
 func (repo *lockRepository) search(v interface{}, param *LockSearchParam, q *firestore.Query) ([]*model.Lock, error) {
 	if (param == nil && q == nil) || (param != nil && q != nil) {
@@ -1194,7 +1192,7 @@ func (repo *lockRepository) search(v interface{}, param *LockSearchParam, q *fir
 			}
 		}
 		if !param.IncludeSoftDeleted {
-			query = query.Where("DeletedAt", OpTypeEqual, nil)
+			query = query.Where("deletedAt", OpTypeEqual, nil)
 		}
 
 		if l := param.CursorLimit; l > 0 {

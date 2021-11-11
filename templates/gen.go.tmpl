@@ -1435,7 +1435,7 @@ func (repo *{{ .RepositoryStructName }}) search(v interface{}, param *{{ .Struct
 {{- end }}
 {{- if .MetaFieldsEnabled }}
 		if !param.IncludeSoftDeleted {
-			query = query.Where("DeletedAt", OpTypeEqual, nil)
+			query = query.Where("{{ (LookUpFieldByName .FieldInfos "DeletedAt").FsTag }}", OpTypeEqual, nil)
 		}
 {{- end }}
 {{ if .EnableIndexes }}
