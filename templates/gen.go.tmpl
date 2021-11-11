@@ -4,7 +4,7 @@ package {{ .PackageName }}
 
 import (
 	"context"
-{{- if .MetaFields }}
+{{- if .MetaFieldsEnabled }}
 	"time"
 {{- end }}
 
@@ -107,7 +107,7 @@ func New{{ .StructName }}CollectionGroupRepository(firestoreClient *firestore.Cl
 		collectionGroup: firestoreClient.CollectionGroup("{{ .StructName }}"),
 	}
 }{{ end }}
-{{ if .MetaFields }}
+{{ if .MetaFieldsEnabled }}
 func (repo *{{ .RepositoryStructName }}) setMeta(subject *{{ .StructNameRef }}, isInsert bool) {
 	now := time.Now()
 
@@ -124,7 +124,7 @@ func (repo *{{ .RepositoryStructName }}) setMetaWithStrictUpdate(param *{{ .Stru
 }
 {{ end }}
 func (repo *{{ .RepositoryStructName }}) beforeInsert(ctx context.Context, subject *{{ .StructNameRef }}) (RollbackFunc, error) {
-{{- if .MetaFields }}
+{{- if .MetaFieldsEnabled }}
 	if subject.Version != 0 {
 		return nil, xerrors.Errorf("insert data must be Version == 0 %+v: %w", subject, ErrVersionConflict)
 	}
@@ -164,7 +164,7 @@ func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, 
 			return nil, xerrors.Errorf("error in Get method: %w", err)
 		}
 	}
-{{- if .MetaFields }}
+{{- if .MetaFieldsEnabled }}
 	if old.Version > subject.Version {
 		return nil, xerrors.Errorf(
 			"The data in the database is newer: (db version: %d, target version: %d) %+v: %w",
@@ -196,7 +196,7 @@ func (repo *{{ .RepositoryStructName }}) beforeUpdate(ctx context.Context, old, 
 }
 
 func (repo *{{ .RepositoryStructName }}) beforeDelete(ctx context.Context, subject *{{ .StructNameRef }}, opts ...DeleteOption) (RollbackFunc, error) {
-{{- if .MetaFields }}
+{{- if .MetaFieldsEnabled }}
 	repo.setMeta(subject, false)
 {{- end }}
 	repo.uniqueRepository.setMiddleware(ctx)
@@ -289,14 +289,10 @@ func (repo *{{ .RepositoryStructName }}) saveIndexes(subject *{{ .StructNameRef 
 	return nil
 }
 {{ end }}
-{{- $MetaName := .OmitMetaName }}
 // {{ .StructName }}SearchParam - params for search
 type {{ .StructName }}SearchParam struct {
-{{ GenerateSearchParam .FieldInfos $MetaName }}
-{{- if .MetaFields }}
-{{- 	range $key, $value := .MetaFields }}
-	{{ $key }}{{ $value.Space }} *QueryChainer
-{{- 	end }}
+{{ GenerateSearchParam .FieldInfos }}
+{{- if .MetaFieldsEnabled }}
 
 	IncludeSoftDeleted bool
 	CursorLimit        int
@@ -308,12 +304,7 @@ type {{ .StructName }}SearchParam struct {
 
 // {{ .StructName }}UpdateParam - params for strict updates
 type {{ .StructName }}UpdateParam struct {
-{{ GenerateUpdateParam .FieldInfos $MetaName }}
-{{- if .MetaFields }}
-{{- 	range $key, $value := .MetaFields }}
-	{{ $key }}{{ $value.Space }} interface{}
-{{- 	end }}
-{{- end  }}
+{{ GenerateUpdateParam .FieldInfos }}
 }
 
 // Search - search documents
@@ -422,7 +413,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteFunc }} {
 		return ErrNotAvailableCG
 	}
 {{- end }}
-{{- if .MetaFields }}
+{{- if .MetaFieldsEnabled }}
 	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 		t := time.Now()
 		subject.DeletedAt = &t
@@ -458,7 +449,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteByFunc }} {
 	if err != nil {
 		return xerrors.Errorf("error in Get method: %w", err)
 	}
-{{ if .MetaFields }}
+{{ if .MetaFieldsEnabled }}
 	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 		t := time.Now()
 		subject.DeletedAt = &t
@@ -664,7 +655,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiFunc }} {
 			return xerrors.Errorf("before delete error(%d) [%v]: %w", i, subject.{{ .KeyFieldName }}, err)
 		}
 		rbs = append(rbs, rb)
-{{ if .MetaFields }}
+{{ if .MetaFieldsEnabled }}
 		if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 			t := time.Now()
 			subject.DeletedAt = &t
@@ -810,7 +801,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteWithTxFunc }} {
 		return ErrNotAvailableCG
 	}
 {{- end }}
-{{- if .MetaFields }}
+{{- if .MetaFieldsEnabled }}
 	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 		t := time.Now()
 		subject.DeletedAt = &t
@@ -846,7 +837,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteByWithTxFunc }} {
 	if err != nil {
 		return xerrors.Errorf("error in Get method: %w", err)
 	}
-{{ if .MetaFields }}
+{{ if .MetaFieldsEnabled }}
 	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 		t := time.Now()
 		subject.DeletedAt = &t
@@ -1006,7 +997,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiWithTxFunc }} {
 		}
 		er = xerrors.Errorf("unique delete error %+v, original error: %w", errs, er)
 	}()
-{{ if .MetaFields }}
+{{ if .MetaFieldsEnabled }}
 	t := time.Now()
 {{- end }}
 	var isHardDeleteMode bool
@@ -1030,7 +1021,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiWithTxFunc }} {
 			return xerrors.Errorf("before delete error(%d) [%v]: %w", i, subjects[i].{{ .KeyFieldName }}, err)
 		}
 		rbs = append(rbs, rb)
-{{- if .MetaFields }}
+{{- if .MetaFieldsEnabled }}
 
 		if !isHardDeleteMode {
 			subjects[i].DeletedAt = &t
@@ -1040,7 +1031,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiWithTxFunc }} {
 		}
 {{- end }}
 	}
-{{ if .MetaFields }}
+{{ if .MetaFieldsEnabled }}
 	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 		return nil
 	}
@@ -1077,7 +1068,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByWithTxFunc }} {
 		}
 		er = xerrors.Errorf("unique delete error %+v, original error: %w", errs, er)
 	}()
-{{ if .MetaFields }}
+{{ if .MetaFieldsEnabled }}
 	t := time.Now()
 {{- end }}
 	for i := range {{ PluralForm .KeyValueName }} {
@@ -1095,7 +1086,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByWithTxFunc }} {
 			return xerrors.Errorf("before delete error(%d) [%v]: %w", i, subject.{{ .KeyFieldName }}, err)
 		}
 		rbs = append(rbs, rb)
-{{- if .MetaFields }}
+{{- if .MetaFieldsEnabled }}
 
 		if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 			subject.DeletedAt = &t
@@ -1105,7 +1096,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByWithTxFunc }} {
 		}
 {{- end }}
 	}
-{{ if .MetaFields }}
+{{ if .MetaFieldsEnabled }}
 	if len(opts) > 0 && opts[0].Mode == DeleteModeSoft {
 		return nil
 	}
@@ -1145,7 +1136,7 @@ func (repo *{{ .RepositoryStructName }}) get(v interface{}, doc *firestore.Docum
 	if err := snapShot.DataTo(&subject); err != nil {
 		return nil, xerrors.Errorf("error in DataTo method: %w", err)
 	}
-{{ if .MetaFields }}
+{{ if .MetaFieldsEnabled }}
 	if len(opts) == 0 || !opts[0].IncludeSoftDeleted {
 		if subject.DeletedAt != nil {
 			return nil, ErrAlreadyDeleted
@@ -1195,7 +1186,7 @@ func (repo *{{ .RepositoryStructName }}) getMulti(v interface{}, {{ PluralForm .
 		if err = snapShot.DataTo(&subject); err != nil {
 			return nil, xerrors.Errorf("error in DataTo method: %w", err)
 		}
-{{ if .MetaFields }}
+{{ if .MetaFieldsEnabled }}
 		if len(opts) == 0 || !opts[0].IncludeSoftDeleted {
 			if subject.DeletedAt != nil {
 				mErr = append(mErr, NewMultiError(i, ErrLogicallyDeletedData))
@@ -1272,7 +1263,7 @@ func (repo *{{ .RepositoryStructName }}) strictUpdate(v interface{}, id string, 
 		dr  = repo.GetDocRef(id)
 		err error
 	)
-{{ if .MetaFields }}
+{{ if .MetaFieldsEnabled }}
 	repo.setMetaWithStrictUpdate(param)
 {{ end }}
 	updates := updater({{ .StructNameRef }}{}, param)
@@ -1350,9 +1341,7 @@ func (repo *{{ .RepositoryStructName }}) runQuery(v interface{}, query firestore
 
 	return subjects, nil
 }
-{{ if .MetaFields }}
-var {{ .RepositoryStructName }}Meta = tagMap({{ .StructNameRef }}{})
-{{ end }}
+
 // BUG(54m): there may be potential bugs
 func (repo *{{ .RepositoryStructName }}) search(v interface{}, param *{{ .StructName }}SearchParam, q *firestore.Query) ([]*{{ .StructNameRef }}, error) {
 	if (param == nil && q == nil) || (param != nil && q != nil) {
@@ -1378,23 +1367,10 @@ func (repo *{{ .RepositoryStructName }}) search(v interface{}, param *{{ .Struct
 			SaveNoFiltersIndex: true,
 		})
 {{ end }}
-{{- $Meta := .MetaFields }}
+{{- $Meta := .MetaFieldsEnabled }}
 {{- $EnableIndexes := .EnableIndexes }}
 {{- $RepositoryStructName := .RepositoryStructName }}
 {{- range $fi := .FieldInfos }}
-{{- 	if eq $MetaName $fi.Field }}
-{{- 		range $key, $value := $Meta }}
-		if param.{{ $key }} != nil {
-			for _, chain := range param.{{ $key }}.QueryGroup {
-				query = query.Where({{ $RepositoryStructName }}Meta["{{ $key }}"], chain.Operator, chain.Value)
-			}
-			if direction := param.{{ $key }}.OrderByDirection; direction > 0 {
-				query = query.OrderBy({{ $RepositoryStructName }}Meta["{{ $key }}"], direction)
-				query = param.{{ $key }}.BuildCursorQuery(query)
-			}
-		}
-{{- 		end }}
-{{- 	else }}
 {{- 	$IsSlice := HasSlice $fi.FieldType }}
 {{- 	$IsMap := HasMap $fi.FieldType }}
 		if param.{{ $fi.Field }} != nil {
@@ -1456,12 +1432,10 @@ func (repo *{{ .RepositoryStructName }}) search(v interface{}, param *{{ .Struct
 {{- 			end }}
 {{- 		end }}
 		}
-{{- 	end }}
 {{- end }}
-{{- if .MetaFields }}
-{{ $metaPath := (index .MetaFields "DeletedAt").ParentPath }}
+{{- if .MetaFieldsEnabled }}
 		if !param.IncludeSoftDeleted {
-			query = query.Where("DeletedAt", OpTypeEqual, nil)
+			query = query.Where("{{ (LookUpFieldByName .FieldInfos "DeletedAt").FsTag }}", OpTypeEqual, nil)
 		}
 {{- end }}
 {{ if .EnableIndexes }}

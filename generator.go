@@ -67,8 +67,7 @@ type generator struct {
 	AutomaticGeneration bool
 	IsSubCollection     bool
 
-	MetaFields   map[string]*Field
-	OmitMetaName string
+	MetaFieldsEnabled bool
 }
 
 func (g *generator) setting() {
@@ -83,17 +82,6 @@ func (g *generator) insertSpace() {
 	for _, x := range g.FieldInfos {
 		if size := len(x.Field); size > max {
 			max = size
-		}
-	}
-
-	if len(g.MetaFields) > 0 {
-		for k := range g.MetaFields {
-			if size := len(k); size > max {
-				max = size
-			}
-		}
-		for k, v := range g.MetaFields {
-			v.Space = strings.Repeat(" ", max-len(k))
 		}
 	}
 
@@ -156,6 +144,7 @@ func (g *generator) generate(writer io.Writer) {
 	b, err := format.Source(buf.Bytes())
 
 	if err != nil {
+		writer.Write(buf.Bytes())
 		log.Printf("failed to format source code: %+v", err)
 		return
 	}
@@ -183,6 +172,7 @@ func (g *generator) generateByFileName(writer io.Writer, fileName string) {
 	b, err := format.Source(buf.Bytes())
 
 	if err != nil {
+		writer.Write(buf.Bytes())
 		log.Printf("failed to format source code: %+v", err)
 		return
 	}
@@ -195,7 +185,7 @@ func (g *generator) generateByFileName(writer io.Writer, fileName string) {
 
 func (g *generator) metaJudgment() string {
 	opts := "_"
-	if len(g.MetaFields) > 0 {
+	if g.MetaFieldsEnabled {
 		opts = "opts"
 	}
 	return opts
@@ -264,12 +254,12 @@ func (g *generator) setFuncMap() template.FuncMap {
 			)
 			return raw
 		},
-		"GenerateUpdateParam": func(fis []*FieldInfo, metaName string) string {
+		"GenerateUpdateParam": func(fis []*FieldInfo) string {
 			buf := bytes.Buffer{}
 
 			layers := make([]string, 0)
 			for _, f := range fis {
-				if f.IsUnique || metaName == f.Field {
+				if f.IsUnique {
 					continue
 				}
 
@@ -299,15 +289,11 @@ func (g *generator) setFuncMap() template.FuncMap {
 
 			return buf.String()
 		},
-		"GenerateSearchParam": func(fis []*FieldInfo, metaName string) string {
+		"GenerateSearchParam": func(fis []*FieldInfo) string {
 			buf := bytes.Buffer{}
 
 			layers := make([]string, 0)
 			for _, f := range fis {
-				if metaName == f.Field {
-					continue
-				}
-
 				split := strings.Split(f.Field, ".")
 
 				common := 0
@@ -461,6 +447,15 @@ func (g *generator) setFuncMap() template.FuncMap {
 				plural.Convert(g.KeyFieldName), plural.Convert(g.KeyValueName), g.KeyFieldType,
 			)
 			return raw
+		},
+		"LookUpFieldByName": func(fieldInfos []*FieldInfo, name string) *FieldInfo {
+			for _, fi := range fieldInfos {
+				if fi.Field == name {
+					return fi
+				}
+			}
+
+			return nil
 		},
 	}
 }

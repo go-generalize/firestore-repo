@@ -187,10 +187,24 @@ func traverse(pkg *ast.Package, fs *token.FileSet, tstype *go2tstypes.Object, st
 	return xerrors.Errorf("no such struct: %s", structName)
 }
 
+func removeEmpty(arr []string) []string {
+	ret := make([]string, 0, len(arr))
+
+	for i := range arr {
+		if arr[i] == "" {
+			continue
+		}
+
+		ret = append(ret, arr[i])
+	}
+
+	return ret
+}
+
 func generateWithTSTypes(rawKey, firestoreKey string, gen *generator, obj *go2tstypes.Object, dupMap map[string]int) {
-	entries := make([]*go2tstypes.ObjectEntry, 0, len(obj.Entries))
+	entries := make([]go2tstypes.ObjectEntry, 0, len(obj.Entries))
 	for _, e := range obj.Entries {
-		entries = append(entries, &e)
+		entries = append(entries, e)
 	}
 
 	sort.Slice(entries, func(i, j int) bool {
@@ -204,15 +218,15 @@ func generateWithTSTypes(rawKey, firestoreKey string, gen *generator, obj *go2ts
 		if typeName == "" {
 			obj := e.Type.(*go2tstypes.Object)
 
-			rawKey = rawKey + "." + e.RawName
+			rawKey = strings.Join(removeEmpty([]string{rawKey, e.RawName}), ".")
 
 			tags, err := structtag.Parse(e.RawTag)
 			if err != nil {
-				firestoreKey = firestoreKey + "." + e.RawName
+				firestoreKey = strings.Join(removeEmpty([]string{firestoreKey, e.RawName}), ".")
 			} else if t, err := tags.Get("firestore"); err != nil {
-				firestoreKey = firestoreKey + "." + e.RawName
+				firestoreKey = strings.Join(removeEmpty([]string{firestoreKey, e.RawName}), ".")
 			} else {
-				firestoreKey = firestoreKey + "." + t.Name
+				firestoreKey = strings.Join(removeEmpty([]string{firestoreKey, t.Name}), ".")
 			}
 
 			generateWithTSTypes(rawKey, firestoreKey, gen, obj, dupMap)
@@ -237,8 +251,8 @@ func generateWithTSTypes(rawKey, firestoreKey string, gen *generator, obj *go2ts
 
 		if e.RawTag == "" {
 			fieldInfo := &FieldInfo{
-				FsTag:     firestoreKey + "." + e.RawName,
-				Field:     rawKey + "." + e.RawName,
+				FsTag:     strings.Join(removeEmpty([]string{firestoreKey, e.RawName}), "."),
+				Field:     strings.Join(removeEmpty([]string{rawKey, e.RawName}), "."),
 				FieldType: typeName,
 				Indexes:   make([]*IndexesInfo, 0),
 			}
@@ -262,11 +276,29 @@ func generateWithTSTypes(rawKey, firestoreKey string, gen *generator, obj *go2ts
 			continue
 		}
 
+		if rawKey == "" && e.RawName == "Indexes" && typeName == typeBoolMap {
+			gen.EnableIndexes = true
+			fieldInfo := &FieldInfo{
+				FsTag:     e.RawName,
+				Field:     e.RawName,
+				FieldType: typeName,
+			}
+
+			if tag, er := fireStoreTagCheck(tags); er != nil {
+				log.Fatalf("%s: %v", pos, er)
+			} else if tag != "" {
+				fieldInfo.FsTag = tag
+			}
+
+			gen.FieldInfoForIndexes = fieldInfo
+			continue
+		}
+
 		tag, err := tags.Get("firestore_key")
 		if err != nil {
 			fieldInfo := &FieldInfo{
-				FsTag:     firestoreKey + "." + e.RawName,
-				Field:     rawKey + "." + e.RawName,
+				FsTag:     strings.Join(removeEmpty([]string{firestoreKey, e.RawName}), "."),
+				Field:     strings.Join(removeEmpty([]string{rawKey, e.RawName}), "."),
 				FieldType: typeName,
 				Indexes:   make([]*IndexesInfo, 0),
 			}
@@ -335,7 +367,13 @@ func getGo2tsType(t go2tstypes.Type) string {
 	case *go2tstypes.Boolean:
 		return "bool"
 	case *go2tstypes.Nullable:
-		return "*" + getGo2tsType(t.Inner)
+		r := getGo2tsType(t.Inner)
+
+		if strings.HasPrefix(r, "[]") {
+			return r
+		}
+
+		return "*" + r
 	case *go2tstypes.Array:
 		return "[]" + getGo2tsType(t.Inner)
 	case *go2tstypes.Date:
@@ -346,6 +384,8 @@ func getGo2tsType(t go2tstypes.Type) string {
 		return "map[" + getGo2tsType(t.Key) + "]" + getGo2tsType(t.Value)
 	case *documentRef:
 		return typeReference
+	case *latLng:
+		return typeLatLng
 	}
 
 	panic("unsupported: " + reflect.TypeOf(t).String())
@@ -355,178 +395,14 @@ func generate(gen *generator, fs *token.FileSet, tstype *go2tstypes.Object, stru
 	dupMap := make(map[string]int)
 	fieldLabel = gen.StructName + indexLabel
 
-	metaList := make(map[string]*Field)
-	metaFieldName := ""
-	if !*disableMeta {
-		fList := listAllField(structType.Fields, "", false)
-
-		metas, mfn, err := searchMetaProperties(fList)
-		if err != nil {
-			return err
-		}
-
-		metaFieldName = mfn
-
-		for _, m := range metas {
-			metaList[m.Name] = m
-		}
-	}
-	gen.MetaFields = metaList
+	gen.MetaFieldsEnabled = !*disableMeta
 
 	rawEntries := map[string]go2tstypes.ObjectEntry{}
 	for _, v := range tstype.Entries {
 		rawEntries[v.RawName] = v
 	}
 
-	for _, field := range structType.Fields.List {
-		// structの各fieldを調査
-		if len(field.Names) > 1 {
-			return xerrors.New("`field.Names` must have only one element")
-		}
-
-		isMetaFiled := false
-		name := ""
-
-		if field.Names == nil || len(field.Names) == 0 {
-			switch field.Type.(type) {
-			case *ast.Ident:
-				name = field.Type.(*ast.Ident).Name
-			case *ast.SelectorExpr:
-				name = field.Type.(*ast.SelectorExpr).Sel.Name
-			}
-
-			if !*disableMeta && name == metaFieldName {
-				isMetaFiled = true
-				gen.OmitMetaName = name
-			}
-		} else {
-			name = field.Names[0].Name
-		}
-
-		pos := fs.Position(field.Pos()).String()
-
-		typeName := getTypeName(field.Type)
-
-		if !isMetaFiled && !cont.Contains(supportType, typeName) {
-			typeNameDetail := getTypeNameDetail(field.Type)
-			obj := strings.TrimPrefix(typeNameDetail, typeMap)
-
-			if typeNameDetail == "InnerSTRUCT" {
-				entry := rawEntries[name]
-
-				var firestoreKey string
-				if field.Tag == nil {
-					firestoreKey = name
-				} else {
-					tags, err := structtag.Parse(strings.Trim(field.Tag.Value, "`"))
-					if err != nil {
-						firestoreKey = name
-					} else if t, err := tags.Get("firestore"); err != nil {
-						firestoreKey = name
-					} else {
-						firestoreKey = t.Name
-					}
-				}
-
-				generateWithTSTypes(name, firestoreKey, gen, entry.Type.(*go2tstypes.Object), dupMap)
-
-				continue
-			}
-
-			if !cont.Contains(supportType, obj) {
-				log.Printf(
-					"%s: the type of `%s` is an invalid type in struct `%s` [%s]\n",
-					pos, name, gen.StructName, typeName,
-				)
-				continue
-			}
-			typeName = typeNameDetail
-		}
-
-		if strings.HasPrefix(typeName, "[]") {
-			gen.SliceExist = true
-		}
-
-		if field.Tag == nil {
-			fieldInfo := &FieldInfo{
-				FsTag:     name,
-				Field:     name,
-				FieldType: typeName,
-				Indexes:   make([]*IndexesInfo, 0),
-			}
-			if _, err := appendIndexer(nil, "", fieldInfo, dupMap); err != nil {
-				log.Fatalf("%s: %v", pos, err)
-			}
-			gen.FieldInfos = append(gen.FieldInfos, fieldInfo)
-			continue
-		}
-
-		tags, err := structtag.Parse(strings.Trim(field.Tag.Value, "`"))
-		if err != nil {
-			log.Printf(
-				"%s: tag for %s in struct %s in %s",
-				pos, name, gen.StructName, gen.GeneratedFileName+".go",
-			)
-			continue
-		}
-
-		if isIgnore(tags) {
-			continue
-		}
-
-		if name == "Indexes" && typeName == typeBoolMap {
-			gen.EnableIndexes = true
-			fieldInfo := &FieldInfo{
-				FsTag:     name,
-				Field:     name,
-				FieldType: typeName,
-			}
-
-			if tag, er := fireStoreTagCheck(tags); er != nil {
-				log.Fatalf("%s: %v", pos, er)
-			} else if tag != "" {
-				fieldInfo.FsTag = tag
-			}
-
-			gen.FieldInfoForIndexes = fieldInfo
-			continue
-		}
-
-		tag, err := tags.Get("firestore_key")
-		if err != nil {
-			fieldInfo := &FieldInfo{
-				FsTag:     name,
-				Field:     name,
-				FieldType: typeName,
-				Indexes:   make([]*IndexesInfo, 0),
-			}
-			if _, err = tags.Get("unique"); err == nil {
-				if typeName != typeString {
-					log.Fatalf("%s: The only field type that uses the `unique` tag is a string", pos)
-				}
-				fieldInfo.IsUnique = true
-			}
-			if fieldInfo, err = appendIndexer(tags, "", fieldInfo, dupMap); err != nil {
-				log.Fatalf("%s: %v", pos, err)
-			}
-			gen.FieldInfos = append(gen.FieldInfos, fieldInfo)
-			continue
-		}
-
-		switch tag.Value() {
-		case "":
-			// ok
-		case "auto":
-			gen.AutomaticGeneration = true
-		default:
-			log.Fatalf(
-				`%s: The contents of the firestore_key tag should be "" or "auto"`, pos)
-		}
-
-		if err = keyFieldHandler(gen, tags, name, typeName); err != nil {
-			log.Fatalf("%s: %v", pos, err)
-		}
-	}
+	generateWithTSTypes("", "", gen, tstype, dupMap)
 
 	{
 		gen.MockOutputPath = func() string {
