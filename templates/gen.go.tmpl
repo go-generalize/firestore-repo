@@ -1341,9 +1341,7 @@ func (repo *{{ .RepositoryStructName }}) runQuery(v interface{}, query firestore
 
 	return subjects, nil
 }
-{{ if .MetaFieldsEnabled }}
-var {{ .RepositoryStructName }}Meta = tagMap({{ .StructNameRef }}{})
-{{ end }}
+
 // BUG(54m): there may be potential bugs
 func (repo *{{ .RepositoryStructName }}) search(v interface{}, param *{{ .StructName }}SearchParam, q *firestore.Query) ([]*{{ .StructNameRef }}, error) {
 	if (param == nil && q == nil) || (param != nil && q != nil) {
