@@ -384,6 +384,8 @@ func getGo2tsType(t go2tstypes.Type) string {
 		return "map[" + getGo2tsType(t.Key) + "]" + getGo2tsType(t.Value)
 	case *documentRef:
 		return typeReference
+	case *latLng:
+		return typeLatLng
 	}
 
 	panic("unsupported: " + reflect.TypeOf(t).String())
