@@ -1,4 +1,4 @@
 package main
 
 // AppVersion - application version
-const AppVersion = "1.10.0"
+const AppVersion = "1.12.0"
