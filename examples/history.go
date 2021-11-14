@@ -1,6 +1,6 @@
 package examples
 
-//go:generate firestore-repo -disable-meta -sub-collection History
+//go:generate ../bin/firestore-repo -disable-meta -sub-collection History
 
 // History - Task sub-collection
 type History struct {

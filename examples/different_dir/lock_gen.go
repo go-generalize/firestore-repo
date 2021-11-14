@@ -212,10 +212,10 @@ type LockSearchParam struct {
 	Flag      *QueryChainer
 	CreatedAt *QueryChainer
 	CreatedBy *QueryChainer
-	DeletedAt *QueryChainer
-	DeletedBy *QueryChainer
 	UpdatedAt *QueryChainer
 	UpdatedBy *QueryChainer
+	DeletedAt *QueryChainer
+	DeletedBy *QueryChainer
 	Version   *QueryChainer
 
 	IncludeSoftDeleted bool
@@ -227,10 +227,10 @@ type LockUpdateParam struct {
 	Flag      interface{}
 	CreatedAt interface{}
 	CreatedBy interface{}
-	DeletedAt interface{}
-	DeletedBy interface{}
 	UpdatedAt interface{}
 	UpdatedBy interface{}
+	DeletedAt interface{}
+	DeletedBy interface{}
 	Version   interface{}
 }
 
@@ -1094,8 +1094,6 @@ func (repo *lockRepository) runQuery(v interface{}, query firestore.Query) ([]*m
 	return subjects, nil
 }
 
-var lockRepositoryMeta = tagMap(model.Lock{})
-
 // BUG(54m): there may be potential bugs
 func (repo *lockRepository) search(v interface{}, param *LockSearchParam, q *firestore.Query) ([]*model.Lock, error) {
 	if (param == nil && q == nil) || (param != nil && q != nil) {
@@ -1132,70 +1130,69 @@ func (repo *lockRepository) search(v interface{}, param *LockSearchParam, q *fir
 		}
 		if param.CreatedAt != nil {
 			for _, chain := range param.CreatedAt.QueryGroup {
-				query = query.Where(lockRepositoryMeta["CreatedAt"], chain.Operator, chain.Value)
+				query = query.Where("createdAt", chain.Operator, chain.Value)
 			}
 			if direction := param.CreatedAt.OrderByDirection; direction > 0 {
-				query = query.OrderBy(lockRepositoryMeta["CreatedAt"], direction)
+				query = query.OrderBy("createdAt", direction)
 				query = param.CreatedAt.BuildCursorQuery(query)
 			}
 		}
 		if param.CreatedBy != nil {
 			for _, chain := range param.CreatedBy.QueryGroup {
-				query = query.Where(lockRepositoryMeta["CreatedBy"], chain.Operator, chain.Value)
+				query = query.Where("createdBy", chain.Operator, chain.Value)
 			}
 			if direction := param.CreatedBy.OrderByDirection; direction > 0 {
-				query = query.OrderBy(lockRepositoryMeta["CreatedBy"], direction)
+				query = query.OrderBy("createdBy", direction)
 				query = param.CreatedBy.BuildCursorQuery(query)
-			}
-		}
-		if param.DeletedAt != nil {
-			for _, chain := range param.DeletedAt.QueryGroup {
-				query = query.Where(lockRepositoryMeta["DeletedAt"], chain.Operator, chain.Value)
-			}
-			if direction := param.DeletedAt.OrderByDirection; direction > 0 {
-				query = query.OrderBy(lockRepositoryMeta["DeletedAt"], direction)
-				query = param.DeletedAt.BuildCursorQuery(query)
-			}
-		}
-		if param.DeletedBy != nil {
-			for _, chain := range param.DeletedBy.QueryGroup {
-				query = query.Where(lockRepositoryMeta["DeletedBy"], chain.Operator, chain.Value)
-			}
-			if direction := param.DeletedBy.OrderByDirection; direction > 0 {
-				query = query.OrderBy(lockRepositoryMeta["DeletedBy"], direction)
-				query = param.DeletedBy.BuildCursorQuery(query)
 			}
 		}
 		if param.UpdatedAt != nil {
 			for _, chain := range param.UpdatedAt.QueryGroup {
-				query = query.Where(lockRepositoryMeta["UpdatedAt"], chain.Operator, chain.Value)
+				query = query.Where("updatedAt", chain.Operator, chain.Value)
 			}
 			if direction := param.UpdatedAt.OrderByDirection; direction > 0 {
-				query = query.OrderBy(lockRepositoryMeta["UpdatedAt"], direction)
+				query = query.OrderBy("updatedAt", direction)
 				query = param.UpdatedAt.BuildCursorQuery(query)
 			}
 		}
 		if param.UpdatedBy != nil {
 			for _, chain := range param.UpdatedBy.QueryGroup {
-				query = query.Where(lockRepositoryMeta["UpdatedBy"], chain.Operator, chain.Value)
+				query = query.Where("updatedBy", chain.Operator, chain.Value)
 			}
 			if direction := param.UpdatedBy.OrderByDirection; direction > 0 {
-				query = query.OrderBy(lockRepositoryMeta["UpdatedBy"], direction)
+				query = query.OrderBy("updatedBy", direction)
 				query = param.UpdatedBy.BuildCursorQuery(query)
+			}
+		}
+		if param.DeletedAt != nil {
+			for _, chain := range param.DeletedAt.QueryGroup {
+				query = query.Where("deletedAt", chain.Operator, chain.Value)
+			}
+			if direction := param.DeletedAt.OrderByDirection; direction > 0 {
+				query = query.OrderBy("deletedAt", direction)
+				query = param.DeletedAt.BuildCursorQuery(query)
+			}
+		}
+		if param.DeletedBy != nil {
+			for _, chain := range param.DeletedBy.QueryGroup {
+				query = query.Where("deletedBy", chain.Operator, chain.Value)
+			}
+			if direction := param.DeletedBy.OrderByDirection; direction > 0 {
+				query = query.OrderBy("deletedBy", direction)
+				query = param.DeletedBy.BuildCursorQuery(query)
 			}
 		}
 		if param.Version != nil {
 			for _, chain := range param.Version.QueryGroup {
-				query = query.Where(lockRepositoryMeta["Version"], chain.Operator, chain.Value)
+				query = query.Where("version", chain.Operator, chain.Value)
 			}
 			if direction := param.Version.OrderByDirection; direction > 0 {
-				query = query.OrderBy(lockRepositoryMeta["Version"], direction)
+				query = query.OrderBy("version", direction)
 				query = param.Version.BuildCursorQuery(query)
 			}
 		}
-
 		if !param.IncludeSoftDeleted {
-			query = query.Where("DeletedAt", OpTypeEqual, nil)
+			query = query.Where("deletedAt", OpTypeEqual, nil)
 		}
 
 		if l := param.CursorLimit; l > 0 {

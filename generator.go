@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"embed"
 	"fmt"
+	"go/format"
 	"io"
 	"log"
 	"strings"
@@ -65,8 +67,7 @@ type generator struct {
 	AutomaticGeneration bool
 	IsSubCollection     bool
 
-	MetaFields   map[string]*Field
-	OmitMetaName string
+	MetaFieldsEnabled bool
 }
 
 func (g *generator) setting() {
@@ -81,17 +82,6 @@ func (g *generator) insertSpace() {
 	for _, x := range g.FieldInfos {
 		if size := len(x.Field); size > max {
 			max = size
-		}
-	}
-
-	if len(g.MetaFields) > 0 {
-		for k := range g.MetaFields {
-			if size := len(k); size > max {
-				max = size
-			}
-		}
-		for k, v := range g.MetaFields {
-			v.Space = strings.Repeat(" ", max-len(k))
 		}
 	}
 
@@ -124,7 +114,7 @@ func (g *generator) generate(writer io.Writer) {
 	g.setting()
 	funcMap := g.setFuncMap()
 
-	buf, err := generateCodeTemplate.ReadFile("templates/gen.go.tmpl")
+	tmpl, err := generateCodeTemplate.ReadFile("templates/gen.go.tmpl")
 	if err != nil {
 		log.Fatalf("error in fs.ReadFile method: %+v", err)
 	}
@@ -132,7 +122,7 @@ func (g *generator) generate(writer io.Writer) {
 	t := template.Must(
 		template.New("Template").
 			Funcs(funcMap).
-			Parse(string(buf)),
+			Parse(string(tmpl)),
 	)
 
 	/* TODO(54m): use when `go1.16` is modified
@@ -145,8 +135,23 @@ func (g *generator) generate(writer io.Writer) {
 			),
 	)*/
 
-	if err := t.Execute(writer, g); err != nil {
+	buf := bytes.Buffer{}
+	if err := t.Execute(&buf, g); err != nil {
 		log.Printf("failed to execute template: %+v", err)
+		return
+	}
+
+	b, err := format.Source(buf.Bytes())
+
+	if err != nil {
+		writer.Write(buf.Bytes())
+		log.Printf("failed to format source code: %+v", err)
+		return
+	}
+
+	if _, err := writer.Write(b); err != nil {
+		log.Printf("failed to write into the writer: %+v", err)
+		return
 	}
 }
 
@@ -158,14 +163,29 @@ func (g *generator) generateByFileName(writer io.Writer, fileName string) {
 		),
 	)
 
-	if err := t.Execute(writer, g); err != nil {
+	buf := bytes.Buffer{}
+	if err := t.Execute(&buf, g); err != nil {
 		log.Printf("failed to execute template: %+v", err)
+		return
+	}
+
+	b, err := format.Source(buf.Bytes())
+
+	if err != nil {
+		writer.Write(buf.Bytes())
+		log.Printf("failed to format source code: %+v", err)
+		return
+	}
+
+	if _, err := writer.Write(b); err != nil {
+		log.Printf("failed to write into the writer: %+v", err)
+		return
 	}
 }
 
 func (g *generator) metaJudgment() string {
 	opts := "_"
-	if len(g.MetaFields) > 0 {
+	if g.MetaFieldsEnabled {
 		opts = "opts"
 	}
 	return opts
@@ -233,6 +253,72 @@ func (g *generator) setFuncMap() template.FuncMap {
 				g.KeyValueName, g.KeyFieldType, g.StructNameRef,
 			)
 			return raw
+		},
+		"GenerateUpdateParam": func(fis []*FieldInfo) string {
+			buf := bytes.Buffer{}
+
+			layers := make([]string, 0)
+			for _, f := range fis {
+				if f.IsUnique {
+					continue
+				}
+
+				split := strings.Split(f.Field, ".")
+
+				common := 0
+				for common < len(split)-1 &&
+					common < len(layers) &&
+					split[common] == layers[common] {
+					common++
+				}
+
+				for i := len(layers) - 1; i >= common; i-- {
+					buf.WriteString("}\n")
+				}
+				for i := common; i < len(split)-1; i++ {
+					buf.WriteString(fmt.Sprintf("%s struct {\n", split[i]))
+				}
+				layers = split[:len(split)-1]
+
+				buf.WriteString(fmt.Sprintf("%s interface{}\n", split[len(split)-1]))
+			}
+
+			for i := len(layers) - 1; i >= 0; i-- {
+				buf.WriteString("}\n")
+			}
+
+			return buf.String()
+		},
+		"GenerateSearchParam": func(fis []*FieldInfo) string {
+			buf := bytes.Buffer{}
+
+			layers := make([]string, 0)
+			for _, f := range fis {
+				split := strings.Split(f.Field, ".")
+
+				common := 0
+				for common < len(split)-1 &&
+					common < len(layers) &&
+					split[common] == layers[common] {
+					common++
+				}
+
+				for i := len(layers) - 1; i >= common; i-- {
+					buf.WriteString("}\n")
+				}
+				for i := common; i < len(split)-1; i++ {
+					buf.WriteString(fmt.Sprintf("%s struct {\n", split[i]))
+				}
+				layers = split[:len(split)-1]
+
+				buf.WriteString(fmt.Sprintf("%s *QueryChainer\n", split[len(split)-1]))
+			}
+
+			for i := len(layers) - 1; i >= 0; i-- {
+				buf.WriteString("}\n")
+			}
+
+			return buf.String()
 		},
 		"GetWithDocFunc": func() string {
 			raw := fmt.Sprintf(
@@ -361,6 +447,15 @@ func (g *generator) setFuncMap() template.FuncMap {
 				plural.Convert(g.KeyFieldName), plural.Convert(g.KeyValueName), g.KeyFieldType,
 			)
 			return raw
+		},
+		"LookUpFieldByName": func(fieldInfos []*FieldInfo, name string) *FieldInfo {
+			for _, fi := range fieldInfos {
+				if fi.Field == name {
+					return fi
+				}
+			}
+
+			return nil
 		},
 	}
 }
