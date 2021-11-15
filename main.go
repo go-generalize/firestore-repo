@@ -3,9 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"go/types"
 	"log"
 	"os"
@@ -60,6 +57,10 @@ func main() {
 }
 
 func run(structName string, isDisableMeta, subCollection bool) error {
+	if cont.Contains(reservedStructs, structName) {
+		return xerrors.Errorf("reserved struct names cannot be used: %s(reserved: %v)", structName, reservedStructs)
+	}
+
 	disableMeta = &isDisableMeta
 	isSubCollection = &subCollection
 
@@ -87,30 +88,15 @@ func run(structName string, isDisableMeta, subCollection bool) error {
 		tstype = v.(*go2tstypes.Object)
 	}
 
-	fs := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fs, ".", nil, parser.AllErrors)
-
-	if err != nil {
-		panic(err)
-	}
-
-	for name, v := range pkgs {
-		if strings.HasSuffix(name, "_test") {
-			continue
-		}
-
-		return traverse(v, fs, tstype, structName)
-	}
-
-	return nil
+	return traverse(tstype, structName)
 }
 
-func traverse(pkg *ast.Package, fs *token.FileSet, tstype *go2tstypes.Object, structName string) error {
+func traverse(tstype *go2tstypes.Object, structName string) error {
 	gen := &generator{
 		PackageName: func() string {
 			pn := *packageName
 			if pn == "" {
-				return pkg.Name
+				return tstype.PkgName
 			}
 			return pn
 		}(),
@@ -138,53 +124,19 @@ func traverse(pkg *ast.Package, fs *token.FileSet, tstype *go2tstypes.Object, st
 		return xerrors.Errorf("failed to get import path for current directory: %w", err)
 	}
 
-	for name, file := range pkg.Files {
-		gen.FileName = strings.TrimSuffix(filepath.Base(name), ".go")
-		gen.GeneratedFileName = gen.FileName + "_gen"
+	name := tstype.Position.Filename
 
-		for _, decl := range file.Decls {
-			genDecl, ok := decl.(*ast.GenDecl)
-			if !ok {
-				continue
-			}
-			if genDecl.Tok != token.TYPE {
-				continue
-			}
+	gen.FileName = strings.TrimSuffix(filepath.Base(name), ".go")
+	gen.GeneratedFileName = gen.FileName + "_gen"
 
-			for _, spec := range genDecl.Specs {
-				// 型定義
-				typeSpec, ok := spec.(*ast.TypeSpec)
-				if !ok {
-					continue
-				}
-				name := typeSpec.Name.Name
-
-				if name != structName {
-					continue
-				}
-
-				if cont.Contains(reservedStructs, name) {
-					log.Fatalf("%s is a reserved struct", name)
-				}
-
-				// structの定義
-				structType, ok := typeSpec.Type.(*ast.StructType)
-				if !ok {
-					continue
-				}
-				gen.StructName = name
-				gen.StructNameRef = name
-				if !isCurrentDir {
-					gen.StructNameRef = "model." + name
-					gen.ModelImportPath = importPath
-				}
-
-				return generate(gen, fs, tstype, structType)
-			}
-		}
+	gen.StructName = structName
+	gen.StructNameRef = structName
+	if !isCurrentDir {
+		gen.StructNameRef = "model." + structName
+		gen.ModelImportPath = importPath
 	}
 
-	return xerrors.Errorf("no such struct: %s", structName)
+	return generate(gen, tstype)
 }
 
 func removeEmpty(arr []string) []string {
@@ -391,7 +343,7 @@ func getGo2tsType(t go2tstypes.Type) string {
 	panic("unsupported: " + reflect.TypeOf(t).String())
 }
 
-func generate(gen *generator, fs *token.FileSet, tstype *go2tstypes.Object, structType *ast.StructType) error {
+func generate(gen *generator, tstype *go2tstypes.Object) error {
 	dupMap := make(map[string]int)
 	fieldLabel = gen.StructName + indexLabel
 

@@ -2,12 +2,10 @@ package main
 
 import (
 	"fmt"
-	"go/ast"
 	"os"
 	"path/filepath"
 	"regexp"
 
-	"github.com/go-utils/cont"
 	"golang.org/x/xerrors"
 )
 
@@ -63,90 +61,6 @@ func uppercaseExtraction(name string, dupMap map[string]int) (lower string) {
 		}
 	}
 	return
-}
-
-func getTypeName(typ ast.Expr) string {
-	switch v := typ.(type) {
-	case *ast.SelectorExpr:
-		return getTypeName(v.X) + "." + v.Sel.Name
-
-	case *ast.Ident:
-		return v.Name
-
-	case *ast.StarExpr:
-		return "*" + getTypeName(v.X)
-
-	case *ast.ArrayType:
-		return "[]" + getTypeName(v.Elt)
-
-	default:
-		return ""
-	}
-}
-
-func getTypeNameDetail(typ ast.Expr) string {
-	switch v := typ.(type) {
-	case *ast.SelectorExpr:
-		return getTypeNameDetail(v.X) + "." + v.Sel.Name
-
-	case *ast.Ident:
-		name := v.Name
-		if v.Obj != nil {
-			upper := getTypeNameDetail(v.Obj.Decl.(*ast.TypeSpec).Type)
-			if upper != "" {
-				name = upper
-			}
-			switch v.Obj.Decl.(*ast.TypeSpec).Type.(type) {
-			case *ast.StructType:
-				name += "STRUCT"
-				// TODO WIP support Struct (strings.HasSuffix(name, "STRUCT"))
-			}
-		}
-
-		return name
-
-	case *ast.StarExpr:
-		x, ok := v.X.(*ast.Ident)
-		name := getTypeNameDetail(v.X)
-		if name == "" && ok {
-			name = x.Name
-		}
-
-		return "*" + name
-
-	case *ast.ArrayType:
-		return "[]" + getTypeNameDetail(v.Elt)
-
-	case *ast.MapType:
-		name := "map[%s]"
-		switch key := v.Key.(type) {
-		case *ast.Ident:
-			if key.Name == "string" {
-				name = fmt.Sprintf(name, key.Name)
-				break
-			}
-			name = fmt.Sprintf(name, ngType)
-		default:
-			name = fmt.Sprintf(name, ngType)
-		}
-		switch val := v.Value.(type) {
-		case *ast.Ident:
-			if cont.Contains(supportType, val.Name) {
-				name += val.Name
-				break
-			}
-			name += ngType
-		case *ast.InterfaceType:
-			name += "interface{}"
-		default:
-			name += ngType
-		}
-
-		return name
-
-	default:
-		return ""
-	}
 }
 
 func isCurrentDirectory(path string) (bool, error) {
