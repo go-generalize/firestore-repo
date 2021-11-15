@@ -5,7 +5,7 @@ package {{ .PackageName }}
 const (
 {{- range $fi := .FieldInfos }}
 {{- 	range $idx := $fi.Indexes }}
-	{{ $idx.ConstName }}{{ $idx.Space1 }} = "{{ $idx.Label }}"{{ $idx.Space2 }} // {{ $idx.Comment }}
+	{{ $idx.ConstName }} = "{{ $idx.Label }}" // {{ $idx.Comment }}
 {{- 	end }}
 {{- end }}
 )

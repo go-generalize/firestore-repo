@@ -6,7 +6,6 @@ type Field struct {
 	ParentPath string
 	IsEmbed    bool
 	IsPointer  bool
-	Space      string
 }
 
 type MetaField struct {

@@ -24,8 +24,6 @@ type IndexesInfo struct {
 	Label     string
 	Method    string
 	Use       bool
-	Space1    string
-	Space2    string
 }
 
 type FieldInfo struct {
@@ -33,7 +31,6 @@ type FieldInfo struct {
 	Field      string
 	FieldType  string
 	IsUnique   bool
-	Space      string
 	IndexerTag string
 	Indexes    []*IndexesInfo
 }
@@ -74,40 +71,6 @@ func (g *generator) setting() {
 	g.AppVersion = AppVersion
 	g.RepositoryInterfaceName = g.StructName + "Repository"
 	g.RepositoryStructName = strcase.ToLowerCamel(g.RepositoryInterfaceName)
-	g.insertSpace()
-}
-
-func (g *generator) insertSpace() {
-	var max int
-	for _, x := range g.FieldInfos {
-		if size := len(x.Field); size > max {
-			max = size
-		}
-	}
-
-	for _, x := range g.FieldInfos {
-		x.Space = strings.Repeat(" ", max-len(x.Field))
-	}
-}
-
-func (g *generator) insertSpaceForLabel() {
-	var max1, max2 int
-	for _, x := range g.FieldInfos {
-		for _, index := range x.Indexes {
-			if size := len(index.ConstName); size > max1 {
-				max1 = size
-			}
-			if size := len(index.Label); size > max2 {
-				max2 = size
-			}
-		}
-	}
-	for _, x := range g.FieldInfos {
-		for _, index := range x.Indexes {
-			index.Space1 = strings.Repeat(" ", max1-len(index.ConstName))
-			index.Space2 = strings.Repeat(" ", max2-len(index.Label))
-		}
-	}
 }
 
 func (g *generator) generate(writer io.Writer) {

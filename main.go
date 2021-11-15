@@ -386,7 +386,6 @@ func generate(gen *generator, tstype *go2tstypes.Object) error {
 		}
 		defer fp.Close()
 
-		gen.insertSpaceForLabel()
 		gen.generateByFileName(fp, "label.go.tmpl")
 	}
 
