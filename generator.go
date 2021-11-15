@@ -88,16 +88,6 @@ func (g *generator) generate(writer io.Writer) {
 			Parse(string(tmpl)),
 	)
 
-	/* TODO(54m): use when `go1.16` is modified
-	t := template.Must(
-		template.New("Template").
-			Funcs(funcMap).
-			ParseFS(
-				generateCodeTemplate,
-				"templates/gen.go.tmpl",
-			),
-	)*/
-
 	buf := bytes.Buffer{}
 	if err := t.Execute(&buf, g); err != nil {
 		log.Printf("failed to execute template: %+v", err)
