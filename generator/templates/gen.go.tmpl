@@ -1110,7 +1110,7 @@ func (repo *{{ .RepositoryStructName }}) {{ DeleteMultiByWithTxFunc }} {
 	return nil
 }
 
-func (repo *{{ .RepositoryStructName }}) get(v interface{}, doc *firestore.DocumentRef, {{ MetaJudgment }} ...GetOption) (*{{ .StructNameRef }}, error) {
+func (repo *{{ .RepositoryStructName }}) get(v interface{}, doc *firestore.DocumentRef, {{ if .MetaFieldsEnabled }}opts{{ else }}_{{ end }} ...GetOption) (*{{ .StructNameRef }}, error) {
 	var (
 		snapShot *firestore.DocumentSnapshot
 		err      error
@@ -1148,7 +1148,7 @@ func (repo *{{ .RepositoryStructName }}) get(v interface{}, doc *firestore.Docum
 	return subject, nil
 }
 
-func (repo *{{ .RepositoryStructName }}) getMulti(v interface{}, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, {{ MetaJudgment }} ...GetOption) ([]*{{ .StructNameRef }}, error) {
+func (repo *{{ .RepositoryStructName }}) getMulti(v interface{}, {{ PluralForm .KeyValueName }} []{{ .KeyFieldType }}, {{ if .MetaFieldsEnabled }}opts{{ else }}_{{ end }} ...GetOption) ([]*{{ .StructNameRef }}, error) {
 	var (
 		snapShots []*firestore.DocumentSnapshot
 		err       error

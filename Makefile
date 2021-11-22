@@ -1,5 +1,10 @@
 TEST_OPT=""
 
+.PHONY: bootstrap
+bootstrap:
+	mkdir -p bin
+	GOBIN=$(PWD)/bin go install github.com/golang/mock/mockgen@latest
+
 .PHONY: test
 test: goimports
 	go test ./... -v ${TEST_OPT}

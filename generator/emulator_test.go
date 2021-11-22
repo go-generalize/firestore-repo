@@ -1,6 +1,7 @@
+//go:build emulator
 // +build emulator
 
-package main
+package generator
 
 import (
 	"os"
@@ -19,6 +20,24 @@ func execTest(t *testing.T) {
 	}
 }
 
+func run(t *testing.T, structName string, useMeta, subCollection bool) {
+	t.Helper()
+
+	gen, err := NewGenerator(".")
+
+	if err != nil {
+		t.Fatalf("NewGenerator failed: %+v", err)
+	}
+
+	opt := NewDefaultGenerateOption()
+	opt.UseMetaField = useMeta
+	opt.Subcollection = subCollection
+
+	if err := gen.Generate(structName, opt); err != nil {
+		t.Fatalf("Generate failed: %+v", err)
+	}
+}
+
 func TestGenerator(t *testing.T) {
 	root, err := os.Getwd()
 
@@ -31,13 +50,8 @@ func TestGenerator(t *testing.T) {
 			tr.Fatalf("chdir failed: %+v", err)
 		}
 
-		if err := run("Task", true, false); err != nil {
-			tr.Fatalf("failed to generate for testfiles/auto: %+v", err)
-		}
-
-		if err := run("Lock", false, false); err != nil {
-			tr.Fatalf("failed to generate for testfiles/auto: %+v", err)
-		}
+		run(t, "Task", false, false)
+		run(t, "Lock", true, false)
 
 		execTest(tr)
 	})
@@ -47,13 +61,9 @@ func TestGenerator(t *testing.T) {
 			tr.Fatalf("chdir failed: %+v", err)
 		}
 
-		if err := run("Task", true, false); err != nil {
-			tr.Fatalf("failed to generate for testfiles/not_auto: %+v", err)
-		}
+		run(t, "Task", false, false)
 
-		if err := run("SubTask", true, true); err != nil {
-			tr.Fatalf("failed to generate for testfiles/not_auto: %+v", err)
-		}
+		run(t, "SubTask", false, true)
 
 		execTest(tr)
 	})

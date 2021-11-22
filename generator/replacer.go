@@ -1,4 +1,4 @@
-package main
+package generator
 
 import (
 	"go/types"
@@ -38,6 +38,7 @@ func (dr *latLng) String() string {
 	return "latlng.LatLng"
 }
 
+// replacer replaces types for firestore with specific types in go2tsparser
 func replacer(t types.Type) go2tstypes.Type {
 	named, ok := t.(*types.Named)
 
