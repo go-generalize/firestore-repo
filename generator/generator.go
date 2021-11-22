@@ -12,6 +12,8 @@ import (
 type Generator struct {
 	dir   string
 	types map[string]go2tstypes.Type
+
+	AppVersion string
 }
 
 func NewGenerator(dir string) (*Generator, error) {
@@ -20,7 +22,7 @@ func NewGenerator(dir string) (*Generator, error) {
 	})
 
 	if err != nil {
-		return nil, xerrors.Errorf("failed to initializer go2ts parser: %w", err)
+		return nil, xerrors.Errorf("failed to initialize go2ts parser: %w", err)
 	}
 	psr.Replacer = replacer
 
@@ -33,6 +35,8 @@ func NewGenerator(dir string) (*Generator, error) {
 	return &Generator{
 		dir:   dir,
 		types: types,
+
+		AppVersion: "devel",
 	}, nil
 }
 
@@ -59,7 +63,8 @@ func NewDefaultGenerateOption() GenerateOption {
 func (g *Generator) Generate(structName string, opt GenerateOption) error {
 	var typ *go2tstypes.Object
 	for k, v := range g.types {
-		t := strings.SplitN(k, ".", 2)[1]
+		split := strings.Split(k, ".")
+		t := split[len(split)-1]
 
 		if t == structName {
 			t, ok := v.(*go2tstypes.Object)
@@ -75,7 +80,7 @@ func (g *Generator) Generate(structName string, opt GenerateOption) error {
 		return xerrors.Errorf("struct not found: %s", structName)
 	}
 
-	gen, err := newStructGenerator(typ, structName, opt)
+	gen, err := newStructGenerator(typ, structName, g.AppVersion, opt)
 
 	if err != nil {
 		return xerrors.Errorf("failed to initialize generator: %w", err)

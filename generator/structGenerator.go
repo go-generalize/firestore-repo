@@ -28,7 +28,7 @@ type structGenerator struct {
 	dupMap     map[string]int
 }
 
-func newStructGenerator(typ *go2tstypes.Object, structName string, opt GenerateOption) (*structGenerator, error) {
+func newStructGenerator(typ *go2tstypes.Object, structName, appVersion string, opt GenerateOption) (*structGenerator, error) {
 	g := &structGenerator{
 		typ:        typ,
 		structName: structName,
@@ -47,6 +47,11 @@ func newStructGenerator(typ *go2tstypes.Object, structName string, opt GenerateO
 	g.param.FileName = strings.TrimSuffix(filepath.Base(name), ".go")
 	g.param.GeneratedFileName = g.param.FileName + "_gen"
 	g.param.MetaFieldsEnabled = g.opt.UseMetaField
+	g.param.IsSubCollection = g.opt.Subcollection
+
+	g.param.AppVersion = appVersion
+	g.param.RepositoryInterfaceName = structName + "Repository"
+	g.param.RepositoryStructName = strcase.ToLowerCamel(g.param.RepositoryInterfaceName)
 
 	g.param.StructName = g.structName
 	g.param.StructNameRef = g.structName
