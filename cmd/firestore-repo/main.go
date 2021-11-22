@@ -52,7 +52,7 @@ func main() {
 	})
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to generat repository for %s: %+v\n", structName, err)
+		fmt.Fprintf(os.Stderr, "failed to generate repository for %s: %+v\n", structName, err)
 		os.Exit(1)
 	}
 }
