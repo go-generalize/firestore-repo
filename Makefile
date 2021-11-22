@@ -23,4 +23,4 @@ lint:
 
 .PHONY: build
 build:
-	go build -o ./bin/firestore-repo .
+	go build -o ./bin/firestore-repo ./cmd/firestore-repo

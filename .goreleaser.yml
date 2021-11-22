@@ -8,7 +8,7 @@ before:
     - go mod tidy
 
 builds:
-  - main: .
+  - main: cmd/firestore-repo
     binary: firestore-repo
     ldflags:
       - -s -w

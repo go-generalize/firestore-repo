@@ -19,8 +19,10 @@ var (
 )
 
 func main() {
+	appVersion := getAppVersion()
+
 	if *isShowVersion {
-		fmt.Printf("Firestore Model Generator: %s\n", AppVersion)
+		fmt.Printf("Firestore Model Generator: %s\n", appVersion)
 		return
 	}
 
@@ -33,9 +35,10 @@ func main() {
 	gen, err := generator.NewGenerator(".")
 
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to initialize generator: %+v", err)
+		fmt.Fprintf(os.Stderr, "failed to initialize generator: %+v\n", err)
 		os.Exit(1)
 	}
+	gen.AppVersion = appVersion
 
 	gen.Generate(flag.Arg(0), generator.GenerateOption{
 		OutputDir:      *outputDir,

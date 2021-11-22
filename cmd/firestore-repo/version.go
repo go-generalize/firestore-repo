@@ -1,4 +1,13 @@
 package main
 
-// AppVersion - application version
-const AppVersion = "1.12.0"
+import "runtime/debug"
+
+func getAppVersion() string {
+	bi, ok := debug.ReadBuildInfo()
+
+	if !ok {
+		return "devel"
+	}
+
+	return bi.Main.Version
+}
