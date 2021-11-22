@@ -40,7 +40,9 @@ func main() {
 	}
 	gen.AppVersion = appVersion
 
-	gen.Generate(flag.Arg(0), generator.GenerateOption{
+	structName := flag.Arg(0)
+
+	err = gen.Generate(structName, generator.GenerateOption{
 		OutputDir:      *outputDir,
 		PackageName:    *packageName,
 		MockGenPath:    *mockGenPath,
@@ -48,4 +50,9 @@ func main() {
 		UseMetaField:   !*disableMeta,
 		Subcollection:  *isSubCollection,
 	})
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to generat repository for %s: %+v\n", structName, err)
+		os.Exit(1)
+	}
 }
