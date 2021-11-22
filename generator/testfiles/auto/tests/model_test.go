@@ -1,3 +1,4 @@
+//go:build internal
 // +build internal
 
 package tests
@@ -12,7 +13,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
-	model "github.com/go-generalize/firestore-repo/testfiles/auto"
+	model "github.com/go-generalize/firestore-repo/generator/testfiles/auto"
 	"golang.org/x/xerrors"
 )
 

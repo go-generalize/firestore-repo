@@ -8,11 +8,10 @@ before:
     - go mod tidy
 
 builds:
-  - main: .
+  - main: cmd/firestore-repo
     binary: firestore-repo
     ldflags:
       - -s -w
-      - -X github.com/go-generalize/firestore-repo/main.AppVersion={{ .Version }}
     env:
       - CGO_ENABLED=0
 

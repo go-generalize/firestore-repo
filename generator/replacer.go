@@ -1,4 +1,4 @@
-package main
+package generator
 
 import (
 	"go/types"
@@ -38,7 +38,30 @@ func (dr *latLng) String() string {
 	return "latlng.LatLng"
 }
 
+type unsupportedFunction struct {
+	go2tstypes.Common
+}
+
+var _ go2tstypes.Type = &unsupportedFunction{}
+
+// UsedAsMapKey returns whether this type can be used as the key for map
+func (uf *unsupportedFunction) UsedAsMapKey() bool {
+	return false
+}
+
+// String returns this type in string representation
+func (uf *unsupportedFunction) String() string {
+	return "<unsupported function type>"
+}
+
+// replacer replaces types for firestore with specific types in go2tsparser
 func replacer(t types.Type) go2tstypes.Type {
+	_, ok := t.(*types.Signature)
+
+	if ok {
+		return &unsupportedFunction{}
+	}
+
 	named, ok := t.(*types.Named)
 
 	if !ok {

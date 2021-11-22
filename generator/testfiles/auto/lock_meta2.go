@@ -1,6 +1,6 @@
 package model
 
-import "github.com/go-generalize/firestore-repo/testfiles/auto/meta"
+import "github.com/go-generalize/firestore-repo/generator/testfiles/auto/meta"
 
 //go:generate firestore-repo LockMeta2
 
