@@ -19,6 +19,8 @@ var (
 )
 
 func main() {
+	flag.Parse()
+
 	appVersion := getAppVersion()
 
 	if *isShowVersion {
