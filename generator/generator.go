@@ -40,7 +40,7 @@ func NewGenerator(dir string) (*Generator, error) {
 	}, nil
 }
 
-// GenerateOption is a paramter to generate repository
+// GenerateOption is a parameter to generate repository
 type GenerateOption struct {
 	OutputDir      string
 	PackageName    string

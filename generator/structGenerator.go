@@ -162,7 +162,9 @@ func (g *structGenerator) parseTypeImpl(rawKey, firestoreKey string, obj *go2tst
 				firestoreKey = strings.Join(sliceutil.RemoveEmpty([]string{firestoreKey, t.Name}), ".")
 			}
 
-			g.parseTypeImpl(rawKey, firestoreKey, obj)
+			if err := g.parseTypeImpl(rawKey, firestoreKey, obj); err != nil {
+				return xerrors.Errorf("failed to parse %s: %w", e.RawName, err)
+			}
 			continue
 		}
 
@@ -190,7 +192,7 @@ func (g *structGenerator) parseTypeImpl(rawKey, firestoreKey string, obj *go2tst
 				Indexes:   make([]*IndexesInfo, 0),
 			}
 			if _, err := g.appendIndexer(nil, firestoreKey, fieldInfo); err != nil {
-				log.Fatalf("%s: %v", pos, err)
+				return xerrors.Errorf("%s: %w", pos, err)
 			}
 			g.param.FieldInfos = append(g.param.FieldInfos, fieldInfo)
 			continue
@@ -227,12 +229,12 @@ func (g *structGenerator) parseTypeImpl(rawKey, firestoreKey string, obj *go2tst
 			}
 			if _, err = tags.Get("unique"); err == nil {
 				if typeName != typeString {
-					log.Fatalf("%s: The only field type that uses the `unique` tag is a string", pos)
+					return xerrors.Errorf("%s: The only field type that uses the `unique` tag is a string", pos)
 				}
 				fieldInfo.IsUnique = true
 			}
 			if fieldInfo, err = g.appendIndexer(tags, firestoreKey, fieldInfo); err != nil {
-				log.Fatalf("%s: %v", pos, err)
+				return xerrors.Errorf("%s: %w", pos, err)
 			}
 			g.param.FieldInfos = append(g.param.FieldInfos, fieldInfo)
 			continue
@@ -244,8 +246,7 @@ func (g *structGenerator) parseTypeImpl(rawKey, firestoreKey string, obj *go2tst
 		case "auto":
 			g.param.AutomaticGeneration = true
 		default:
-			log.Fatalf(
-				`%s: The contents of the firestore_key tag should be "" or "auto"`, pos)
+			return xerrors.Errorf(`%s: The contents of the firestore_key tag should be "" or "auto"`, pos)
 		}
 
 		fsTag, err := tags.Get("firestore")

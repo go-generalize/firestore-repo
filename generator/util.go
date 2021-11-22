@@ -1,11 +1,12 @@
 package generator
 
 import (
-	"github.com/fatih/structtag"
-	"golang.org/x/xerrors"
 	"regexp"
 	"strings"
 	"unicode"
+
+	"github.com/fatih/structtag"
+	"golang.org/x/xerrors"
 )
 
 var (
