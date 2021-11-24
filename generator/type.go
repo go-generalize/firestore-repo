@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"strings"
 
-	go2tstypes "github.com/go-generalize/go2ts/pkg/types"
+	eptypes "github.com/go-generalize/go-easyparser/types"
 )
 
 const (
@@ -52,11 +52,11 @@ var (
 	}()
 )
 
-func getGoTypeFromGo2ts(t go2tstypes.Type) string {
+func getGoTypeFromEPTypes(t eptypes.Type) string {
 	switch t := t.(type) {
-	case *go2tstypes.String:
+	case *eptypes.String:
 		return "string"
-	case *go2tstypes.Number:
+	case *eptypes.Number:
 		switch t.RawType {
 		case types.Int:
 			return "int"
@@ -85,24 +85,24 @@ func getGoTypeFromGo2ts(t go2tstypes.Type) string {
 		case types.Float64:
 			return "float64"
 		}
-	case *go2tstypes.Boolean:
+	case *eptypes.Boolean:
 		return "bool"
-	case *go2tstypes.Nullable:
-		r := getGoTypeFromGo2ts(t.Inner)
+	case *eptypes.Nullable:
+		r := getGoTypeFromEPTypes(t.Inner)
 
 		if strings.HasPrefix(r, "[]") {
 			return r
 		}
 
 		return "*" + r
-	case *go2tstypes.Array:
-		return "[]" + getGoTypeFromGo2ts(t.Inner)
-	case *go2tstypes.Date:
+	case *eptypes.Array:
+		return "[]" + getGoTypeFromEPTypes(t.Inner)
+	case *eptypes.Date:
 		return "time.Time"
-	case *go2tstypes.Object:
+	case *eptypes.Object:
 		return ""
-	case *go2tstypes.Map:
-		return "map[" + getGoTypeFromGo2ts(t.Key) + "]" + getGoTypeFromGo2ts(t.Value)
+	case *eptypes.Map:
+		return "map[" + getGoTypeFromEPTypes(t.Key) + "]" + getGoTypeFromEPTypes(t.Value)
 	case *documentRef:
 		return typeReference
 	case *latLng:

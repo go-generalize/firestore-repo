@@ -3,33 +3,33 @@ package generator
 import (
 	"strings"
 
-	go2tsparser "github.com/go-generalize/go2ts/pkg/parser"
-	go2tstypes "github.com/go-generalize/go2ts/pkg/types"
+	"github.com/go-generalize/go-easyparser"
+	"github.com/go-generalize/go-easyparser/types"
 	"golang.org/x/xerrors"
 )
 
 // Generator generates firestore CRUD functions
 type Generator struct {
 	dir   string
-	types map[string]go2tstypes.Type
+	types map[string]types.Type
 
 	AppVersion string
 }
 
 func NewGenerator(dir string) (*Generator, error) {
-	psr, err := go2tsparser.NewParser(dir, func(fo *go2tsparser.FilterOpt) bool {
+	psr, err := easyparser.NewParser(dir, func(fo *easyparser.FilterOpt) bool {
 		return fo.BasePackage
 	})
 
 	if err != nil {
-		return nil, xerrors.Errorf("failed to initialize go2ts parser: %w", err)
+		return nil, xerrors.Errorf("failed to initialize parser: %w", err)
 	}
 	psr.Replacer = replacer
 
 	types, err := psr.Parse()
 
 	if err != nil {
-		return nil, xerrors.Errorf("failed to parse with go2ts parser: %w", err)
+		return nil, xerrors.Errorf("failed to parse: %w", err)
 	}
 
 	return &Generator{
@@ -61,13 +61,13 @@ func NewDefaultGenerateOption() GenerateOption {
 }
 
 func (g *Generator) Generate(structName string, opt GenerateOption) error {
-	var typ *go2tstypes.Object
+	var typ *types.Object
 	for k, v := range g.types {
 		split := strings.Split(k, ".")
 		t := split[len(split)-1]
 
 		if t == structName {
-			t, ok := v.(*go2tstypes.Object)
+			t, ok := v.(*types.Object)
 
 			if !ok {
 				return xerrors.Errorf("Only struct is allowed")

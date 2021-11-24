@@ -11,7 +11,7 @@ import (
 	"github.com/go-generalize/firestore-repo/pkg/fsutil"
 	"github.com/go-generalize/firestore-repo/pkg/gocodegen"
 	"github.com/go-generalize/firestore-repo/pkg/sliceutil"
-	go2tstypes "github.com/go-generalize/go2ts/pkg/types"
+	"github.com/go-generalize/go-easyparser/types"
 	"github.com/go-utils/cont"
 	"github.com/go-utils/gopackages"
 	"github.com/iancoleman/strcase"
@@ -21,14 +21,14 @@ import (
 type structGenerator struct {
 	param templateParameter
 
-	typ        *go2tstypes.Object
+	typ        *types.Object
 	baseDir    string
 	structName string
 	opt        GenerateOption
 	dupMap     map[string]int
 }
 
-func newStructGenerator(typ *go2tstypes.Object, structName, appVersion string, opt GenerateOption) (*structGenerator, error) {
+func newStructGenerator(typ *types.Object, structName, appVersion string, opt GenerateOption) (*structGenerator, error) {
 	g := &structGenerator{
 		typ:        typ,
 		structName: structName,
@@ -134,8 +134,8 @@ func (g *structGenerator) parseType() error {
 	return nil
 }
 
-func (g *structGenerator) parseTypeImpl(rawKey, firestoreKey string, obj *go2tstypes.Object) error {
-	entries := make([]go2tstypes.ObjectEntry, 0, len(obj.Entries))
+func (g *structGenerator) parseTypeImpl(rawKey, firestoreKey string, obj *types.Object) error {
+	entries := make([]types.ObjectEntry, 0, len(obj.Entries))
 	for _, e := range obj.Entries {
 		entries = append(entries, e)
 	}
@@ -145,11 +145,11 @@ func (g *structGenerator) parseTypeImpl(rawKey, firestoreKey string, obj *go2tst
 	})
 
 	for _, e := range entries {
-		typeName := getGoTypeFromGo2ts(e.Type)
+		typeName := getGoTypeFromEPTypes(e.Type)
 		pos := e.Position.String()
 
 		if typeName == "" {
-			obj := e.Type.(*go2tstypes.Object)
+			obj := e.Type.(*types.Object)
 
 			rawKey = strings.Join(sliceutil.RemoveEmpty([]string{rawKey, e.RawName}), ".")
 

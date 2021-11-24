@@ -3,14 +3,14 @@ package generator
 import (
 	"go/types"
 
-	go2tstypes "github.com/go-generalize/go2ts/pkg/types"
+	eptypes "github.com/go-generalize/go-easyparser/types"
 )
 
 type documentRef struct {
-	go2tstypes.Common
+	eptypes.Common
 }
 
-var _ go2tstypes.Type = &documentRef{}
+var _ eptypes.Type = &documentRef{}
 
 // UsedAsMapKey returns whether this type can be used as the key for map
 func (dr *documentRef) UsedAsMapKey() bool {
@@ -23,10 +23,10 @@ func (dr *documentRef) String() string {
 }
 
 type latLng struct {
-	go2tstypes.Common
+	eptypes.Common
 }
 
-var _ go2tstypes.Type = &latLng{}
+var _ eptypes.Type = &latLng{}
 
 // UsedAsMapKey returns whether this type can be used as the key for map
 func (dr *latLng) UsedAsMapKey() bool {
@@ -39,10 +39,10 @@ func (dr *latLng) String() string {
 }
 
 type unsupportedFunction struct {
-	go2tstypes.Common
+	eptypes.Common
 }
 
-var _ go2tstypes.Type = &unsupportedFunction{}
+var _ eptypes.Type = &unsupportedFunction{}
 
 // UsedAsMapKey returns whether this type can be used as the key for map
 func (uf *unsupportedFunction) UsedAsMapKey() bool {
@@ -54,8 +54,8 @@ func (uf *unsupportedFunction) String() string {
 	return "<unsupported function type>"
 }
 
-// replacer replaces types for firestore with specific types in go2tsparser
-func replacer(t types.Type) go2tstypes.Type {
+// replacer replaces eptypes for firestore with specific eptypes in parser
+func replacer(t types.Type) eptypes.Type {
 	_, ok := t.(*types.Signature)
 
 	if ok {
