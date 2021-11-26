@@ -63,8 +63,8 @@ github.com/go-gl/glfw/v3.3/glfw v0.0.0-20191125211704-12ad95a8df72/go.mod h1:tQ2
 github.com/go-gl/glfw/v3.3/glfw v0.0.0-20200222043503-6f7a984d4dc4/go.mod h1:tQ2UAYgL5IevRw8kRxooKSPJfGvJ9fJQFa0TUsXzTg8=
 github.com/go-utils/cont v0.1.2 h1:ynFzZJ7rZVySN9P4IGBOjmLt7knlUcdDLY9Q9Dl3nzg=
 github.com/go-utils/cont v0.1.2/go.mod h1:zXQ9kh3mb8Bydc0Ce+12tHwn/cb/+zL8twUeOs4E+eA=
-github.com/go-utils/dedupe v0.2.1 h1:+UYV1KXDo5sn+GxS5JSQaVksJ9GZxm5dlY4MPsk091w=
-github.com/go-utils/dedupe v0.2.1/go.mod h1:djuV2+bSo4GJof/CgXcV54k5NwDkSqnevZ5ySgPp/hM=
+github.com/go-utils/dedupe v1.0.0 h1:iEEV94wfE6NgKlFesWlt9uALEHYRdmEn+KJzkx9vSC8=
+github.com/go-utils/dedupe v1.0.0/go.mod h1:d3isYB4QNtAtaLlVkStDXoq6R0qRAelD48W2VUZUpCg=
 github.com/go-utils/gopackages v0.0.0-20210218102646-e7d1f0008968 h1:sHm78LgJXVdlQPfpmVq4tLmssocz+tda7NJgdH6LJFY=
 github.com/go-utils/gopackages v0.0.0-20210218102646-e7d1f0008968/go.mod h1:QPVW4BzGDze3cEu7TbM7Gw9ppfYTj4NDgBW0JwNZE1g=
 github.com/go-utils/plural v0.0.1 h1:GdqHN1+s1dm3HDyejIjUUOS+WIZcyNkB2SrajDS0Iy4=
@@ -82,7 +82,6 @@ github.com/golang/mock v1.3.1/go.mod h1:sBzyDLLjw3U8JLTeZvSv8jJB+tU5PVekmnlKIyFU
 github.com/golang/mock v1.4.0/go.mod h1:UOMv5ysSaYNkG+OFQykRIcU/QvvxJf3p21QfJ2Bt3cw=
 github.com/golang/mock v1.4.1/go.mod h1:UOMv5ysSaYNkG+OFQykRIcU/QvvxJf3p21QfJ2Bt3cw=
 github.com/golang/mock v1.4.3/go.mod h1:UOMv5ysSaYNkG+OFQykRIcU/QvvxJf3p21QfJ2Bt3cw=
-github.com/golang/mock v1.4.4 h1:l75CXGRSwbaYNpl/Z2X1XIIAMSCquvXgpVZDhwEIJsc=
 github.com/golang/mock v1.4.4/go.mod h1:l3mdAwkq5BuhzHwde/uurv3sEJeZMXNpwsxVWU71h+4=
 github.com/golang/protobuf v1.2.0/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/golang/protobuf v1.3.1/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
