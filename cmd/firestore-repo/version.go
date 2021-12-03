@@ -1,13 +1,21 @@
 package main
 
-import "runtime/debug"
+import (
+	"runtime/debug"
+)
 
-func getAppVersion() string {
-	bi, ok := debug.ReadBuildInfo()
+// AppVersion is a version number for this module.
+var AppVersion = "devel"
 
-	if !ok {
-		return "devel"
+func init() {
+	if AppVersion != "devel" {
+		return
 	}
 
-	return bi.Main.Version
+	bi, ok := debug.ReadBuildInfo()
+	if !ok {
+		return
+	}
+
+	AppVersion = bi.Main.Version
 }
