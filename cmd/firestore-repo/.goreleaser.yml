@@ -12,7 +12,7 @@ builds:
     binary: firestore-repo
     ldflags:
       - -s -w
-      - -X main.AppVersion={{ .Version }}
+      - -X main.AppVersion=v{{ .Version }}
     env:
       - CGO_ENABLED=0
 
