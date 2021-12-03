@@ -21,10 +21,8 @@ var (
 func main() {
 	flag.Parse()
 
-	appVersion := getAppVersion()
-
 	if *isShowVersion {
-		fmt.Printf("Firestore Model Generator: %s\n", appVersion)
+		fmt.Printf("Firestore Model Generator: %s\n", AppVersion)
 		return
 	}
 
@@ -40,7 +38,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "failed to initialize generator: %+v\n", err)
 		os.Exit(1)
 	}
-	gen.AppVersion = appVersion
+	gen.AppVersion = AppVersion
 
 	structName := flag.Arg(0)
 
