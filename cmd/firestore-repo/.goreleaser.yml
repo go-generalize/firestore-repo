@@ -12,7 +12,7 @@ builds:
     binary: firestore-repo
     ldflags:
       - -s -w
-      - -X github.com/go-generalize/firestore-repo/cmd/firestore-repo/main.AppVersion={{ .Version }}
+      - -X github.com/go-generalize/firestore-repo/cmd/firestore-repo.AppVersion={{ .Version }}
     env:
       - CGO_ENABLED=0
 
